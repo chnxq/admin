@@ -1,0 +1,123 @@
+version: '3'
+
+networks:
+  app-tier:
+    driver: bridge
+
+volumes:
+  etcd-data:
+  # log:
+
+services:
+  postgres:
+    container_name: postgres
+    image: docker.io/bitnami/postgresql:latest
+    restart: always
+    ports:
+      - "5432:5432"
+    networks:
+      - app-tier
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=~Xyz4321Ab
+      - POSTGRES_DB=admin
+
+#  mysql:
+#    image: docker.io/bitnami/mariadb:latest
+#    restart: always
+#    ports:
+#      - "3306:3306"
+#    networks:
+#      - app-tier
+#    environment:
+#      - MARIADB_ROOT_PASSWORD=~Xyz4321Ab
+#      - MARIADB_USER=admin
+#      - MARIADB_PASSWORD=~Xyz4321Ab
+#      - MARIADB_DATABASE=gwa
+#      - ALLOW_EMPTY_PASSWORD=yes
+#      - TZ=Asia/Shanghai
+
+  redis:
+    container_name: redis
+    image: docker.io/bitnami/redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - app-tier
+    environment:
+      - ALLOW_EMPTY_PASSWORD=no
+      - REDIS_PASSWORD=~Xyz4321Ab
+      - REDIS_AOF_ENABLED=no
+      - REDIS_IO_THREADS_DO_READS=yes
+      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL,CONFIG
+#    volumes:
+#      - ${APP_ROOT:-/root/app}/redis/data:/bitnami/redis/data
+
+  minio:
+    container_name: minio
+    image: docker.io/minio/minio:latest
+    restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - app-tier
+    environment:
+      - MINIO_ROOT_USER=root
+      - MINIO_ROOT_PASSWORD=~Xyz4321Ab
+      - MINIO_DEFAULT_BUCKETS=images
+      - MINIO_FORCE_NEW_KEYS=yes
+      - BITNAMI_DEBUG=true
+#    volumes:
+#      - ${APP_ROOT:-/root/app}/minio/data:/data
+    command: server /data --console-address ':9001'
+
+  otel-collector:
+    container_name: otel-collector
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+      - ./otelcol_config.yaml:/etc/otelcol-contrib/config.yaml  # 挂载配置文件
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "5679:5679" # ZPages 调试
+    restart: always
+
+  etcd:
+    container_name: etcd
+    image: quay.io/coreos/etcd:v3.5.16
+    environment:
+      - ETCD_NAME=etcd
+      - ETCD_DATA_DIR=/var/etcd
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_LOGGER=zap
+      - ETCD_LOG_LeveL=info
+    volumes:
+      - etcd-data:/var/etcd:rw
+      - "/etc/localtime:/etc/localtime:ro"
+    ports:
+      - 2379:2379
+      - 2380:2380
+    # depends_on:
+    #   - fluentd
+    # logging:
+    #   driver: "fluentd"
+    #   options:
+    #     fluentd-address: "localhost:24224"
+    logging:
+      driver: json-file
+      options:
+        max-size: "500k" # 单个文件大小为200k
+        max-file: "10" # 最多10个文件
+    restart: always
+
+  etcdv3-browser:
+    container_name: etcd-browser
+    image: joinsunsoft/etcdv3-browser:latest
+    ports:
+      - 9996:80
+    restart: always
