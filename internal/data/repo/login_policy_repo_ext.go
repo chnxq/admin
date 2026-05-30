@@ -1,0 +1,168 @@
+package repo
+
+import (
+	"context"
+	"fmt"
+
+	authenticationv1 "admin/api/gen/authentication/v1"
+	"admin/internal/data/ent"
+	"admin/internal/data/ent/loginpolicy"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+)
+
+// Add LoginPolicyRepo-specific query helpers and hand-written data access code here.
+// This file is created once and is never overwritten by xkit.
+
+func (r *loginPolicyRepo) attachLoginPolicyTenantNames(ctx context.Context, entities []*ent.LoginPolicy) []*authenticationv1.LoginPolicy {
+	items := make([]*authenticationv1.LoginPolicy, 0, len(entities))
+	tenantIDs := make([]uint32, 0, len(entities))
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		tenantIDs = append(tenantIDs, collectTenantIDs(entity.TenantID)...)
+	}
+	tenantNameMap := loadTenantNameMap(ctx, r.entClient.Client(), tenantIDs)
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		dto := r.mapper.ToDTO(entity)
+		if dto == nil {
+			continue
+		}
+		dto.TenantName = tenantNameFromMap(tenantNameMap, entity.TenantID)
+		items = append(items, dto)
+	}
+	return items
+}
+
+func (r *loginPolicyRepo) loginPolicyEnrichListDTOs(ctx context.Context, entities []*ent.LoginPolicy) ([]*authenticationv1.LoginPolicy, error) {
+	return r.attachLoginPolicyTenantNames(ctx, entities), nil
+}
+
+func (r *loginPolicyRepo) loginPolicyEnrichGetDTO(ctx context.Context, entities []*ent.LoginPolicy) ([]*authenticationv1.LoginPolicy, error) {
+	return r.attachLoginPolicyTenantNames(ctx, entities), nil
+}
+
+func (r *loginPolicyRepo) loginPolicyCustomCreate(ctx context.Context, req *authenticationv1.CreateLoginPolicyRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	builder := r.entClient.Client().LoginPolicy.Create()
+	now, viewer := r.generatedAuditContext(ctx)
+	builder.SetNillableTargetID(req.Data.TargetId)
+	builder.SetNillableValue(req.Data.Value)
+	builder.SetNillableReason(req.Data.Reason)
+	builder.SetNillableType(loginPolicyEnumPtrFromProto[loginpolicy.Type](req.Data.Type))
+	builder.SetNillableMethod(loginPolicyEnumPtrFromProto[loginpolicy.Method](req.Data.Method))
+	tenantID, err := resolveCreateTenantID(ctx, req.Data.TenantId)
+	if err != nil {
+		return nil, err
+	}
+	builder.SetNillableTenantID(tenantID)
+	builder.SetCreatedAt(now)
+	builder.SetCreatedBy(uint32(viewer.UserID()))
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("insert login_policy failed: %s", err.Error())
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (r *loginPolicyRepo) loginPolicyCustomUpdate(ctx context.Context, req *authenticationv1.UpdateLoginPolicyRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	current, err := r.entClient.Client().LoginPolicy.Query().Where(loginpolicy.IDEQ(req.GetId())).Only(ctx)
+	if err != nil {
+		r.log.Errorf("get login_policy before update failed: %s", err.Error())
+		return nil, err
+	}
+	if err := ensureTenantAccessible(ctx, current.TenantID); err != nil {
+		return nil, err
+	}
+
+	builder := r.entClient.Client().LoginPolicy.UpdateOneID(req.GetId())
+	now, viewer := r.generatedAuditContext(ctx)
+	if req.Data.TargetId != nil {
+		builder.SetNillableTargetID(req.Data.TargetId)
+	} else if req.GetUpdateMask() != nil && loginPolicyFieldMaskContains(req.GetUpdateMask().GetPaths(), "target_id", "targetId") {
+		builder.ClearTargetID()
+	}
+	if req.Data.Value != nil {
+		builder.SetNillableValue(req.Data.Value)
+	} else if req.GetUpdateMask() != nil && loginPolicyFieldMaskContains(req.GetUpdateMask().GetPaths(), "value") {
+		builder.ClearValue()
+	}
+	if req.Data.Reason != nil {
+		builder.SetNillableReason(req.Data.Reason)
+	} else if req.GetUpdateMask() != nil && loginPolicyFieldMaskContains(req.GetUpdateMask().GetPaths(), "reason") {
+		builder.ClearReason()
+	}
+	if req.Data.Type != nil {
+		builder.SetNillableType(loginPolicyEnumPtrFromProto[loginpolicy.Type](req.Data.Type))
+	} else if req.GetUpdateMask() != nil && loginPolicyFieldMaskContains(req.GetUpdateMask().GetPaths(), "type") {
+		builder.ClearType()
+	}
+	if req.Data.Method != nil {
+		builder.SetNillableMethod(loginPolicyEnumPtrFromProto[loginpolicy.Method](req.Data.Method))
+	} else if req.GetUpdateMask() != nil && loginPolicyFieldMaskContains(req.GetUpdateMask().GetPaths(), "method") {
+		builder.ClearMethod()
+	}
+	builder.SetUpdatedAt(now)
+	builder.SetUpdatedBy(uint32(viewer.UserID()))
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("update login_policy failed: %s", err.Error())
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (r *loginPolicyRepo) loginPolicyCustomDelete(ctx context.Context, req *authenticationv1.DeleteLoginPolicyRequest) (*emptypb.Empty, error) {
+	if req == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	switch typedReq := any(req).(type) {
+	case interface{ GetId() uint32 }:
+		entity, err := r.entClient.Client().LoginPolicy.Query().Where(loginpolicy.IDEQ(typedReq.GetId())).Only(ctx)
+		if err != nil {
+			r.log.Errorf("load login_policy before delete failed: %s", err.Error())
+			return nil, err
+		}
+		if err := ensureTenantAccessible(ctx, entity.TenantID); err != nil {
+			return nil, err
+		}
+		if err := r.entClient.Client().LoginPolicy.DeleteOneID(typedReq.GetId()).Exec(ctx); err != nil {
+			r.log.Errorf("delete login_policy failed: %s", err.Error())
+			return nil, err
+		}
+	case interface{ GetIds() []uint32 }:
+		entities, err := r.entClient.Client().LoginPolicy.Query().Where(loginpolicy.IDIn(typedReq.GetIds()...)).All(ctx)
+		if err != nil {
+			r.log.Errorf("load login_policies before delete failed: %s", err.Error())
+			return nil, err
+		}
+		for _, entity := range entities {
+			if entity == nil {
+				continue
+			}
+			if err := ensureTenantAccessible(ctx, entity.TenantID); err != nil {
+				return nil, err
+			}
+		}
+		if _, err := r.entClient.Client().LoginPolicy.Delete().Where(loginpolicy.IDIn(typedReq.GetIds()...)).Exec(ctx); err != nil {
+			r.log.Errorf("delete login_policy failed: %s", err.Error())
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("invalid delete request: missing id or ids")
+	}
+
+	return &emptypb.Empty{}, nil
+}

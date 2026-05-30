@@ -1,0 +1,14 @@
+trace:
+  exporter: "otlp-grpc"
+  endpoint: "localhost:4317"
+  sampler: 1.0
+  env: "dev"
+  insecure: true
+  batcher_options:
+    enabled: true
+    max_queue_size: 2048
+    max_export_batch_size: 512
+    schedule_delay_millis: 5000
+    export_timeout_millis: 30000
+  enable_trace_context: true
+  enable_baggage: false

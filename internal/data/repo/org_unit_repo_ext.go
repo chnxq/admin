@@ -1,0 +1,40 @@
+package repo
+
+import (
+	"context"
+
+	identityv1 "admin/api/gen/identity/v1"
+	"admin/internal/data/ent"
+)
+
+func (r *orgUnitRepo) enrichOrgUnitTenantNamesWithContext(ctx context.Context, entities []*ent.OrgUnit) []*identityv1.OrgUnit {
+	items := make([]*identityv1.OrgUnit, 0, len(entities))
+	tenantIDs := make([]uint32, 0, len(entities))
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		tenantIDs = append(tenantIDs, collectTenantIDs(entity.TenantID)...)
+	}
+	tenantNameMap := loadTenantNameMap(ctx, r.entClient.Client(), tenantIDs)
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		dto := r.mapper.ToDTO(entity)
+		if dto == nil {
+			continue
+		}
+		dto.TenantName = tenantNameFromMap(tenantNameMap, entity.TenantID)
+		items = append(items, dto)
+	}
+	return items
+}
+
+func (r *orgUnitRepo) orgUnitEnrichListDTOs(ctx context.Context, entities []*ent.OrgUnit) ([]*identityv1.OrgUnit, error) {
+	return r.enrichOrgUnitTenantNamesWithContext(ctx, entities), nil
+}
+
+func (r *orgUnitRepo) orgUnitEnrichGetDTO(ctx context.Context, entities []*ent.OrgUnit) ([]*identityv1.OrgUnit, error) {
+	return r.enrichOrgUnitTenantNamesWithContext(ctx, entities), nil
+}

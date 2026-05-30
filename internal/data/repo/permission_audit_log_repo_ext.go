@@ -1,0 +1,535 @@
+package repo
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
+	auditv1 "admin/api/gen/audit/v1"
+	identityv1 "admin/api/gen/identity/v1"
+	permissionv1 "admin/api/gen/permission/v1"
+	"admin/internal/data/ent"
+	"admin/internal/data/ent/permissionauditlog"
+	"admin/internal/data/ent/permissiongroup"
+	"admin/internal/data/ent/role"
+	"admin/internal/data/ent/user"
+	"entgo.io/ent/dialect/sql"
+	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
+	entCrud "github.com/chnxq/x-crud/entgo"
+	crudviewer "github.com/chnxq/x-crud/viewer"
+	xlog "github.com/chnxq/xkitmod/log"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+// Add PermissionAuditLogRepo-specific query helpers and hand-written data access code here.
+// This file is created once and is never overwritten by xkit.
+
+type PermissionAuditLogWriter interface {
+	WritePermissionAuditLog(ctx context.Context, data *auditv1.PermissionAuditLog) error
+}
+
+type permissionAuditLogSnapshot struct {
+	Label string `json:"label,omitempty"`
+	Value any    `json:"value,omitempty"`
+}
+
+func (r *permissionAuditLogRepo) WritePermissionAuditLog(ctx context.Context, data *auditv1.PermissionAuditLog) error {
+	return writePermissionAuditLogEntity(ctx, r.entClient, r.log, data)
+}
+
+func writePermissionAuditLogEntity(ctx context.Context, entClient *entCrud.EntClient[*ent.Client], logHelper *xlog.Helper, data *auditv1.PermissionAuditLog) error {
+	if data == nil {
+		return nil
+	}
+	if entClient == nil {
+		return nil
+	}
+	if strings.TrimSpace(data.GetReason()) == "" {
+		reason := defaultPermissionAuditReason(data)
+		data.Reason = &reason
+	}
+
+	createdAt := time.Now()
+	if data.GetCreatedAt() != nil {
+		createdAt = data.GetCreatedAt().AsTime()
+	}
+
+	builder := entClient.Client().PermissionAuditLog.Create().
+		SetCreatedAt(createdAt).
+		SetNillableTenantID(data.TenantId).
+		SetNillableOperatorID(data.OperatorId).
+		SetNillableTargetType(data.TargetType).
+		SetNillableTargetID(data.TargetId).
+		SetNillableOldValue(data.OldValue).
+		SetNillableNewValue(data.NewValue).
+		SetIPAddress("").
+		SetRequestID("").
+		SetReason("").
+		SetNillableLogHash(data.LogHash)
+	if data.IpAddress != nil {
+		builder.SetIPAddress(data.GetIpAddress())
+	}
+	if data.RequestId != nil {
+		builder.SetRequestID(data.GetRequestId())
+	}
+	if data.Reason != nil {
+		builder.SetReason(data.GetReason())
+	}
+
+	if data.Action != nil {
+		builder.SetAction(permissionauditlog.Action(data.GetAction().String()))
+	}
+	if len(data.Signature) > 0 {
+		builder.SetSignature(data.Signature)
+	}
+
+	if _, err := builder.Save(ctx); err != nil {
+		if logHelper != nil {
+			logHelper.Errorf("write permission audit log failed: %s", err.Error())
+		}
+		return err
+	}
+	return nil
+}
+
+func (r *permissionAuditLogRepo) enrichPermissionAuditLogDTO(ctx context.Context, dto *auditv1.PermissionAuditLog) *auditv1.PermissionAuditLog {
+	if dto == nil {
+		return nil
+	}
+
+	if dto.OperatorName == nil && dto.GetOperatorId() > 0 {
+		if name := r.lookupOperatorName(ctx, dto.GetOperatorId()); name != "" {
+			dto.OperatorName = &name
+		}
+	}
+	if dto.TargetName == nil && dto.GetTargetType() != "" && dto.GetTargetId() != "" {
+		if name := r.lookupTargetName(ctx, dto.GetTargetType(), dto.GetTargetId()); name != "" {
+			dto.TargetName = &name
+		}
+	}
+	if dto.TargetName == nil {
+		if name := extractTargetNameFromPermissionAuditLog(dto); name != "" {
+			dto.TargetName = &name
+		}
+	}
+	if text := strings.TrimSpace(dto.GetIpAddress()); text != "" {
+		dto.IpAddress = &text
+	}
+	if text := strings.TrimSpace(dto.GetReason()); text != "" {
+		dto.Reason = &text
+	} else {
+		reason := defaultPermissionAuditReason(dto)
+		dto.Reason = &reason
+	}
+	return dto
+}
+
+func (r *permissionAuditLogRepo) permissionAuditLogEnrichListDTOs(ctx context.Context, entities []*ent.PermissionAuditLog) ([]*auditv1.PermissionAuditLog, error) {
+	items := make([]*auditv1.PermissionAuditLog, 0, len(entities))
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		dto := r.mapper.ToDTO(entity)
+		if dto == nil {
+			continue
+		}
+		items = append(items, r.enrichPermissionAuditLogDTO(ctx, dto))
+	}
+	return items, nil
+}
+
+func (r *permissionAuditLogRepo) permissionAuditLogEnrichGetDTO(ctx context.Context, entities []*ent.PermissionAuditLog) ([]*auditv1.PermissionAuditLog, error) {
+	return r.permissionAuditLogEnrichListDTOs(ctx, entities)
+}
+
+func (r *permissionAuditLogRepo) lookupOperatorName(ctx context.Context, operatorID uint32) string {
+	if operatorID == 0 || r == nil || r.entClient == nil {
+		return ""
+	}
+
+	entity, err := r.entClient.Client().User.Query().Where(user.IDEQ(operatorID)).Only(ctx)
+	if err != nil || entity == nil {
+		return ""
+	}
+	if entity.Username != nil && strings.TrimSpace(*entity.Username) != "" {
+		return strings.TrimSpace(*entity.Username)
+	}
+	if entity.Realname != nil && strings.TrimSpace(*entity.Realname) != "" {
+		return strings.TrimSpace(*entity.Realname)
+	}
+	return ""
+}
+
+func (r *permissionAuditLogRepo) lookupTargetName(ctx context.Context, targetType, targetID string) string {
+	if r == nil || r.entClient == nil {
+		return ""
+	}
+	id, err := strconv.ParseUint(strings.TrimSpace(targetID), 10, 32)
+	if err != nil {
+		return ""
+	}
+
+	switch strings.ToLower(strings.TrimSpace(targetType)) {
+	case "permission", "permission_point":
+		entity, err := r.entClient.Client().Permission.Get(ctx, uint32(id))
+		if err == nil && entity != nil {
+			return firstNonEmptyStringPtr(entity.Name, entity.Code)
+		}
+	case "permission_group":
+		entity, err := r.entClient.Client().PermissionGroup.Query().
+			Where(permissiongroup.IDEQ(uint32(id))).
+			Only(ctx)
+		if err == nil && entity != nil {
+			return firstNonEmptyStringPtr(entity.Name, entity.Module)
+		}
+	case "role":
+		entity, err := r.entClient.Client().Role.Query().
+			Where(role.IDEQ(uint32(id))).
+			Only(ctx)
+		if err == nil && entity != nil {
+			return firstNonEmptyStringPtr(entity.Name, entity.Code)
+		}
+	}
+	return ""
+}
+
+func (r *permissionAuditLogRepo) applyCustomFilters(ctx context.Context, builder *ent.PermissionAuditLogQuery, req *paginationv1.PagingRequest) error {
+	if r == nil || builder == nil || req == nil || req.GetFilterExpr() == nil {
+		return nil
+	}
+
+	for _, condition := range req.GetFilterExpr().GetConditions() {
+		if condition == nil {
+			continue
+		}
+		switch condition.GetField() {
+		case "operator_name":
+			if err := r.applyOperatorNameFilter(ctx, builder, condition); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *permissionAuditLogRepo) applyOperatorNameFilter(ctx context.Context, builder *ent.PermissionAuditLogQuery, condition *paginationv1.FilterCondition) error {
+	if r == nil || r.entClient == nil || builder == nil || condition == nil {
+		return nil
+	}
+	keyword := strings.TrimSpace(condition.GetValue())
+	if keyword == "" {
+		return nil
+	}
+
+	query := r.entClient.Client().User.Query()
+	switch condition.GetOp() {
+	case paginationv1.Operator_EQ:
+		query.Where(user.Or(user.UsernameEQ(keyword), user.RealnameEQ(keyword)))
+	case paginationv1.Operator_STARTS_WITH:
+		query.Where(user.Or(user.UsernameHasPrefix(keyword), user.RealnameHasPrefix(keyword)))
+	case paginationv1.Operator_ENDS_WITH:
+		query.Where(user.Or(user.UsernameHasSuffix(keyword), user.RealnameHasSuffix(keyword)))
+	default:
+		query.Where(user.Or(user.UsernameContains(keyword), user.RealnameContains(keyword)))
+	}
+
+	entities, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	if len(entities) == 0 {
+		builder.Where(permissionauditlog.OperatorIDEQ(0))
+		return nil
+	}
+
+	ids := make([]uint32, 0, len(entities))
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		ids = append(ids, entity.ID)
+	}
+	if len(ids) == 0 {
+		builder.Where(permissionauditlog.OperatorIDEQ(0))
+		return nil
+	}
+	builder.Where(permissionauditlog.OperatorIDIn(ids...))
+	return nil
+}
+
+func (r *permissionAuditLogRepo) applyCustomSorting(builder *ent.PermissionAuditLogQuery, req *paginationv1.PagingRequest) {
+	if builder == nil {
+		return
+	}
+
+	orderTerms := make([]permissionauditlog.OrderOption, 0)
+	for _, item := range req.GetSorting() {
+		field := strings.TrimSpace(item.GetField())
+		if field == "" {
+			continue
+		}
+
+		opts := []sql.OrderTermOption{}
+		if item.GetDirection() == paginationv1.Sorting_DESC {
+			opts = append(opts, sql.OrderDesc())
+		}
+
+		switch field {
+		case "action":
+			orderTerms = append(orderTerms, permissionauditlog.ByAction(opts...))
+		case "created_at":
+			orderTerms = append(orderTerms, permissionauditlog.ByCreatedAt(opts...))
+		case "ip_address":
+			orderTerms = append(orderTerms, permissionauditlog.ByIPAddress(opts...))
+		case "operator_id":
+			orderTerms = append(orderTerms, permissionauditlog.ByOperatorID(opts...))
+		case "target_type":
+			orderTerms = append(orderTerms, permissionauditlog.ByTargetType(opts...))
+		}
+	}
+
+	if len(orderTerms) == 0 {
+		orderTerms = append(orderTerms, permissionauditlog.ByCreatedAt(sql.OrderDesc()))
+	}
+	builder.Order(orderTerms...)
+}
+
+func firstNonEmptyStringPtr(values ...*string) string {
+	for _, value := range values {
+		if value != nil && strings.TrimSpace(*value) != "" {
+			return strings.TrimSpace(*value)
+		}
+	}
+	return ""
+}
+
+func newPermissionAuditLogInput(ctx context.Context, action auditv1.PermissionAuditLog_ActionType, targetType string, targetID uint32) *auditv1.PermissionAuditLog {
+	log := &auditv1.PermissionAuditLog{
+		Action:     &action,
+		CreatedAt:  timestamppb.Now(),
+		TargetType: stringPtr(targetType),
+		TargetId:   stringPtr(strconv.FormatUint(uint64(targetID), 10)),
+	}
+
+	if viewer, ok := crudviewer.FromContext(ctx); ok {
+		if viewer.UserID() > 0 {
+			id := uint32(viewer.UserID())
+			log.OperatorId = &id
+		}
+		if viewer.TenantID() > 0 {
+			tenantID := uint32(viewer.TenantID())
+			log.TenantId = &tenantID
+		}
+	}
+
+	return log
+}
+
+func attachPermissionAuditRequestMeta(log *auditv1.PermissionAuditLog, requestID, ipAddress, reason string) *auditv1.PermissionAuditLog {
+	if log == nil {
+		return nil
+	}
+	if trimmed := strings.TrimSpace(requestID); trimmed != "" {
+		log.RequestId = &trimmed
+	}
+	if trimmed := strings.TrimSpace(ipAddress); trimmed != "" {
+		log.IpAddress = &trimmed
+	}
+	if trimmed := strings.TrimSpace(reason); trimmed != "" {
+		log.Reason = &trimmed
+	} else {
+		defaultReason := defaultPermissionAuditReason(log)
+		log.Reason = &defaultReason
+	}
+	log.LogHash = stringPtr(hashPermissionAuditLog(log))
+	return log
+}
+
+func defaultPermissionAuditReason(data *auditv1.PermissionAuditLog) string {
+	switch data.GetAction() {
+	case auditv1.PermissionAuditLog_CREATE:
+		return "创建权限对象"
+	case auditv1.PermissionAuditLog_UPDATE:
+		return "更新权限对象"
+	case auditv1.PermissionAuditLog_DELETE:
+		return "删除权限对象"
+	case auditv1.PermissionAuditLog_ASSIGN:
+		return "调整权限分配"
+	case auditv1.PermissionAuditLog_GRANT:
+		return "授予权限"
+	case auditv1.PermissionAuditLog_REVOKE:
+		return "回收权限"
+	default:
+		return "权限变更"
+	}
+}
+
+func hashPermissionAuditLog(data *auditv1.PermissionAuditLog) string {
+	if data == nil {
+		return ""
+	}
+	cloned := proto.Clone(data).(*auditv1.PermissionAuditLog)
+	cloned.LogHash = nil
+	cloned.Signature = nil
+
+	raw, err := proto.Marshal(cloned)
+	if err != nil {
+		fallback, _ := json.Marshal(cloned)
+		raw = fallback
+	}
+
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
+}
+
+func marshalPermissionAuditValue(value any) string {
+	if value == nil {
+		return ""
+	}
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Sprintf("%v", value)
+	}
+	return string(raw)
+}
+
+func permissionSnapshot(label string, value any) permissionAuditLogSnapshot {
+	return permissionAuditLogSnapshot{
+		Label: label,
+		Value: value,
+	}
+}
+
+func buildPermissionPointSnapshot(data *permissionv1.Permission) map[string]any {
+	if data == nil {
+		return nil
+	}
+	return map[string]any{
+		"apiIds":      data.GetApiIds(),
+		"code":        data.GetCode(),
+		"groupId":     data.GetGroupId(),
+		"menuIds":     data.GetMenuIds(),
+		"name":        data.GetName(),
+		"status":      data.GetStatus().String(),
+		"description": data.GetDescription(),
+	}
+}
+
+func buildRolePermissionSnapshot(roleData *permissionv1.Role, permissionIDs []uint32) map[string]any {
+	name := ""
+	code := ""
+	if roleData != nil {
+		name = roleData.GetName()
+		code = roleData.GetCode()
+		if len(permissionIDs) == 0 {
+			permissionIDs = roleData.GetPermissions()
+		}
+	}
+	return map[string]any{
+		"code":          code,
+		"name":          name,
+		"permissionIds": permissionIDs,
+	}
+}
+
+func buildPermissionGroupSnapshot(data *permissionv1.PermissionGroup) map[string]any {
+	if data == nil {
+		return nil
+	}
+	return map[string]any{
+		"description": data.GetDescription(),
+		"module":      data.GetModule(),
+		"name":        data.GetName(),
+		"parentId":    data.GetParentId(),
+		"sortOrder":   data.GetSortOrder(),
+	}
+}
+
+func stringPtr(value string) *string {
+	return &value
+}
+
+func copyPermissionDTO[T any](item *T) *T {
+	if item == nil {
+		return nil
+	}
+	out := *item
+	return &out
+}
+
+func buildPermissionAuditOperatorSnapshot(user *identityv1.User) map[string]any {
+	if user == nil {
+		return nil
+	}
+	return map[string]any{
+		"id":       user.GetId(),
+		"realname": user.GetRealname(),
+		"username": user.GetUsername(),
+	}
+}
+
+func extractTargetNameFromPermissionAuditLog(data *auditv1.PermissionAuditLog) string {
+	if data == nil {
+		return ""
+	}
+	for _, raw := range []string{data.GetNewValue(), data.GetOldValue()} {
+		if name := extractTargetNameFromSnapshot(raw); name != "" {
+			return name
+		}
+	}
+	return ""
+}
+
+func extractTargetNameFromSnapshot(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+
+	var direct map[string]any
+	if err := json.Unmarshal([]byte(raw), &direct); err == nil {
+		if name := snapshotNameField(direct); name != "" {
+			return name
+		}
+	}
+
+	var wrapped []permissionAuditLogSnapshot
+	if err := json.Unmarshal([]byte(raw), &wrapped); err == nil {
+		for _, item := range wrapped {
+			valueMap, ok := item.Value.(map[string]any)
+			if !ok {
+				continue
+			}
+			if name := snapshotNameField(valueMap); name != "" {
+				return name
+			}
+		}
+	}
+
+	return ""
+}
+
+func snapshotNameField(mapped map[string]any) string {
+	if mapped == nil {
+		return ""
+	}
+	for _, key := range []string{"name", "code", "module"} {
+		value, ok := mapped[key]
+		if !ok {
+			continue
+		}
+		text, ok := value.(string)
+		if ok && strings.TrimSpace(text) != "" {
+			return strings.TrimSpace(text)
+		}
+	}
+	return ""
+}

@@ -1,0 +1,479 @@
+package repo
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	auditv1 "admin/api/gen/audit/v1"
+	permissionv1 "admin/api/gen/permission/v1"
+	"admin/internal/data/ent"
+	"admin/internal/data/ent/permission"
+	"admin/internal/data/ent/permissionmenu"
+	"admin/internal/data/ent/role"
+	"admin/internal/data/ent/rolepermission"
+	"admin/internal/data/ent/userrole"
+	crudviewer "github.com/chnxq/x-crud/viewer"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+)
+
+type RolePermissionReader interface {
+	ListPermissionIDsByRoleIDs(context.Context, []uint32) ([]uint32, error)
+	GetRolesPermissionMenuIDs(context.Context, []uint32) ([]uint32, error)
+}
+
+func (r *roleRepo) ListPermissionIDsByRoleIDs(ctx context.Context, roleIDs []uint32) ([]uint32, error) {
+	if r == nil || r.entClient == nil || len(roleIDs) == 0 {
+		return nil, nil
+	}
+
+	rows, err := r.entClient.Client().RolePermission.Query().
+		Where(
+			rolepermission.RoleIDIn(roleIDs...),
+			rolepermission.StatusEQ(rolepermission.StatusOn),
+			rolepermission.EffectEQ(rolepermission.EffectAllow),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]uint32, 0, len(rows))
+	seen := make(map[uint32]struct{}, len(rows))
+	for _, row := range rows {
+		if row == nil || row.PermissionID == nil {
+			continue
+		}
+		id := *row.PermissionID
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
+}
+
+func (r *roleRepo) GetRolesPermissionMenuIDs(ctx context.Context, roleIDs []uint32) ([]uint32, error) {
+	permissionIDs, err := r.ListPermissionIDsByRoleIDs(ctx, roleIDs)
+	if err != nil || len(permissionIDs) == 0 {
+		return nil, err
+	}
+
+	rows, err := r.entClient.Client().PermissionMenu.Query().
+		Where(permissionmenu.PermissionIDIn(permissionIDs...)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	menuIDs := make([]uint32, 0, len(rows))
+	seen := make(map[uint32]struct{}, len(rows))
+	for _, row := range rows {
+		if row == nil || row.MenuID == nil {
+			continue
+		}
+		id := *row.MenuID
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		menuIDs = append(menuIDs, id)
+	}
+
+	return menuIDs, nil
+}
+
+func (r *roleRepo) replaceRolePermissions(ctx context.Context, txClient *ent.Client, now time.Time, viewer crudviewer.Context, roleID uint32, tenantID *uint32, permissionIDs []uint32) error {
+	if err := validateExistingPermissionIDs(ctx, txClient, permissionIDs); err != nil {
+		return err
+	}
+	if _, err := txClient.RolePermission.Delete().Where(rolepermission.RoleIDEQ(roleID)).Exec(ctx); err != nil {
+		return err
+	}
+	for _, permissionID := range permissionIDs {
+		builder := txClient.RolePermission.Create().
+			SetRoleID(roleID).
+			SetPermissionID(permissionID).
+			SetEffect(rolepermission.EffectAllow).
+			SetPriority(0).
+			SetStatus(rolepermission.StatusOn).
+			SetCreatedAt(now).
+			SetCreatedBy(uint32(viewer.UserID()))
+		if tenantID != nil {
+			builder.SetTenantID(*tenantID)
+		}
+		if _, err := builder.Save(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateExistingPermissionIDs(ctx context.Context, txClient *ent.Client, permissionIDs []uint32) error {
+	uniqueIDs := uniqueUint32IDs(permissionIDs)
+	if len(uniqueIDs) == 0 {
+		return nil
+	}
+	rows, err := txClient.Permission.Query().
+		Where(permission.IDIn(uniqueIDs...)).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+	if len(rows) != len(uniqueIDs) {
+		return fmt.Errorf("invalid permission ids")
+	}
+	return nil
+}
+
+func (r *roleRepo) loadRolePermissionIDs(ctx context.Context, roleIDs []uint32) (map[uint32][]uint32, error) {
+	result := make(map[uint32][]uint32, len(roleIDs))
+	if len(roleIDs) == 0 {
+		return result, nil
+	}
+
+	rows, err := r.entClient.Client().RolePermission.Query().
+		Where(
+			rolepermission.RoleIDIn(roleIDs...),
+			rolepermission.StatusEQ(rolepermission.StatusOn),
+			rolepermission.EffectEQ(rolepermission.EffectAllow),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range rows {
+		if item == nil || item.RoleID == nil || item.PermissionID == nil {
+			continue
+		}
+		current := result[*item.RoleID]
+		exists := false
+		for _, id := range current {
+			if id == *item.PermissionID {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			result[*item.RoleID] = append(current, *item.PermissionID)
+		}
+	}
+
+	return result, nil
+}
+
+func (r *roleRepo) attachRoleRelations(ctx context.Context, entities []*ent.Role) ([]*permissionv1.Role, error) {
+	items := make([]*permissionv1.Role, 0, len(entities))
+	roleIDs := make([]uint32, 0, len(entities))
+	tenantIDs := make([]uint32, 0, len(entities))
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		roleIDs = append(roleIDs, entity.ID)
+		tenantIDs = append(tenantIDs, collectTenantIDs(entity.TenantID)...)
+	}
+
+	permissionMap, err := r.loadRolePermissionIDs(ctx, roleIDs)
+	if err != nil {
+		return nil, err
+	}
+	tenantNameMap := loadTenantNameMap(ctx, r.entClient.Client(), tenantIDs)
+
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		dto := r.mapper.ToDTO(entity)
+		if dto == nil {
+			continue
+		}
+		dto.TenantName = tenantNameFromMap(tenantNameMap, entity.TenantID)
+		dto.Permissions = permissionMap[entity.ID]
+		items = append(items, dto)
+	}
+
+	return items, nil
+}
+
+func (r *roleRepo) roleEnrichListDTOs(ctx context.Context, entities []*ent.Role) ([]*permissionv1.Role, error) {
+	return r.attachRoleRelations(ctx, entities)
+}
+
+func (r *roleRepo) roleEnrichGetDTO(ctx context.Context, entities []*ent.Role) ([]*permissionv1.Role, error) {
+	return r.attachRoleRelations(ctx, entities)
+}
+
+func (r *roleRepo) roleCustomCreate(ctx context.Context, req *permissionv1.CreateRoleRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	now, viewer := r.generatedAuditContext(ctx)
+	tx, err := r.entClient.Client().Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	builder := tx.Client().Role.Create()
+	builder.SetNillableName(req.Data.Name)
+	builder.SetNillableCode(req.Data.Code)
+	builder.SetIsProtected(req.Data.GetIsProtected())
+	builder.SetType(role.Type(req.Data.GetType().String()))
+	builder.SetNillableSortOrder(req.Data.SortOrder)
+	tenantID, err := resolveCreateTenantID(ctx, req.Data.TenantId)
+	if err != nil {
+		return nil, err
+	}
+	builder.SetNillableTenantID(tenantID)
+	builder.SetStatus(role.Status(req.Data.GetStatus().String()))
+	builder.SetCreatedAt(now)
+	builder.SetCreatedBy(uint32(viewer.UserID()))
+
+	entity, err := builder.Save(ctx)
+	if err != nil {
+		r.log.Errorf("insert role failed: %s", err.Error())
+		return nil, err
+	}
+
+	if err := r.replaceRolePermissions(ctx, tx.Client(), now, viewer, entity.ID, entity.TenantID, req.Data.GetPermissions()); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	committed = true
+	r.writeRolePermissionAuditLog(ctx, auditActionCreate, entity.ID, "", marshalPermissionAuditValue(buildRolePermissionSnapshot(req.Data, req.Data.GetPermissions())))
+	return &emptypb.Empty{}, nil
+}
+
+func (r *roleRepo) roleCustomUpdate(ctx context.Context, req *permissionv1.UpdateRoleRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	now, viewer := r.generatedAuditContext(ctx)
+	tx, err := r.entClient.Client().Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	existing, err := tx.Client().Role.Query().Where(role.IDEQ(req.GetId())).Only(ctx)
+	if err != nil {
+		r.log.Errorf("load role failed: %s", err.Error())
+		return nil, err
+	}
+	if err := ensureHybridTenantMutable(ctx, existing.TenantID); err != nil {
+		return nil, err
+	}
+	beforeRoleItems, err := r.attachRoleRelations(ctx, []*ent.Role{existing})
+	if err != nil {
+		return nil, err
+	}
+	beforeSnapshot := ""
+	if len(beforeRoleItems) > 0 {
+		beforeSnapshot = marshalPermissionAuditValue(buildRolePermissionSnapshot(beforeRoleItems[0], beforeRoleItems[0].GetPermissions()))
+	}
+
+	builder := tx.Client().Role.UpdateOneID(req.GetId())
+	if req.Data.Name != nil {
+		builder.SetNillableName(req.Data.Name)
+	} else if req.GetUpdateMask() != nil && roleFieldMaskContains(req.GetUpdateMask().GetPaths(), "name") {
+		builder.ClearName()
+	}
+	if req.Data.Code != nil {
+		builder.SetNillableCode(req.Data.Code)
+	} else if req.GetUpdateMask() != nil && roleFieldMaskContains(req.GetUpdateMask().GetPaths(), "code") {
+		builder.ClearCode()
+	}
+	builder.SetIsProtected(req.Data.GetIsProtected())
+	builder.SetType(role.Type(req.Data.GetType().String()))
+	if req.Data.SortOrder != nil {
+		builder.SetNillableSortOrder(req.Data.SortOrder)
+	} else if req.GetUpdateMask() != nil && roleFieldMaskContains(req.GetUpdateMask().GetPaths(), "sort_order", "sortOrder") {
+		builder.ClearSortOrder()
+	}
+	builder.SetStatus(role.Status(req.Data.GetStatus().String()))
+	builder.SetUpdatedAt(now)
+	builder.SetUpdatedBy(uint32(viewer.UserID()))
+
+	_, err = builder.Save(ctx)
+	if err != nil {
+		r.log.Errorf("update role failed: %s", err.Error())
+		return nil, err
+	}
+
+	if mask := req.GetUpdateMask(); mask == nil || roleFieldMaskContains(mask.GetPaths(), "permissions", "permission_ids") {
+		if err := r.replaceRolePermissions(ctx, tx.Client(), now, viewer, existing.ID, existing.TenantID, req.Data.GetPermissions()); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	committed = true
+	if mask := req.GetUpdateMask(); mask == nil || roleFieldMaskContains(mask.GetPaths(), "permissions", "permission_ids") {
+		afterSnapshot := marshalPermissionAuditValue(buildRolePermissionSnapshot(req.Data, req.Data.GetPermissions()))
+		if beforeSnapshot != afterSnapshot {
+			r.writeRolePermissionAuditLog(ctx, auditActionAssign, req.GetId(), beforeSnapshot, afterSnapshot)
+		}
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (r *roleRepo) roleCustomDelete(ctx context.Context, req *permissionv1.DeleteRoleRequest) (*emptypb.Empty, error) {
+	if req == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	type auditWrite struct {
+		id       uint32
+		oldValue string
+	}
+	auditWrites := make([]auditWrite, 0, 1)
+	tx, err := r.entClient.Client().Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	switch typedReq := any(req).(type) {
+	case interface{ GetId() uint32 }:
+		entity, err := tx.Client().Role.Query().Where(role.IDEQ(typedReq.GetId())).Only(ctx)
+		if err != nil {
+			r.log.Errorf("load role before delete failed: %s", err.Error())
+			return nil, err
+		}
+		if err := ensureHybridTenantMutable(ctx, entity.TenantID); err != nil {
+			return nil, err
+		}
+		beforeSnapshot, err := r.rolePermissionSnapshotByID(ctx, typedReq.GetId())
+		if err != nil {
+			return nil, err
+		}
+		if _, err := tx.Client().RolePermission.Delete().Where(rolepermission.RoleIDEQ(typedReq.GetId())).Exec(ctx); err != nil {
+			r.log.Errorf("delete role permissions failed: %s", err.Error())
+			return nil, err
+		}
+		if _, err := tx.Client().UserRole.Delete().Where(userrole.RoleIDEQ(typedReq.GetId())).Exec(ctx); err != nil {
+			r.log.Errorf("delete user roles failed: %s", err.Error())
+			return nil, err
+		}
+		if err := tx.Client().Role.DeleteOneID(typedReq.GetId()).Exec(ctx); err != nil {
+			r.log.Errorf("delete role failed: %s", err.Error())
+			return nil, err
+		}
+		auditWrites = append(auditWrites, auditWrite{id: typedReq.GetId(), oldValue: beforeSnapshot})
+	case interface{ GetIds() []uint32 }:
+		entities, err := tx.Client().Role.Query().Where(role.IDIn(typedReq.GetIds()...)).All(ctx)
+		if err != nil {
+			r.log.Errorf("load roles before delete failed: %s", err.Error())
+			return nil, err
+		}
+		for _, entity := range entities {
+			if entity == nil {
+				continue
+			}
+			if err := ensureHybridTenantMutable(ctx, entity.TenantID); err != nil {
+				return nil, err
+			}
+		}
+		beforeSnapshots, err := r.rolePermissionSnapshotsByIDs(ctx, typedReq.GetIds())
+		if err != nil {
+			return nil, err
+		}
+		if _, err := tx.Client().RolePermission.Delete().Where(rolepermission.RoleIDIn(typedReq.GetIds()...)).Exec(ctx); err != nil {
+			r.log.Errorf("delete role permissions failed: %s", err.Error())
+			return nil, err
+		}
+		if _, err := tx.Client().UserRole.Delete().Where(userrole.RoleIDIn(typedReq.GetIds()...)).Exec(ctx); err != nil {
+			r.log.Errorf("delete user roles failed: %s", err.Error())
+			return nil, err
+		}
+		if _, err := tx.Client().Role.Delete().Where(role.IDIn(typedReq.GetIds()...)).Exec(ctx); err != nil {
+			r.log.Errorf("delete role failed: %s", err.Error())
+			return nil, err
+		}
+		for _, id := range typedReq.GetIds() {
+			auditWrites = append(auditWrites, auditWrite{id: id, oldValue: beforeSnapshots[id]})
+		}
+	default:
+		return nil, fmt.Errorf("invalid delete request: missing id or ids")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	committed = true
+	for _, item := range auditWrites {
+		r.writeRolePermissionAuditLog(ctx, auditActionDelete, item.id, item.oldValue, "")
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (r *roleRepo) rolePermissionSnapshotByID(ctx context.Context, id uint32) (string, error) {
+	snapshots, err := r.rolePermissionSnapshotsByIDs(ctx, []uint32{id})
+	if err != nil {
+		return "", err
+	}
+	return snapshots[id], nil
+}
+
+func (r *roleRepo) rolePermissionSnapshotsByIDs(ctx context.Context, ids []uint32) (map[uint32]string, error) {
+	entities, err := r.entClient.Client().Role.Query().Where(role.IDIn(ids...)).All(ctx)
+	if err != nil {
+		r.log.Errorf("load role failed: %s", err.Error())
+		return nil, err
+	}
+	items, err := r.attachRoleRelations(ctx, entities)
+	if err != nil {
+		return nil, err
+	}
+	snapshots := make(map[uint32]string, len(items))
+	for _, item := range items {
+		if item == nil || item.Id == nil {
+			continue
+		}
+		snapshots[item.GetId()] = marshalPermissionAuditValue(buildRolePermissionSnapshot(item, item.GetPermissions()))
+	}
+	return snapshots, nil
+}
+
+func (r *roleRepo) writeRolePermissionAuditLog(ctx context.Context, action auditv1.PermissionAuditLog_ActionType, targetID uint32, oldValue, newValue string) {
+	log := attachPermissionAuditRequestMeta(
+		newPermissionAuditLogInput(ctx, action, permissionAuditTargetRole, targetID),
+		auditRequestID(ctx),
+		auditClientIP(ctx),
+		"",
+	)
+	if oldValue != "" {
+		log.OldValue = &oldValue
+	}
+	if newValue != "" {
+		log.NewValue = &newValue
+	}
+	_ = writePermissionAuditLogEntity(ctx, r.entClient, r.log, log)
+}

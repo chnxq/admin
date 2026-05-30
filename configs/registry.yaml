@@ -1,0 +1,9 @@
+registry:
+  type: ""
+  etcd:
+    name_space: "services"
+    endpoints:
+      - "localhost:2379"
+    timeout: "5s"
+    max_retry: 3
+  # 其他注册发现中心配置...

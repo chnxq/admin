@@ -1,0 +1,24 @@
+version: v2
+
+modules:
+  - path: protos
+    lint:
+      use:
+        - STANDARD
+    breaking:
+      use:
+        - FILE
+deps:
+  - 'buf.build/googleapis/googleapis'
+  - 'buf.build/gnostic/gnostic'
+  - 'buf.build/chnxq/x-crud'
+  - 'buf.build/menta2k-org/redact'
+  - 'buf.build/envoyproxy/protoc-gen-validate'
+
+breaking:
+  use:
+    - FILE
+
+lint:
+  use:
+    - DEFAULT

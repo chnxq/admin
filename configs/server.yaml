@@ -1,0 +1,71 @@
+server:
+  # gRPC服务配置
+  grpc:
+    network: "tcp"
+    addr: "0.0.0.0:9090"
+    timeout: "10s"
+    middleware:
+    # 中间件配置
+    tls:
+    # TLS配置
+    # 其他服务配置...
+
+  rest:
+    addr: ":7788"
+    timeout: 10s
+    skip_redis_token_check: false
+    enable_db_logging: true
+    enable_swagger: true
+    enable_pprof: true
+
+    cors:
+      headers:
+        - "X-Requested-With"
+        - "X-Request-ID"
+        - "Content-Type"
+        - "Authorization"
+      methods:
+        - "GET"
+        - "POST"
+        - "PUT"
+        - "DELETE"
+        - "HEAD"
+        - "OPTIONS"
+      origins:
+        - "*"
+
+    middleware:
+      enable_logging: true
+      enable_recovery: true
+      enable_tracing: true
+      enable_validate: true
+      enable_circuit_breaker: true
+      enable_metadata: true
+#      auth:
+#        method: "HS256"
+#        key: "xA0987654321"
+#        whiteList:
+#          prefix:
+#          regex:
+#          path:
+#          match:
+#            - "OperationAuthenticationServiceLogin"
+
+  asynq:
+    uri: "redis://:*Abcd123456@localhost:6379/1"
+    codec: "json"
+    enable_gracefully_shutdown: true
+    concurrency: 10
+    shutdown_timeout: 10s
+    queues:
+      critical: 10
+      default: 5
+      low: 1
+    enable_strict_priority: true
+
+  sse:
+    addr: ":7789"
+    codec: "json"
+    path: "/events"
+    auto_stream: true
+    auto_reply: false

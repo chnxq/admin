@@ -1,0 +1,42 @@
+// Code generated from: xkit-template.
+// generated at        2026-05-25 16:32:33 CST.
+
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+)
+
+var (
+	Name        = "Admin"
+	CommandName = "admin"
+	Version     = "dev"
+	BuildTime   = "unknown"
+	GitCommit   = "unknown"
+)
+
+func main() {
+	serverCmd := flag.NewFlagSet("server", flag.ExitOnError)
+	serverCmd.StringVar(&ConfigPath, "config_path", "./configs", "config directory or file")
+	serverCmd.StringVar(&ConfigPath, "c", "./configs", "config directory or file")
+
+	if len(os.Args) < 2 {
+		fmt.Printf("Welcome to %s %s\n", Name, Version)
+		fmt.Printf("Usage: %s server [-config_path ./configs]\n", CommandName)
+		return
+	}
+
+	switch os.Args[1] {
+	case "server":
+		_ = serverCmd.Parse(os.Args[2:])
+		if err := runServer(); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+	default:
+		fmt.Printf("unknown command %q\n", os.Args[1])
+		os.Exit(1)
+	}
+}

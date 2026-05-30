@@ -1,0 +1,101 @@
+version: v2
+
+clean: true
+
+managed:
+  enabled: true
+
+  disable:
+    - module: 'buf.build/googleapis/googleapis'
+    - module: 'buf.build/envoyproxy/protoc-gen-validate'
+    - module: 'buf.build/gnostic/gnostic'
+    - module: 'buf.build/gogo/protobuf'
+    - module: 'buf.build/chnxq/x-crud'
+    - module: 'buf.build/menta2k-org/redact'
+
+  override:
+    # global go_package_prefix option
+    # 如果没有在各目录下单独配置go_package，则会使用该前缀。
+#    - file_option: go_package_prefix
+#      value: <module>/api/gen
+
+    # per-directory go_package options
+    # value第一部分是生成代码的包路径，第二部分是go包名。
+    - file_option: go_package
+      path: admin/v1
+      value: admin/api/gen/admin/v1;admin
+    - file_option: go_package
+      path: audit/v1
+      value: admin/api/gen/audit/v1;audit
+    - file_option: go_package
+      path: authentication/v1
+      value: admin/api/gen/authentication/v1;authentication
+    - file_option: go_package
+      path: dict/v1
+      value: admin/api/gen/dict/v1;dict
+    - file_option: go_package
+      path: storage/v1
+      value: admin/api/gen/storage/v1;storage
+    - file_option: go_package
+      path: internal_message/v1
+      value: admin/api/gen/internal_message/v1;internalmessage
+    - file_option: go_package
+      path: permission/v1
+      value: admin/api/gen/permission/v1;permissionv1
+    - file_option: go_package
+      path: task/v1
+      value: admin/api/gen/task/v1;taskv1
+    - file_option: go_package
+      path: identity/v1
+      value: admin/api/gen/identity/v1;identity
+    - file_option: go_package
+      path: resource/v1
+      value: admin/api/gen/resource/v1;resource
+
+plugins:
+  # generate go code
+  #- plugin: buf.build/protocolbuffers/go
+  - local: protoc-gen-go
+    out: gen
+    opt: paths=source_relative # use relative paths
+
+  # generate grpc service code
+  #- plugin: buf.build/grpc/go
+  - local: protoc-gen-go-grpc
+    out: gen
+    opt:
+      - paths=source_relative # use relative paths
+
+  # generate rest service code
+  - local: protoc-gen-go-http
+    out: gen
+    opt:
+      - paths=source_relative # use relative paths
+
+  # generate xkit errors code
+  - local: protoc-gen-go-errors
+    out: gen
+    opt:
+      - paths=source_relative # use relative paths
+
+  # generate message validator code
+  #- plugin: buf.build/bufbuild/validate-go
+  - local: protoc-gen-validate
+    out: gen
+    opt:
+      - paths=source_relative # use relative paths
+      - lang=go
+
+  # generate redact code
+  - local: protoc-gen-redact
+    out: gen
+    opt:
+      - paths=source_relative # use relative paths
+      - lang=go
+
+#  # generate grpc service implementation code
+#  - local: protoc-gen-go-grpc-impl
+#    out: gen
+#    opt:
+#      - paths=source_relative # use relative paths
+#      - lang=go

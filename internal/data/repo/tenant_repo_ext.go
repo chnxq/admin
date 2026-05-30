@@ -1,0 +1,160 @@
+package repo
+
+import (
+	"context"
+	"fmt"
+
+	identityv1 "admin/api/gen/identity/v1"
+	"admin/internal/data/ent/tenant"
+
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+)
+
+func (r *tenantRepo) tenantCustomCreate(ctx context.Context, req *identityv1.CreateTenantRequest) (*emptypb.Empty, error) {
+	if err := ensurePlatformOnlyMutable(ctx); err != nil {
+		return nil, err
+	}
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	builder := r.entClient.Client().Tenant.Create()
+	now, viewer := r.generatedAuditContext(ctx)
+	builder.SetNillableName(req.Data.Name)
+	builder.SetNillableCode(req.Data.Code)
+	builder.SetNillableLogoURL(req.Data.LogoUrl)
+	builder.SetNillableDomain(req.Data.Domain)
+	builder.SetNillableIndustry(req.Data.Industry)
+	builder.SetNillableAdminUserID(req.Data.AdminUserId)
+	builder.SetNillableStatus(tenantEnumPtrFromProto[tenant.Status](req.Data.Status))
+	builder.SetNillableType(tenantEnumPtrFromProto[tenant.Type](req.Data.Type))
+	builder.SetNillableAuditStatus(tenantEnumPtrFromProto[tenant.AuditStatus](req.Data.AuditStatus))
+	builder.SetNillableSubscriptionAt(tenantTimePtrFromProto(req.Data.SubscriptionAt))
+	builder.SetNillableUnsubscribeAt(tenantTimePtrFromProto(req.Data.UnsubscribeAt))
+	builder.SetNillableSubscriptionPlan(req.Data.SubscriptionPlan)
+	builder.SetNillableExpiredAt(tenantTimePtrFromProto(req.Data.ExpiredAt))
+	builder.SetNillableRemark(req.Data.Remark)
+	builder.SetCreatedAt(now)
+	builder.SetCreatedBy(uint32(viewer.UserID()))
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("insert tenant failed: %s", err.Error())
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (r *tenantRepo) tenantCustomUpdate(ctx context.Context, req *identityv1.UpdateTenantRequest) (*emptypb.Empty, error) {
+	if err := ensurePlatformOnlyMutable(ctx); err != nil {
+		return nil, err
+	}
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	builder := r.entClient.Client().Tenant.UpdateOneID(req.GetId())
+	now, viewer := r.generatedAuditContext(ctx)
+	if req.Data.Name != nil {
+		builder.SetNillableName(req.Data.Name)
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "name") {
+		builder.ClearName()
+	}
+	if req.Data.Code != nil {
+		builder.SetNillableCode(req.Data.Code)
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "code") {
+		builder.ClearCode()
+	}
+	if req.Data.LogoUrl != nil {
+		builder.SetNillableLogoURL(req.Data.LogoUrl)
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "logo_url", "logoUrl") {
+		builder.ClearLogoURL()
+	}
+	if req.Data.Domain != nil {
+		builder.SetNillableDomain(req.Data.Domain)
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "domain") {
+		builder.ClearDomain()
+	}
+	if req.Data.Industry != nil {
+		builder.SetNillableIndustry(req.Data.Industry)
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "industry") {
+		builder.ClearIndustry()
+	}
+	if req.Data.AdminUserId != nil {
+		builder.SetNillableAdminUserID(req.Data.AdminUserId)
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "admin_user_id", "adminUserId") {
+		builder.ClearAdminUserID()
+	}
+	if req.Data.Status != nil {
+		builder.SetNillableStatus(tenantEnumPtrFromProto[tenant.Status](req.Data.Status))
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "status") {
+		builder.ClearStatus()
+	}
+	if req.Data.Type != nil {
+		builder.SetNillableType(tenantEnumPtrFromProto[tenant.Type](req.Data.Type))
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "type") {
+		builder.ClearType()
+	}
+	if req.Data.AuditStatus != nil {
+		builder.SetNillableAuditStatus(tenantEnumPtrFromProto[tenant.AuditStatus](req.Data.AuditStatus))
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "audit_status", "auditStatus") {
+		builder.ClearAuditStatus()
+	}
+	if req.Data.SubscriptionAt != nil {
+		builder.SetNillableSubscriptionAt(tenantTimePtrFromProto(req.Data.SubscriptionAt))
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "subscription_at", "subscriptionAt") {
+		builder.ClearSubscriptionAt()
+	}
+	if req.Data.UnsubscribeAt != nil {
+		builder.SetNillableUnsubscribeAt(tenantTimePtrFromProto(req.Data.UnsubscribeAt))
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "unsubscribe_at", "unsubscribeAt") {
+		builder.ClearUnsubscribeAt()
+	}
+	if req.Data.SubscriptionPlan != nil {
+		builder.SetNillableSubscriptionPlan(req.Data.SubscriptionPlan)
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "subscription_plan", "subscriptionPlan") {
+		builder.ClearSubscriptionPlan()
+	}
+	if req.Data.ExpiredAt != nil {
+		builder.SetNillableExpiredAt(tenantTimePtrFromProto(req.Data.ExpiredAt))
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "expired_at", "expiredAt") {
+		builder.ClearExpiredAt()
+	}
+	if req.Data.Remark != nil {
+		builder.SetNillableRemark(req.Data.Remark)
+	} else if req.GetUpdateMask() != nil && tenantFieldMaskContains(req.GetUpdateMask().GetPaths(), "remark") {
+		builder.ClearRemark()
+	}
+	builder.SetUpdatedAt(now)
+	builder.SetUpdatedBy(uint32(viewer.UserID()))
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("update tenant failed: %s", err.Error())
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (r *tenantRepo) tenantCustomDelete(ctx context.Context, req *identityv1.DeleteTenantRequest) (*emptypb.Empty, error) {
+	if err := ensurePlatformOnlyMutable(ctx); err != nil {
+		return nil, err
+	}
+	if req == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	switch typedReq := any(req).(type) {
+	case interface{ GetId() uint32 }:
+		if err := r.entClient.Client().Tenant.DeleteOneID(typedReq.GetId()).Exec(ctx); err != nil {
+			r.log.Errorf("delete tenant failed: %s", err.Error())
+			return nil, err
+		}
+	case interface{ GetIds() []uint32 }:
+		if _, err := r.entClient.Client().Tenant.Delete().Where(tenant.IDIn(typedReq.GetIds()...)).Exec(ctx); err != nil {
+			r.log.Errorf("delete tenant failed: %s", err.Error())
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("invalid delete request: missing id or ids")
+	}
+	return &emptypb.Empty{}, nil
+}

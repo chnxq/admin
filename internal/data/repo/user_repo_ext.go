@@ -1,0 +1,885 @@
+package repo
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	identityv1 "admin/api/gen/identity/v1"
+	"admin/internal/data/ent"
+	"admin/internal/data/ent/orgunit"
+	"admin/internal/data/ent/position"
+	"admin/internal/data/ent/role"
+	"admin/internal/data/ent/user"
+	"admin/internal/data/ent/usercredential"
+	"admin/internal/data/ent/userorgunit"
+	"admin/internal/data/ent/userposition"
+	"admin/internal/data/ent/userrole"
+	crudviewer "github.com/chnxq/x-crud/viewer"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+)
+
+// Add UserRepo-specific query helpers and hand-written data access code here.
+// This file is created once and is never overwritten by xkit.
+
+type UserCountSummary struct {
+	Total     uint64
+	Created24 uint64
+}
+
+type UserRoleIDReader interface {
+	ListRoleIDsByUserID(context.Context, uint32) ([]uint32, error)
+}
+
+func (r *userRepo) ListRoleIDsByUserID(ctx context.Context, userID uint32) ([]uint32, error) {
+	if r == nil || r.entClient == nil || userID == 0 {
+		return nil, nil
+	}
+
+	rows, err := r.entClient.Client().UserRole.Query().
+		Where(
+			userrole.UserIDEQ(userID),
+			userrole.StatusEQ(userrole.StatusActive),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]uint32, 0, len(rows))
+	seen := make(map[uint32]struct{}, len(rows))
+	for _, row := range rows {
+		if row == nil || row.RoleID == nil {
+			continue
+		}
+		id := *row.RoleID
+		if id == 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+func userAppendUniqueUint32(items []uint32, value uint32) []uint32 {
+	if value == 0 {
+		return items
+	}
+	for _, item := range items {
+		if item == value {
+			return items
+		}
+	}
+	return append(items, value)
+}
+
+func userAppendUniqueString(items []string, value string) []string {
+	if value == "" {
+		return items
+	}
+	for _, item := range items {
+		if item == value {
+			return items
+		}
+	}
+	return append(items, value)
+}
+
+func userBoolValue(value *bool) bool {
+	return value != nil && *value
+}
+
+func userUint32Ptr(value uint32) *uint32 {
+	return &value
+}
+
+func userStringPtr(value string) *string {
+	return &value
+}
+
+type userRelationData struct {
+	orgUnitID     *uint32
+	orgUnitName   *string
+	orgUnitIDs    []uint32
+	orgUnitNames  []string
+	positionID    *uint32
+	positionName  *string
+	positionIDs   []uint32
+	positionNames []string
+	roleID        *uint32
+	roleIDs       []uint32
+	roleNames     []string
+	roleCodes     []string
+}
+
+func (r *userRepo) loadUserRelations(ctx context.Context, userIDs []uint32) (map[uint32]*userRelationData, error) {
+	result := make(map[uint32]*userRelationData, len(userIDs))
+	if len(userIDs) == 0 {
+		return result, nil
+	}
+
+	orgRelations, err := r.entClient.Client().UserOrgUnit.Query().
+		Where(
+			userorgunit.UserIDIn(userIDs...),
+			userorgunit.StatusEQ(userorgunit.StatusActive),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	orgUnitIDs := make([]uint32, 0)
+	for _, relation := range orgRelations {
+		if relation == nil || relation.UserID == nil || relation.OrgUnitID == nil {
+			continue
+		}
+		data := result[*relation.UserID]
+		if data == nil {
+			data = &userRelationData{}
+			result[*relation.UserID] = data
+		}
+		data.orgUnitIDs = userAppendUniqueUint32(data.orgUnitIDs, *relation.OrgUnitID)
+		if data.orgUnitID == nil || userBoolValue(relation.IsPrimary) {
+			data.orgUnitID = userUint32Ptr(*relation.OrgUnitID)
+		}
+		orgUnitIDs = userAppendUniqueUint32(orgUnitIDs, *relation.OrgUnitID)
+	}
+	if len(orgUnitIDs) > 0 {
+		orgUnits, err := r.entClient.Client().OrgUnit.Query().
+			Where(orgunit.IDIn(orgUnitIDs...)).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		orgNameMap := make(map[uint32]string, len(orgUnits))
+		for _, item := range orgUnits {
+			if item == nil || item.Name == nil {
+				continue
+			}
+			orgNameMap[item.ID] = *item.Name
+		}
+		for _, relation := range orgRelations {
+			if relation == nil || relation.UserID == nil || relation.OrgUnitID == nil {
+				continue
+			}
+			name := orgNameMap[*relation.OrgUnitID]
+			if name == "" {
+				continue
+			}
+			data := result[*relation.UserID]
+			if data == nil {
+				continue
+			}
+			data.orgUnitNames = userAppendUniqueString(data.orgUnitNames, name)
+			if data.orgUnitID != nil && *data.orgUnitID == *relation.OrgUnitID {
+				data.orgUnitName = userStringPtr(name)
+			}
+		}
+	}
+
+	positionRelations, err := r.entClient.Client().UserPosition.Query().
+		Where(
+			userposition.UserIDIn(userIDs...),
+			userposition.StatusEQ(userposition.StatusActive),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	positionIDs := make([]uint32, 0)
+	for _, relation := range positionRelations {
+		if relation == nil || relation.UserID == nil || relation.PositionID == nil {
+			continue
+		}
+		data := result[*relation.UserID]
+		if data == nil {
+			data = &userRelationData{}
+			result[*relation.UserID] = data
+		}
+		data.positionIDs = userAppendUniqueUint32(data.positionIDs, *relation.PositionID)
+		if data.positionID == nil || userBoolValue(relation.IsPrimary) {
+			data.positionID = userUint32Ptr(*relation.PositionID)
+		}
+		positionIDs = userAppendUniqueUint32(positionIDs, *relation.PositionID)
+	}
+	if len(positionIDs) > 0 {
+		positions, err := r.entClient.Client().Position.Query().
+			Where(position.IDIn(positionIDs...)).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		positionNameMap := make(map[uint32]string, len(positions))
+		for _, item := range positions {
+			if item == nil || item.Name == nil {
+				continue
+			}
+			positionNameMap[item.ID] = *item.Name
+		}
+		for _, relation := range positionRelations {
+			if relation == nil || relation.UserID == nil || relation.PositionID == nil {
+				continue
+			}
+			name := positionNameMap[*relation.PositionID]
+			if name == "" {
+				continue
+			}
+			data := result[*relation.UserID]
+			if data == nil {
+				continue
+			}
+			data.positionNames = userAppendUniqueString(data.positionNames, name)
+			if data.positionID != nil && *data.positionID == *relation.PositionID {
+				data.positionName = userStringPtr(name)
+			}
+		}
+	}
+
+	roleRelations, err := r.entClient.Client().UserRole.Query().
+		Where(
+			userrole.UserIDIn(userIDs...),
+			userrole.StatusEQ(userrole.StatusActive),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	roleIDs := make([]uint32, 0)
+	for _, relation := range roleRelations {
+		if relation == nil || relation.UserID == nil || relation.RoleID == nil {
+			continue
+		}
+		data := result[*relation.UserID]
+		if data == nil {
+			data = &userRelationData{}
+			result[*relation.UserID] = data
+		}
+		data.roleIDs = userAppendUniqueUint32(data.roleIDs, *relation.RoleID)
+		if data.roleID == nil || userBoolValue(relation.IsPrimary) {
+			data.roleID = userUint32Ptr(*relation.RoleID)
+		}
+		roleIDs = userAppendUniqueUint32(roleIDs, *relation.RoleID)
+	}
+	if len(roleIDs) > 0 {
+		roles, err := r.entClient.Client().Role.Query().
+			Where(role.IDIn(roleIDs...)).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		roleNameMap := make(map[uint32]string, len(roles))
+		roleCodeMap := make(map[uint32]string, len(roles))
+		for _, item := range roles {
+			if item == nil {
+				continue
+			}
+			if item.Name != nil {
+				roleNameMap[item.ID] = *item.Name
+			}
+			if item.Code != nil {
+				roleCodeMap[item.ID] = *item.Code
+			}
+		}
+		for _, relation := range roleRelations {
+			if relation == nil || relation.UserID == nil || relation.RoleID == nil {
+				continue
+			}
+			data := result[*relation.UserID]
+			if data == nil {
+				continue
+			}
+			if name := roleNameMap[*relation.RoleID]; name != "" {
+				data.roleNames = userAppendUniqueString(data.roleNames, name)
+			}
+			if code := roleCodeMap[*relation.RoleID]; code != "" {
+				data.roleCodes = userAppendUniqueString(data.roleCodes, code)
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func (r *userRepo) attachUserRelations(ctx context.Context, entities []*ent.User) ([]*identityv1.User, error) {
+	items := make([]*identityv1.User, 0, len(entities))
+	userIDs := make([]uint32, 0, len(entities))
+	tenantIDs := make([]uint32, 0, len(entities))
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		userIDs = append(userIDs, entity.ID)
+		tenantIDs = append(tenantIDs, collectTenantIDs(entity.TenantID)...)
+	}
+
+	relationMap, err := r.loadUserRelations(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	tenantNameMap := loadTenantNameMap(ctx, r.entClient.Client(), tenantIDs)
+
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		dto := r.mapper.ToDTO(entity)
+		if dto == nil {
+			continue
+		}
+		if relation := relationMap[entity.ID]; relation != nil {
+			dto.OrgUnitId = relation.orgUnitID
+			dto.OrgUnitName = relation.orgUnitName
+			dto.OrgUnitIds = relation.orgUnitIDs
+			dto.OrgUnitNames = relation.orgUnitNames
+			dto.PositionId = relation.positionID
+			dto.PositionName = relation.positionName
+			dto.PositionIds = relation.positionIDs
+			dto.PositionNames = relation.positionNames
+			dto.RoleId = relation.roleID
+			dto.RoleIds = relation.roleIDs
+			dto.RoleNames = relation.roleNames
+			dto.Roles = relation.roleCodes
+		}
+		dto.TenantName = tenantNameFromMap(tenantNameMap, entity.TenantID)
+		items = append(items, dto)
+	}
+
+	return items, nil
+}
+
+func (r *userRepo) userEnrichListDTOs(ctx context.Context, entities []*ent.User) ([]*identityv1.User, error) {
+	return r.attachUserRelations(ctx, entities)
+}
+
+func (r *userRepo) userEnrichGetDTO(ctx context.Context, entities []*ent.User) ([]*identityv1.User, error) {
+	return r.attachUserRelations(ctx, entities)
+}
+
+func (r *userRepo) userCustomCreate(ctx context.Context, req *identityv1.CreateUserRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	now, viewer := r.generatedAuditContext(ctx)
+	tx, err := r.entClient.Client().Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	builder := tx.Client().User.Create()
+	builder.SetNillableUsername(req.Data.Username)
+	builder.SetNillableNickname(req.Data.Nickname)
+	builder.SetNillableRealname(req.Data.Realname)
+	builder.SetNillableEmail(req.Data.Email)
+	builder.SetNillableMobile(req.Data.Mobile)
+	builder.SetNillableTelephone(req.Data.Telephone)
+	builder.SetNillableAvatar(req.Data.Avatar)
+	builder.SetNillableAddress(req.Data.Address)
+	builder.SetNillableRegion(req.Data.Region)
+	builder.SetNillableDescription(req.Data.Description)
+	builder.SetNillableGender(userEnumPtrFromProto[user.Gender](req.Data.Gender))
+	builder.SetNillableLastLoginAt(userTimePtrFromProto(req.Data.LastLoginAt))
+	builder.SetNillableLastLoginIP(req.Data.LastLoginIp)
+	builder.SetNillableLockedUntil(userTimePtrFromProto(req.Data.LockedUntil))
+	builder.SetNillableStatus(userEnumPtrFromProto[user.Status](req.Data.Status))
+	builder.SetNillableRemark(req.Data.Remark)
+	tenantID, err := resolveCreateTenantID(ctx, req.Data.TenantId)
+	if err != nil {
+		return nil, err
+	}
+	builder.SetNillableTenantID(tenantID)
+	builder.SetCreatedBy(uint32(viewer.UserID()))
+	builder.SetCreatedAt(now)
+
+	entity, err := builder.Save(ctx)
+	if err != nil {
+		r.log.Errorf("insert user failed: %s", err.Error())
+		return nil, err
+	}
+
+	if err := r.replaceUserOrgUnits(ctx, tx.Client(), now, viewer, entity.ID, entity.TenantID, req.Data.GetOrgUnitIds()); err != nil {
+		return nil, err
+	}
+	if err := r.replaceUserPositions(ctx, tx.Client(), now, viewer, entity.ID, entity.TenantID, req.Data.GetPositionIds()); err != nil {
+		return nil, err
+	}
+	if err := r.replaceUserRoles(ctx, tx.Client(), now, viewer, entity.ID, entity.TenantID, req.Data.GetRoleIds()); err != nil {
+		return nil, err
+	}
+	if err := r.createOrUpdateUserCredential(ctx, tx.Client(), entity.TenantID, entity.ID, req.Data.GetUsername(), req.GetPassword()); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	committed = true
+	return &emptypb.Empty{}, nil
+}
+
+func (r *userRepo) userCustomUpdate(ctx context.Context, req *identityv1.UpdateUserRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	now, viewer := r.generatedAuditContext(ctx)
+	tx, err := r.entClient.Client().Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	existing, err := tx.Client().User.Query().Where(user.IDEQ(req.GetId())).Only(ctx)
+	if err != nil {
+		r.log.Errorf("load user failed: %s", err.Error())
+		return nil, err
+	}
+	if err := ensureTenantAccessible(ctx, existing.TenantID); err != nil {
+		return nil, err
+	}
+
+	builder := tx.Client().User.UpdateOneID(req.GetId())
+	if req.Data.Nickname != nil {
+		builder.SetNillableNickname(req.Data.Nickname)
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "nickname") {
+		builder.ClearNickname()
+	}
+	if req.Data.Realname != nil {
+		builder.SetNillableRealname(req.Data.Realname)
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "realname") {
+		builder.ClearRealname()
+	}
+	if req.Data.Email != nil {
+		builder.SetNillableEmail(req.Data.Email)
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "email") {
+		builder.ClearEmail()
+	}
+	if req.Data.Mobile != nil {
+		builder.SetNillableMobile(req.Data.Mobile)
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "mobile") {
+		builder.ClearMobile()
+	}
+	if req.Data.Telephone != nil {
+		builder.SetNillableTelephone(req.Data.Telephone)
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "telephone") {
+		builder.ClearTelephone()
+	}
+	if req.Data.Avatar != nil {
+		builder.SetNillableAvatar(req.Data.Avatar)
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "avatar") {
+		builder.ClearAvatar()
+	}
+	if req.Data.Address != nil {
+		builder.SetNillableAddress(req.Data.Address)
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "address") {
+		builder.ClearAddress()
+	}
+	if req.Data.Region != nil {
+		builder.SetNillableRegion(req.Data.Region)
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "region") {
+		builder.ClearRegion()
+	}
+	if req.Data.Description != nil {
+		builder.SetNillableDescription(req.Data.Description)
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "description") {
+		builder.ClearDescription()
+	}
+	if req.Data.Gender != nil {
+		builder.SetNillableGender(userEnumPtrFromProto[user.Gender](req.Data.Gender))
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "gender") {
+		builder.ClearGender()
+	}
+	if req.Data.LastLoginAt != nil {
+		builder.SetNillableLastLoginAt(userTimePtrFromProto(req.Data.LastLoginAt))
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "last_login_at", "lastLoginAt") {
+		builder.ClearLastLoginAt()
+	}
+	if req.Data.LastLoginIp != nil {
+		builder.SetNillableLastLoginIP(req.Data.LastLoginIp)
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "last_login_ip", "lastLoginIp") {
+		builder.ClearLastLoginIP()
+	}
+	if req.Data.LockedUntil != nil {
+		builder.SetNillableLockedUntil(userTimePtrFromProto(req.Data.LockedUntil))
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "locked_until", "lockedUntil") {
+		builder.ClearLockedUntil()
+	}
+	if req.Data.Status != nil {
+		builder.SetNillableStatus(userEnumPtrFromProto[user.Status](req.Data.Status))
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "status") {
+		builder.ClearStatus()
+	}
+	if req.Data.Remark != nil {
+		builder.SetNillableRemark(req.Data.Remark)
+	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "remark") {
+		builder.ClearRemark()
+	}
+	builder.SetUpdatedBy(uint32(viewer.UserID()))
+	builder.SetUpdatedAt(now)
+
+	entity, err := builder.Save(ctx)
+	if err != nil {
+		r.log.Errorf("update user failed: %s", err.Error())
+		return nil, err
+	}
+
+	if mask := req.GetUpdateMask(); mask == nil || userFieldMaskContains(mask.GetPaths(), "orgUnitIds", "org_unit_ids") {
+		if err := r.replaceUserOrgUnits(ctx, tx.Client(), now, viewer, entity.ID, entity.TenantID, req.Data.GetOrgUnitIds()); err != nil {
+			return nil, err
+		}
+	}
+	if mask := req.GetUpdateMask(); mask == nil || userFieldMaskContains(mask.GetPaths(), "positionIds", "position_ids") {
+		if err := r.replaceUserPositions(ctx, tx.Client(), now, viewer, entity.ID, entity.TenantID, req.Data.GetPositionIds()); err != nil {
+			return nil, err
+		}
+	}
+	if mask := req.GetUpdateMask(); mask == nil || userFieldMaskContains(mask.GetPaths(), "roleIds", "role_ids") {
+		if err := r.replaceUserRoles(ctx, tx.Client(), now, viewer, entity.ID, entity.TenantID, req.Data.GetRoleIds()); err != nil {
+			return nil, err
+		}
+	}
+
+	username := ""
+	if existing.Username != nil {
+		username = *existing.Username
+	}
+	if req.Data.Username != nil {
+		username = req.Data.GetUsername()
+	}
+	if req.GetPassword() != "" {
+		if err := r.createOrUpdateUserCredential(ctx, tx.Client(), entity.TenantID, entity.ID, username, req.GetPassword()); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	committed = true
+	return &emptypb.Empty{}, nil
+}
+
+func (r *userRepo) userCustomDelete(ctx context.Context, req *identityv1.DeleteUserRequest) (*emptypb.Empty, error) {
+	if req == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	tx, err := r.entClient.Client().Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	var userID uint32
+	switch query := req.GetQueryBy().(type) {
+	case *identityv1.DeleteUserRequest_Id:
+		userID = query.Id
+	case *identityv1.DeleteUserRequest_Username:
+		entity, err := tx.Client().User.Query().Where(user.UsernameEQ(query.Username)).Only(ctx)
+		if err != nil {
+			r.log.Errorf("load user failed: %s", err.Error())
+			return nil, err
+		}
+		userID = entity.ID
+	default:
+		return nil, fmt.Errorf("invalid delete request: missing id or username")
+	}
+	if userID == 0 {
+		return nil, fmt.Errorf("invalid delete request: missing id")
+	}
+	userEntity, err := tx.Client().User.Query().Where(user.IDEQ(userID)).Only(ctx)
+	if err != nil {
+		r.log.Errorf("load user before delete failed: %s", err.Error())
+		return nil, err
+	}
+	if err := ensureTenantAccessible(ctx, userEntity.TenantID); err != nil {
+		return nil, err
+	}
+
+	if err := r.deleteUserRelations(ctx, tx.Client(), userID); err != nil {
+		return nil, err
+	}
+	if err := tx.Client().User.DeleteOneID(userID).Exec(ctx); err != nil {
+		r.log.Errorf("delete user failed: %s", err.Error())
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	committed = true
+	return &emptypb.Empty{}, nil
+}
+
+func (r *userRepo) deleteUserRelations(ctx context.Context, txClient *ent.Client, userID uint32) error {
+	if _, err := txClient.UserOrgUnit.Delete().Where(userorgunit.UserIDEQ(userID)).Exec(ctx); err != nil {
+		r.log.Errorf("delete user org units failed: %s", err.Error())
+		return err
+	}
+	if _, err := txClient.UserPosition.Delete().Where(userposition.UserIDEQ(userID)).Exec(ctx); err != nil {
+		r.log.Errorf("delete user positions failed: %s", err.Error())
+		return err
+	}
+	if _, err := txClient.UserRole.Delete().Where(userrole.UserIDEQ(userID)).Exec(ctx); err != nil {
+		r.log.Errorf("delete user roles failed: %s", err.Error())
+		return err
+	}
+	if _, err := txClient.UserCredential.Delete().Where(usercredential.UserIDEQ(userID)).Exec(ctx); err != nil {
+		r.log.Errorf("delete user credentials failed: %s", err.Error())
+		return err
+	}
+	return nil
+}
+
+func (r *userRepo) createOrUpdateUserCredential(ctx context.Context, txClient *ent.Client, tenantID *uint32, userID uint32, username, password string) error {
+	username = strings.TrimSpace(username)
+	password = strings.TrimSpace(password)
+	if username == "" || password == "" {
+		return nil
+	}
+
+	normalizedPassword, err := NormalizePasswordCredential(password)
+	if err != nil {
+		return err
+	}
+
+	existing, err := txClient.UserCredential.Query().
+		Where(
+			usercredential.UserIDEQ(userID),
+			usercredential.IdentityTypeEQ(usercredential.IdentityTypeUsername),
+			usercredential.IdentifierEQ(username),
+			usercredential.CredentialTypeEQ(usercredential.CredentialTypePasswordHash),
+		).
+		Only(ctx)
+	if err == nil && existing != nil {
+		_, err = txClient.UserCredential.UpdateOneID(existing.ID).
+			SetCredential(string(normalizedPassword)).
+			SetStatus(usercredential.StatusEnabled).
+			Save(ctx)
+		return err
+	}
+	if err != nil && !ent.IsNotFound(err) {
+		return err
+	}
+
+	builder := txClient.UserCredential.Create().
+		SetUserID(userID).
+		SetIdentityType(usercredential.IdentityTypeUsername).
+		SetIdentifier(username).
+		SetCredentialType(usercredential.CredentialTypePasswordHash).
+		SetCredential(string(normalizedPassword)).
+		SetIsPrimary(true).
+		SetStatus(usercredential.StatusEnabled)
+	if tenantID != nil {
+		builder.SetTenantID(*tenantID)
+	}
+	_, err = builder.Save(ctx)
+	return err
+}
+
+func (r *userRepo) replaceUserOrgUnits(ctx context.Context, txClient *ent.Client, now time.Time, viewer crudviewer.Context, userID uint32, tenantID *uint32, orgUnitIDs []uint32) error {
+	if err := validateTenantScopedOrgUnitIDs(ctx, txClient, tenantID, orgUnitIDs); err != nil {
+		return err
+	}
+	if _, err := txClient.UserOrgUnit.Delete().Where(userorgunit.UserIDEQ(userID)).Exec(ctx); err != nil {
+		return err
+	}
+	for index, orgUnitID := range orgUnitIDs {
+		builder := txClient.UserOrgUnit.Create().
+			SetUserID(userID).
+			SetOrgUnitID(orgUnitID).
+			SetStatus(userorgunit.StatusActive).
+			SetIsPrimary(index == 0).
+			SetAssignedAt(now).
+			SetAssignedBy(uint32(viewer.UserID())).
+			SetCreatedAt(now).
+			SetCreatedBy(uint32(viewer.UserID()))
+		if tenantID != nil {
+			builder.SetTenantID(*tenantID)
+		}
+		if _, err := builder.Save(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *userRepo) replaceUserPositions(ctx context.Context, txClient *ent.Client, now time.Time, viewer crudviewer.Context, userID uint32, tenantID *uint32, positionIDs []uint32) error {
+	if err := validateTenantScopedPositionIDs(ctx, txClient, tenantID, positionIDs); err != nil {
+		return err
+	}
+	if _, err := txClient.UserPosition.Delete().Where(userposition.UserIDEQ(userID)).Exec(ctx); err != nil {
+		return err
+	}
+	for index, positionID := range positionIDs {
+		builder := txClient.UserPosition.Create().
+			SetUserID(userID).
+			SetPositionID(positionID).
+			SetStatus(userposition.StatusActive).
+			SetIsPrimary(index == 0).
+			SetAssignedAt(now).
+			SetAssignedBy(uint32(viewer.UserID())).
+			SetCreatedAt(now).
+			SetCreatedBy(uint32(viewer.UserID()))
+		if tenantID != nil {
+			builder.SetTenantID(*tenantID)
+		}
+		if _, err := builder.Save(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *userRepo) replaceUserRoles(ctx context.Context, txClient *ent.Client, now time.Time, viewer crudviewer.Context, userID uint32, tenantID *uint32, roleIDs []uint32) error {
+	if err := validateAssignableRoleIDs(ctx, txClient, tenantID, roleIDs); err != nil {
+		return err
+	}
+	if _, err := txClient.UserRole.Delete().Where(userrole.UserIDEQ(userID)).Exec(ctx); err != nil {
+		return err
+	}
+	for index, roleID := range roleIDs {
+		builder := txClient.UserRole.Create().
+			SetUserID(userID).
+			SetRoleID(roleID).
+			SetStatus(userrole.StatusActive).
+			SetIsPrimary(index == 0).
+			SetAssignedAt(now).
+			SetAssignedBy(uint32(viewer.UserID())).
+			SetCreatedAt(now).
+			SetCreatedBy(uint32(viewer.UserID()))
+		if tenantID != nil {
+			builder.SetTenantID(*tenantID)
+		}
+		if _, err := builder.Save(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *userRepo) CountSummary(ctx context.Context, now time.Time) (*UserCountSummary, error) {
+	if r == nil || r.entClient == nil {
+		return &UserCountSummary{}, nil
+	}
+
+	since24h := now.Add(-24 * time.Hour)
+	query := r.entClient.Client().User.Query().Where(
+		user.StatusNEQ(user.StatusClosed),
+	)
+
+	total, err := query.Clone().Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+	created24, err := query.Clone().Where(user.CreatedAtGTE(since24h)).Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &UserCountSummary{
+		Total:     uint64(total),
+		Created24: uint64(created24),
+	}, nil
+}
+
+func validateTenantScopedOrgUnitIDs(ctx context.Context, txClient *ent.Client, tenantID *uint32, orgUnitIDs []uint32) error {
+	uniqueIDs := uniqueUint32IDs(orgUnitIDs)
+	if len(uniqueIDs) == 0 {
+		return nil
+	}
+	if tenantID == nil {
+		return identityv1.ErrorForbidden("cross-tenant access is forbidden")
+	}
+	rows, err := txClient.OrgUnit.Query().
+		Where(orgunit.IDIn(uniqueIDs...)).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+	if len(rows) != len(uniqueIDs) {
+		return fmt.Errorf("invalid org unit ids")
+	}
+	for _, row := range rows {
+		if row == nil || row.TenantID == nil || *row.TenantID != *tenantID {
+			return identityv1.ErrorForbidden("cross-tenant access is forbidden")
+		}
+	}
+	return nil
+}
+
+func validateTenantScopedPositionIDs(ctx context.Context, txClient *ent.Client, tenantID *uint32, positionIDs []uint32) error {
+	uniqueIDs := uniqueUint32IDs(positionIDs)
+	if len(uniqueIDs) == 0 {
+		return nil
+	}
+	if tenantID == nil {
+		return identityv1.ErrorForbidden("cross-tenant access is forbidden")
+	}
+	rows, err := txClient.Position.Query().
+		Where(position.IDIn(uniqueIDs...)).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+	if len(rows) != len(uniqueIDs) {
+		return fmt.Errorf("invalid position ids")
+	}
+	for _, row := range rows {
+		if row == nil || row.TenantID == nil || *row.TenantID != *tenantID {
+			return identityv1.ErrorForbidden("cross-tenant access is forbidden")
+		}
+	}
+	return nil
+}
+
+func validateAssignableRoleIDs(ctx context.Context, txClient *ent.Client, tenantID *uint32, roleIDs []uint32) error {
+	uniqueIDs := uniqueUint32IDs(roleIDs)
+	if len(uniqueIDs) == 0 {
+		return nil
+	}
+	rows, err := txClient.Role.Query().
+		Where(role.IDIn(uniqueIDs...)).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+	if len(rows) != len(uniqueIDs) {
+		return fmt.Errorf("invalid role ids")
+	}
+	for _, row := range rows {
+		if row == nil {
+			return identityv1.ErrorForbidden("cross-tenant access is forbidden")
+		}
+		if tenantID == nil {
+			continue
+		}
+		if row.TenantID == nil || *row.TenantID == platformTenantID {
+			continue
+		}
+		if *row.TenantID != *tenantID {
+			return identityv1.ErrorForbidden("cross-tenant access is forbidden")
+		}
+	}
+	return nil
+}

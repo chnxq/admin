@@ -1,0 +1,672 @@
+package service
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"strings"
+	"unicode"
+
+	permissionv1 "admin/api/gen/permission/v1"
+	resourcev1 "admin/api/gen/resource/v1"
+	"admin/internal/data/repo"
+
+	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
+	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
+)
+
+const (
+	defaultPermissionGroupModule = "biz"
+	uncategorizedPermissionGroup = "uncategorized"
+)
+
+type desiredPermissionGroup struct {
+	id       uint32
+	module   string
+	name     string
+	parentID *uint32
+}
+
+type desiredPermission struct {
+	id          uint32
+	code        string
+	name        string
+	groupModule string
+	menuIDs     []uint32
+	apiIDs      []uint32
+}
+
+func (s *PermissionService) syncPermissions(ctx context.Context) error {
+	if _, err := requirePlatformContext(ctx, "permission sync"); err != nil {
+		return err
+	}
+	if s == nil || s.permissionRepo == nil || s.permissionGroupRepo == nil || s.menuRepo == nil || s.apiRepo == nil {
+		return fmt.Errorf("permission sync dependencies are incomplete")
+	}
+	ctx = repo.WithPermissionAuditDisabled(ctx)
+
+	groups, err := s.collectDesiredPermissionGroups(ctx)
+	if err != nil {
+		return err
+	}
+	groupIDs, err := s.reconcilePermissionGroups(ctx, groups)
+	if err != nil {
+		return err
+	}
+
+	permissions, err := s.collectDesiredPermissions(ctx)
+	if err != nil {
+		return err
+	}
+	for index := range permissions {
+		groupID, ok := groupIDs[permissions[index].groupModule]
+		if !ok || groupID == 0 {
+			groupID = groupIDs[uncategorizedPermissionGroup]
+		}
+		permissions[index].id = groupID
+	}
+
+	return s.reconcilePermissions(ctx, permissions)
+}
+
+func (s *PermissionService) collectDesiredPermissionGroups(ctx context.Context) ([]desiredPermissionGroup, error) {
+	menuResp, err := s.menuRepo.List(ctx, &paginationv1.PagingRequest{
+		NoPaging: boolPtr(true),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	groups := make([]desiredPermissionGroup, 0)
+	seen := map[string]struct{}{}
+
+	groups = append(groups, desiredPermissionGroup{
+		module: uncategorizedPermissionGroup,
+		name:   "未分类",
+	})
+	seen[uncategorizedPermissionGroup] = struct{}{}
+
+	for _, menu := range menuResp.GetItems() {
+		if menu == nil || menu.GetStatus() != resourcev1.Menu_ON || menu.GetType() != resourcev1.Menu_CATALOG {
+			continue
+		}
+		module := moduleFromMenuPath(menu.GetPath())
+		if _, ok := seen[module]; ok {
+			continue
+		}
+		seen[module] = struct{}{}
+		groups = append(groups, desiredPermissionGroup{
+			module: module,
+			name:   firstNonEmpty(menu.GetName(), displayMenuTitle(menu), module),
+		})
+	}
+
+	sort.SliceStable(groups, func(i, j int) bool {
+		if groups[i].module == uncategorizedPermissionGroup {
+			return true
+		}
+		if groups[j].module == uncategorizedPermissionGroup {
+			return false
+		}
+		return groups[i].module < groups[j].module
+	})
+
+	return groups, nil
+}
+
+func (s *PermissionService) collectDesiredPermissions(ctx context.Context) ([]desiredPermission, error) {
+	menuResp, err := s.menuRepo.List(ctx, &paginationv1.PagingRequest{
+		NoPaging: boolPtr(true),
+	})
+	if err != nil {
+		return nil, err
+	}
+	apiResp, err := s.apiRepo.List(ctx, &paginationv1.PagingRequest{
+		NoPaging: boolPtr(true),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	desired := map[string]*desiredPermission{}
+
+	for _, menu := range menuResp.GetItems() {
+		if menu == nil || menu.GetStatus() != resourcev1.Menu_ON {
+			continue
+		}
+
+		fullPath := composeMenuFullPath(menu, menuResp.GetItems())
+		code := menuPermissionCode(fullPath, displayMenuTitle(menu), menu.GetType())
+		if code == "" {
+			continue
+		}
+
+		current, ok := desired[code]
+		if !ok {
+			current = &desiredPermission{
+				code:        code,
+				name:        firstNonEmpty(displayMenuTitle(menu), menu.GetName(), code),
+				groupModule: moduleFromMenuPath(fullPath),
+			}
+			desired[code] = current
+		}
+		current.menuIDs = appendUniqueUint32(current.menuIDs, menu.GetId())
+	}
+
+	for _, api := range apiResp.GetItems() {
+		if api == nil || api.GetStatus() != resourcev1.Api_ON {
+			continue
+		}
+		code := apiPermissionCode(api.GetMethod(), api.GetPath())
+		if code == "" {
+			continue
+		}
+
+		current, ok := desired[code]
+		if !ok {
+			current = &desiredPermission{
+				code:        code,
+				name:        firstNonEmpty(api.GetDescription(), api.GetOperation(), code),
+				groupModule: moduleFromAPIPath(api.GetPath()),
+			}
+			desired[code] = current
+		}
+		if current.groupModule == "" {
+			current.groupModule = moduleFromAPIPath(api.GetPath())
+		}
+		current.apiIDs = appendUniqueUint32(current.apiIDs, api.GetId())
+
+		exportCode := apiExportPermissionCode(api.GetMethod(), api.GetPath())
+		if exportCode == "" {
+			continue
+		}
+		exportCurrent, ok := desired[exportCode]
+		if !ok {
+			exportCurrent = &desiredPermission{
+				code:        exportCode,
+				name:        firstNonEmpty(current.name, exportCode),
+				groupModule: firstNonEmpty(current.groupModule, uncategorizedPermissionGroup),
+			}
+			desired[exportCode] = exportCurrent
+		}
+		exportCurrent.apiIDs = appendUniqueUint32(exportCurrent.apiIDs, api.GetId())
+	}
+
+	items := make([]desiredPermission, 0, len(desired))
+	for _, item := range desired {
+		if item.groupModule == "" {
+			item.groupModule = uncategorizedPermissionGroup
+		}
+		sort.SliceStable(item.menuIDs, func(i, j int) bool { return item.menuIDs[i] < item.menuIDs[j] })
+		sort.SliceStable(item.apiIDs, func(i, j int) bool { return item.apiIDs[i] < item.apiIDs[j] })
+		items = append(items, *item)
+	}
+
+	sort.SliceStable(items, func(i, j int) bool {
+		return items[i].code < items[j].code
+	})
+
+	return items, nil
+}
+
+func (s *PermissionService) reconcilePermissionGroups(ctx context.Context, desired []desiredPermissionGroup) (map[string]uint32, error) {
+	existingResp, err := s.permissionGroupRepo.List(ctx, &paginationv1.PagingRequest{
+		NoPaging: boolPtr(true),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	existingByModule := make(map[string]*permissionv1.PermissionGroup, len(existingResp.GetItems()))
+	for _, item := range existingResp.GetItems() {
+		if item == nil {
+			continue
+		}
+		module := strings.TrimSpace(item.GetModule())
+		if module == "" {
+			continue
+		}
+		existingByModule[module] = item
+	}
+
+	groupIDs := make(map[string]uint32, len(desired))
+	for index, group := range desired {
+		sortOrder := uint32(index + 1)
+		if existing, ok := existingByModule[group.module]; ok && existing.GetId() > 0 {
+			groupIDs[group.module] = existing.GetId()
+			_, err = s.permissionGroupRepo.Update(ctx, &permissionv1.UpdatePermissionGroupRequest{
+				Id: existing.GetId(),
+				Data: &permissionv1.PermissionGroup{
+					Id:        uint32Ptr(existing.GetId()),
+					Module:    stringPtr(group.module),
+					Name:      stringPtr(group.name),
+					SortOrder: uint32Ptr(sortOrder),
+					Status:    permissionv1.PermissionGroup_ON.Enum(),
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"module", "name", "sortOrder", "status"},
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+
+		if _, err = s.permissionGroupRepo.Create(ctx, &permissionv1.CreatePermissionGroupRequest{
+			Data: &permissionv1.PermissionGroup{
+				Module:    stringPtr(group.module),
+				Name:      stringPtr(group.name),
+				SortOrder: uint32Ptr(sortOrder),
+				Status:    permissionv1.PermissionGroup_ON.Enum(),
+			},
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	refreshedResp, err := s.permissionGroupRepo.List(ctx, &paginationv1.PagingRequest{
+		NoPaging: boolPtr(true),
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range refreshedResp.GetItems() {
+		if item == nil || item.GetId() == 0 {
+			continue
+		}
+		module := strings.TrimSpace(item.GetModule())
+		if module == "" {
+			continue
+		}
+		groupIDs[module] = item.GetId()
+	}
+
+	return groupIDs, nil
+}
+
+func (s *PermissionService) reconcilePermissions(ctx context.Context, desired []desiredPermission) error {
+	existingResp, err := s.permissionRepo.List(ctx, &paginationv1.PagingRequest{
+		NoPaging: boolPtr(true),
+	})
+	if err != nil {
+		return err
+	}
+
+	existingByCode := make(map[string]*permissionv1.Permission, len(existingResp.GetItems()))
+	for _, item := range existingResp.GetItems() {
+		if item == nil {
+			continue
+		}
+		code := strings.TrimSpace(item.GetCode())
+		if code == "" {
+			continue
+		}
+		existingByCode[code] = item
+	}
+
+	for _, item := range desired {
+		groupID := item.id
+		data := &permissionv1.Permission{
+			Name:    stringPtr(item.name),
+			Code:    stringPtr(item.code),
+			GroupId: uint32Ptr(groupID),
+			Status:  permissionv1.Permission_ON.Enum(),
+			MenuIds: append([]uint32(nil), item.menuIDs...),
+			ApiIds:  append([]uint32(nil), item.apiIDs...),
+		}
+
+		if existing, ok := existingByCode[item.code]; ok && existing.GetId() > 0 {
+			_, err = s.permissionRepo.Update(ctx, &permissionv1.UpdatePermissionRequest{
+				Id:   existing.GetId(),
+				Data: data,
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"name", "code", "groupId", "status", "menuIds", "apiIds"},
+				},
+			})
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		if _, err = s.permissionRepo.Create(ctx, &permissionv1.CreatePermissionRequest{
+			Data: data,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func composeMenuFullPath(target *resourcev1.Menu, all []*resourcev1.Menu) string {
+	if target == nil {
+		return ""
+	}
+	itemsByID := make(map[uint32]*resourcev1.Menu, len(all))
+	for _, item := range all {
+		if item == nil || item.GetId() == 0 {
+			continue
+		}
+		itemsByID[item.GetId()] = item
+	}
+
+	parts := make([]string, 0, 4)
+	current := target
+	seen := map[uint32]struct{}{}
+	for current != nil {
+		id := current.GetId()
+		if id != 0 {
+			if _, ok := seen[id]; ok {
+				break
+			}
+			seen[id] = struct{}{}
+		}
+
+		path := strings.Trim(strings.TrimSpace(current.GetPath()), "/")
+		if path != "" {
+			parts = append([]string{path}, parts...)
+		}
+		parentID := current.GetParentId()
+		if parentID == 0 {
+			break
+		}
+		current = itemsByID[parentID]
+	}
+
+	return "/" + strings.Join(parts, "/")
+}
+
+func menuPermissionCode(path, title string, typ resourcev1.Menu_Type) string {
+	path = strings.Trim(strings.TrimSpace(path), "/")
+	if path == "" {
+		return ""
+	}
+	if strings.EqualFold(path, "system/api-docs") || strings.EqualFold(path, "/system/api-docs") {
+		return "apis:view"
+	}
+	segments := strings.Split(path, "/")
+	if len(segments) > 1 {
+		segments = segments[1:]
+	}
+	cleaned := make([]string, 0, len(segments))
+	for _, segment := range segments {
+		segment = normalizeSegment(segment)
+		if segment == "" || strings.HasPrefix(segment, ":") {
+			continue
+		}
+		cleaned = append(cleaned, segment)
+	}
+	if len(cleaned) == 0 {
+		return ""
+	}
+
+	base := strings.Join(cleaned, ":")
+	action := menuTypeAction(title, typ)
+	if action == "" {
+		return base
+	}
+	return base + ":" + action
+}
+
+func apiPermissionCode(method, path string) string {
+	resource := apiResourceFromPath(path)
+	if resource == "" {
+		return ""
+	}
+	return resource + ":" + apiActionFromMethod(method, path)
+}
+
+func apiResourceFromPath(path string) string {
+	segments := apiPathSegments(path)
+	if len(segments) == 0 {
+		return ""
+	}
+
+	resource := []string{segments[0]}
+	if len(segments) > 1 && shouldKeepAPISecondaryResource(segments[1]) {
+		resource = append(resource, segments[1])
+	}
+	return strings.Join(resource, ":")
+}
+
+func apiActionFromMethod(method, path string) string {
+	segments := apiPathSegments(path)
+	if len(segments) > 0 && segments[len(segments)-1] == "password" {
+		return "edit"
+	}
+	if strings.HasSuffix(strings.TrimSpace(path), "/list") {
+		return "view"
+	}
+	switch strings.ToUpper(strings.TrimSpace(method)) {
+	case "GET":
+		return "view"
+	case "POST":
+		return "create"
+	case "PUT", "PATCH":
+		return "edit"
+	case "DELETE":
+		return "delete"
+	default:
+		return strings.ToLower(strings.TrimSpace(method))
+	}
+}
+
+func apiPathSegments(path string) []string {
+	path = strings.Trim(strings.TrimSpace(path), "/")
+	if path == "" {
+		return nil
+	}
+
+	parts := strings.Split(path, "/")
+	segments := make([]string, 0, len(parts))
+	versionTrimmed := false
+	for index, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if strings.EqualFold(part, "api") {
+			continue
+		}
+		if !versionTrimmed && index <= 1 && strings.HasPrefix(strings.ToLower(part), "v") && len(part) > 1 && isDigits(part[1:]) {
+			segments = segments[:0]
+			versionTrimmed = true
+			continue
+		}
+		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
+			continue
+		}
+
+		normalized := normalizeSegment(part)
+		if normalized == "" {
+			continue
+		}
+		segments = append(segments, normalized)
+	}
+
+	return segments
+}
+
+func shouldKeepAPISecondaryResource(segment string) bool {
+	if segment == "" {
+		return false
+	}
+	if segment == "password" || segment == "sync" {
+		return true
+	}
+	return strings.Contains(segment, ":")
+}
+
+func menuTypeAction(title string, typ resourcev1.Menu_Type) string {
+	switch typ {
+	case resourcev1.Menu_CATALOG:
+		return "dir"
+	case resourcev1.Menu_MENU, resourcev1.Menu_EMBEDDED:
+		return "view"
+	case resourcev1.Menu_LINK:
+		return "jump"
+	case resourcev1.Menu_BUTTON:
+		return buttonAction(title)
+	default:
+		return ""
+	}
+}
+
+func buttonAction(title string) string {
+	text := strings.ToLower(strings.TrimSpace(title))
+	switch {
+	case containsAny(text, "新增", "添加", "创建", "create", "add", "new"):
+		return "create"
+	case containsAny(text, "编辑", "修改", "更新", "保存", "edit", "update", "modify", "save"):
+		return "edit"
+	case containsAny(text, "删除", "移除", "delete", "remove", "del", "trash"):
+		return "delete"
+	case containsAny(text, "导入", "import"):
+		return "import"
+	case containsAny(text, "导出", "download", "export"):
+		return "export"
+	default:
+		return "act"
+	}
+}
+
+func displayMenuTitle(menu *resourcev1.Menu) string {
+	if menu == nil || menu.GetMeta() == nil {
+		return ""
+	}
+	return strings.TrimSpace(menu.GetMeta().GetTitle())
+}
+
+func moduleFromMenuPath(path string) string {
+	path = strings.Trim(strings.TrimSpace(path), "/")
+	if path == "" {
+		return defaultPermissionGroupModule
+	}
+	segments := strings.Split(path, "/")
+	if len(segments) > 1 {
+		segment := normalizeSegment(segments[1])
+		if segment != "" {
+			return segment
+		}
+	}
+	return defaultPermissionGroupModule
+}
+
+func moduleFromAPIPath(path string) string {
+	module := apiResourceFromPath(path)
+	if module == "" {
+		return uncategorizedPermissionGroup
+	}
+	return strings.Split(module, ":")[0]
+}
+
+func normalizeSegment(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	var builder strings.Builder
+	lastColon := false
+	for _, r := range value {
+		switch {
+		case unicode.IsLetter(r), unicode.IsDigit(r):
+			builder.WriteRune(unicode.ToLower(r))
+			lastColon = false
+		default:
+			if !lastColon && builder.Len() > 0 {
+				builder.WriteRune(':')
+				lastColon = true
+			}
+		}
+	}
+	return strings.Trim(builder.String(), ":")
+}
+
+func appendUniqueUint32(values []uint32, value uint32) []uint32 {
+	if value == 0 {
+		return values
+	}
+	for _, current := range values {
+		if current == value {
+			return values
+		}
+	}
+	return append(values, value)
+}
+
+func apiExportPermissionCode(method, path string) string {
+	if !strings.EqualFold(strings.TrimSpace(method), "GET") {
+		return ""
+	}
+
+	path = strings.Trim(strings.TrimSpace(path), "/")
+	if path == "" || strings.Contains(path, "{") || strings.Contains(path, "}") {
+		return ""
+	}
+
+	parts := strings.Split(path, "/")
+	if len(parts) == 0 {
+		return ""
+	}
+	last := strings.TrimSpace(parts[len(parts)-1])
+	if last == "" || strings.Contains(last, ":") {
+		return ""
+	}
+
+	normalizedLast := normalizeSegment(last)
+	switch normalizedLast {
+	case "", "exists", "list", "password", "sync":
+		return ""
+	}
+
+	resource := apiResourceFromPath(path)
+	if resource == "" {
+		return ""
+	}
+	return resource + ":export"
+}
+
+func containsAny(value string, candidates ...string) bool {
+	for _, candidate := range candidates {
+		if strings.Contains(value, strings.ToLower(candidate)) {
+			return true
+		}
+	}
+	return false
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		text := strings.TrimSpace(value)
+		if text != "" {
+			return text
+		}
+	}
+	return ""
+}
+
+func boolPtr(value bool) *bool {
+	return &value
+}
+
+func stringPtr(value string) *string {
+	return &value
+}
+
+func uint32Ptr(value uint32) *uint32 {
+	return &value
+}
+
+func isDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
+}

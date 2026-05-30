@@ -1,0 +1,141 @@
+package repo
+
+import (
+	"context"
+	"strings"
+	"time"
+
+	"admin/internal/data/ent"
+	"admin/internal/data/ent/user"
+	"admin/internal/data/ent/usercredential"
+
+	"golang.org/x/crypto/bcrypt"
+)
+
+type UserCredentialWithUser struct {
+	Credential *ent.UserCredential
+	User       *ent.User
+}
+
+func IsBcryptHash(value string) bool {
+	value = strings.TrimSpace(value)
+	if len(value) < 4 {
+		return false
+	}
+	if !strings.HasPrefix(value, "$2") {
+		return false
+	}
+	_, err := bcrypt.Cost([]byte(value))
+	return err == nil
+}
+
+func NormalizePasswordCredential(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", nil
+	}
+	if IsBcryptHash(raw) {
+		return raw, nil
+	}
+	hashed, err := bcrypt.GenerateFromPassword([]byte(raw), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashed), nil
+}
+
+func VerifyPasswordCredential(plain, stored string) (matched bool, needsUpgrade bool, err error) {
+	plain = strings.TrimSpace(plain)
+	stored = strings.TrimSpace(stored)
+	if plain == "" || stored == "" {
+		return false, false, nil
+	}
+	if IsBcryptHash(stored) {
+		err = bcrypt.CompareHashAndPassword([]byte(stored), []byte(plain))
+		if err == nil {
+			return true, false, nil
+		}
+		if err == bcrypt.ErrMismatchedHashAndPassword {
+			return false, false, nil
+		}
+		return false, false, err
+	}
+	return stored == plain, stored == plain, nil
+}
+
+func (r *userCredentialRepo) FindPasswordCredentialByIdentifier(ctx context.Context, identifier string) (*UserCredentialWithUser, error) {
+	identifier = strings.TrimSpace(identifier)
+	if identifier == "" {
+		return nil, nil
+	}
+
+	userQuery := r.entClient.Client().User.Query().
+		Where(user.DeletedAtIsNil())
+	if strings.Contains(identifier, "@") {
+		userQuery = userQuery.Where(user.EmailEQ(identifier))
+	} else if isLikelyMobileIdentifier(identifier) {
+		userQuery = userQuery.Where(user.MobileEQ(identifier))
+	} else {
+		userQuery = userQuery.Where(user.UsernameEQ(identifier))
+	}
+
+	userEntity, err := userQuery.Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	credentialQuery := r.entClient.Client().UserCredential.Query().
+		Where(
+			usercredential.UserIDEQ(userEntity.ID),
+			usercredential.CredentialTypeEQ(usercredential.CredentialTypePasswordHash),
+			usercredential.StatusEQ(usercredential.StatusEnabled),
+		)
+	if strings.Contains(identifier, "@") {
+		credentialQuery = credentialQuery.Where(usercredential.IdentityTypeEQ(usercredential.IdentityTypeEmail))
+	} else if isLikelyMobileIdentifier(identifier) {
+		credentialQuery = credentialQuery.Where(usercredential.IdentityTypeEQ(usercredential.IdentityTypePhone))
+	} else {
+		credentialQuery = credentialQuery.Where(usercredential.IdentityTypeEQ(usercredential.IdentityTypeUsername))
+	}
+
+	entity, err := credentialQuery.Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &UserCredentialWithUser{
+		Credential: entity,
+		User:       userEntity,
+	}, nil
+}
+
+func (r *userCredentialRepo) UpgradePasswordCredential(ctx context.Context, credentialID uint32, plain string) error {
+	hashed, err := NormalizePasswordCredential(plain)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	_, err = r.entClient.Client().UserCredential.UpdateOneID(credentialID).
+		SetCredential(hashed).
+		SetStatus(usercredential.StatusEnabled).
+		SetUpdatedAt(now).
+		Save(ctx)
+	return err
+}
+
+func isLikelyMobileIdentifier(identifier string) bool {
+	if len(identifier) < 6 {
+		return false
+	}
+	for _, ch := range identifier {
+		if ch < '0' || ch > '9' {
+			return false
+		}
+	}
+	return true
+}

@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package admin.service.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+import "resource/v1/menu.proto";
+
+// 后台前端初始化数据与配置服务
+service AdminPortalService {
+  // 获取登录验证码
+  rpc GetCaptcha (google.protobuf.Empty) returns (GetCaptchaResponse) {
+    option (google.api.http) = {
+      get: "/admin/v1/captcha"
+    };
+  }
+
+  // 查询前端路由表
+  rpc GetNavigation (google.protobuf.Empty) returns (ListRouteResponse) {
+    option (google.api.http) = {
+      get: "/admin/v1/routes"
+    };
+  }
+
+  // 查询权限码列表
+  rpc GetMyPermissionCode (google.protobuf.Empty) returns (ListPermissionCodeResponse) {
+    option (google.api.http) = {
+      get: "/admin/v1/perm-codes"
+    };
+  }
+
+  // 一次性获取进入后台所需的所有上下文
+  rpc GetInitialContext (google.protobuf.Empty) returns (InitialContextResponse) {
+    option (google.api.http) = {
+      get: "/admin/v1/initial-context"
+    };
+  }
+
+  // 查询分析页聚合数据（按系统实时日志聚合）
+  rpc GetAnalyticsDashboard (google.protobuf.Empty) returns (AnalyticsDashboardResponse) {
+    option (google.api.http) = {
+      get: "/admin/v1/dashboard/analytics"
+    };
+  }
+}
+
+// 查询路由列表 - 响应
+message ListRouteResponse {
+  repeated resource.service.v1.MenuRouteItem items = 1;
+}
+
+// 查询权限码列表 - 响应
+message ListPermissionCodeResponse {
+  repeated string codes = 1;
+}
+
+message GetCaptchaResponse {
+  string captcha_id = 1; // 验证码会话ID（登录时放入client_id回传）
+  string image_base64 = 2; // 验证码图片（data:image/png;base64,...）
+  uint32 expires_in = 3; // 验证码有效期（秒）
+}
+
+message InitialContextResponse {
+  repeated resource.service.v1.MenuRouteItem menus = 1; // 菜单树
+  repeated string permissions = 2; // 权限码
+}
+
+message AnalyticsDashboardResponse {
+  AnalyticsOverview overview = 1; // 总览卡片数据
+  AnalyticsTrend trend = 2; // 20小时访问与活跃趋势
+  AnalyticsVisit visits = 3; // 12个月访问柱状图（自然月）
+  repeated AnalyticsNamedValue source_distributions = 4; // 访问来源占比（饼图）
+  repeated AnalyticsNamedValue business_distributions = 5; // 业务占比（玫瑰图）
+  repeated AnalyticsNamedValue platform_distributions = 6; // 平台访问量（雷达图）
+}
+
+message AnalyticsOverview {
+  uint64 total_users = 1; // 总用户量（sys_users）
+  uint64 current_users = 2; // 最近24小时新增用户量
+  uint64 total_accesses = 3; // 总访问量（sys_api_audit_logs）
+  uint64 current_accesses = 4; // 最近24小时访问量
+  uint64 total_downloads = 5; // 总下载量（path/operation含download/export）
+  uint64 current_downloads = 6; // 最近24小时下载量
+  uint64 total_usages = 7; // 总使用量（可计入统计的访问日志量）
+  uint64 current_usages = 8; // 最近24小时活跃用户量（distinct user_id）
+}
+
+message AnalyticsTrend {
+  repeated string labels = 1; // 时间标签（HH:00）
+  repeated uint64 accesses = 2; // 每小时访问量
+  repeated uint64 actives = 3; // 每小时活跃用户量（distinct user_id）
+}
+
+message AnalyticsVisit {
+  repeated string labels = 1; // 月份标签（1月..12月）
+  repeated uint64 accesses = 2; // 每月访问量
+}
+
+message AnalyticsNamedValue {
+  string name = 1;
+  uint64 value = 2;
+}

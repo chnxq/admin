@@ -1,0 +1,204 @@
+package repo
+
+import (
+	"context"
+	"fmt"
+
+	storagev1 "admin/api/gen/storage/v1"
+	"admin/internal/data/ent"
+	"admin/internal/data/ent/file"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+)
+
+// Add FileRepo-specific query helpers and hand-written data access code here.
+// This file is created once and is never overwritten by xkit.
+
+func (r *fileRepo) attachFileTenantNames(ctx context.Context, entities []*ent.File) []*storagev1.File {
+	items := make([]*storagev1.File, 0, len(entities))
+	tenantIDs := make([]uint32, 0, len(entities))
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		tenantIDs = append(tenantIDs, collectTenantIDs(entity.TenantID)...)
+	}
+	tenantNameMap := loadTenantNameMap(ctx, r.entClient.Client(), tenantIDs)
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		dto := r.mapper.ToDTO(entity)
+		if dto == nil {
+			continue
+		}
+		dto.TenantName = tenantNameFromMap(tenantNameMap, entity.TenantID)
+		items = append(items, dto)
+	}
+	return items
+}
+
+func (r *fileRepo) fileEnrichListDTOs(ctx context.Context, entities []*ent.File) ([]*storagev1.File, error) {
+	return r.attachFileTenantNames(ctx, entities), nil
+}
+
+func (r *fileRepo) fileEnrichGetDTO(ctx context.Context, entities []*ent.File) ([]*storagev1.File, error) {
+	return r.attachFileTenantNames(ctx, entities), nil
+}
+
+func (r *fileRepo) fileCustomCreate(ctx context.Context, req *storagev1.CreateFileRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	builder := r.entClient.Client().File.Create()
+	now, viewer := r.generatedAuditContext(ctx)
+	builder.SetNillableProvider(fileEnumPtrFromProto[file.Provider](req.Data.Provider))
+	builder.SetNillableBucketName(req.Data.BucketName)
+	builder.SetNillableFileDirectory(req.Data.FileDirectory)
+	builder.SetNillableFileGUID(req.Data.FileGuid)
+	builder.SetNillableSaveFileName(req.Data.SaveFileName)
+	builder.SetNillableFileName(req.Data.FileName)
+	builder.SetNillableExtension(req.Data.Extension)
+	builder.SetNillableSize(req.Data.Size)
+	builder.SetNillableSizeFormat(req.Data.SizeFormat)
+	builder.SetNillableLinkURL(req.Data.LinkUrl)
+	builder.SetNillableContentHash(req.Data.ContentHash)
+	tenantID, err := resolveCreateTenantID(ctx, req.Data.TenantId)
+	if err != nil {
+		return nil, err
+	}
+	builder.SetNillableTenantID(tenantID)
+	builder.SetCreatedAt(now)
+	builder.SetCreatedBy(uint32(viewer.UserID()))
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("insert file failed: %s", err.Error())
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (r *fileRepo) fileCustomUpdate(ctx context.Context, req *storagev1.UpdateFileRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	current, err := r.entClient.Client().File.Query().Where(file.IDEQ(req.GetId())).Only(ctx)
+	if err != nil {
+		r.log.Errorf("get file before update failed: %s", err.Error())
+		return nil, err
+	}
+	if err := ensureTenantAccessible(ctx, current.TenantID); err != nil {
+		return nil, err
+	}
+
+	builder := r.entClient.Client().File.UpdateOneID(req.GetId())
+	now, viewer := r.generatedAuditContext(ctx)
+	if req.Data.Provider != nil {
+		builder.SetNillableProvider(fileEnumPtrFromProto[file.Provider](req.Data.Provider))
+	} else if req.GetUpdateMask() != nil && fileFieldMaskContains(req.GetUpdateMask().GetPaths(), "provider") {
+		builder.ClearProvider()
+	}
+	if req.Data.BucketName != nil {
+		builder.SetNillableBucketName(req.Data.BucketName)
+	} else if req.GetUpdateMask() != nil && fileFieldMaskContains(req.GetUpdateMask().GetPaths(), "bucket_name", "bucketName") {
+		builder.ClearBucketName()
+	}
+	if req.Data.FileDirectory != nil {
+		builder.SetNillableFileDirectory(req.Data.FileDirectory)
+	} else if req.GetUpdateMask() != nil && fileFieldMaskContains(req.GetUpdateMask().GetPaths(), "file_directory", "fileDirectory") {
+		builder.ClearFileDirectory()
+	}
+	if req.Data.FileGuid != nil {
+		builder.SetNillableFileGUID(req.Data.FileGuid)
+	} else if req.GetUpdateMask() != nil && fileFieldMaskContains(req.GetUpdateMask().GetPaths(), "file_guid", "fileGuid") {
+		builder.ClearFileGUID()
+	}
+	if req.Data.SaveFileName != nil {
+		builder.SetNillableSaveFileName(req.Data.SaveFileName)
+	} else if req.GetUpdateMask() != nil && fileFieldMaskContains(req.GetUpdateMask().GetPaths(), "save_file_name", "saveFileName") {
+		builder.ClearSaveFileName()
+	}
+	if req.Data.FileName != nil {
+		builder.SetNillableFileName(req.Data.FileName)
+	} else if req.GetUpdateMask() != nil && fileFieldMaskContains(req.GetUpdateMask().GetPaths(), "file_name", "fileName") {
+		builder.ClearFileName()
+	}
+	if req.Data.Extension != nil {
+		builder.SetNillableExtension(req.Data.Extension)
+	} else if req.GetUpdateMask() != nil && fileFieldMaskContains(req.GetUpdateMask().GetPaths(), "extension") {
+		builder.ClearExtension()
+	}
+	if req.Data.Size != nil {
+		builder.SetNillableSize(req.Data.Size)
+	} else if req.GetUpdateMask() != nil && fileFieldMaskContains(req.GetUpdateMask().GetPaths(), "size") {
+		builder.ClearSize()
+	}
+	if req.Data.SizeFormat != nil {
+		builder.SetNillableSizeFormat(req.Data.SizeFormat)
+	} else if req.GetUpdateMask() != nil && fileFieldMaskContains(req.GetUpdateMask().GetPaths(), "size_format", "sizeFormat") {
+		builder.ClearSizeFormat()
+	}
+	if req.Data.LinkUrl != nil {
+		builder.SetNillableLinkURL(req.Data.LinkUrl)
+	} else if req.GetUpdateMask() != nil && fileFieldMaskContains(req.GetUpdateMask().GetPaths(), "link_url", "linkUrl") {
+		builder.ClearLinkURL()
+	}
+	if req.Data.ContentHash != nil {
+		builder.SetNillableContentHash(req.Data.ContentHash)
+	} else if req.GetUpdateMask() != nil && fileFieldMaskContains(req.GetUpdateMask().GetPaths(), "content_hash", "contentHash") {
+		builder.ClearContentHash()
+	}
+	builder.SetUpdatedAt(now)
+	builder.SetUpdatedBy(uint32(viewer.UserID()))
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("update file failed: %s", err.Error())
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (r *fileRepo) fileCustomDelete(ctx context.Context, req *storagev1.DeleteFileRequest) (*emptypb.Empty, error) {
+	if req == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	switch typedReq := any(req).(type) {
+	case interface{ GetId() uint32 }:
+		entity, err := r.entClient.Client().File.Query().Where(file.IDEQ(typedReq.GetId())).Only(ctx)
+		if err != nil {
+			r.log.Errorf("load file before delete failed: %s", err.Error())
+			return nil, err
+		}
+		if err := ensureTenantAccessible(ctx, entity.TenantID); err != nil {
+			return nil, err
+		}
+		if err := r.entClient.Client().File.DeleteOneID(typedReq.GetId()).Exec(ctx); err != nil {
+			r.log.Errorf("delete file failed: %s", err.Error())
+			return nil, err
+		}
+	case interface{ GetIds() []uint32 }:
+		entities, err := r.entClient.Client().File.Query().Where(file.IDIn(typedReq.GetIds()...)).All(ctx)
+		if err != nil {
+			r.log.Errorf("load files before delete failed: %s", err.Error())
+			return nil, err
+		}
+		for _, entity := range entities {
+			if entity == nil {
+				continue
+			}
+			if err := ensureTenantAccessible(ctx, entity.TenantID); err != nil {
+				return nil, err
+			}
+		}
+		if _, err := r.entClient.Client().File.Delete().Where(file.IDIn(typedReq.GetIds()...)).Exec(ctx); err != nil {
+			r.log.Errorf("delete file failed: %s", err.Error())
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("invalid delete request: missing id or ids")
+	}
+
+	return &emptypb.Empty{}, nil
+}

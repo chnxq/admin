@@ -1,0 +1,104 @@
+package repo
+
+import (
+	"context"
+	"fmt"
+
+	permissionv1 "admin/api/gen/permission/v1"
+	"admin/internal/data/ent/permissiongroup"
+
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+)
+
+func (r *permissionGroupRepo) permissionGroupCustomCreate(ctx context.Context, req *permissionv1.CreatePermissionGroupRequest) (*emptypb.Empty, error) {
+	if err := ensurePlatformOnlyMutable(ctx); err != nil {
+		return nil, err
+	}
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	builder := r.entClient.Client().PermissionGroup.Create()
+	now, viewer := r.generatedAuditContext(ctx)
+	builder.SetName(req.Data.GetName())
+	builder.SetNillableModule(req.Data.Module)
+	builder.SetStatus(permissiongroup.Status(req.Data.GetStatus().String()))
+	builder.SetNillableSortOrder(req.Data.SortOrder)
+	builder.SetNillableParentID(req.Data.ParentId)
+	builder.SetNillablePath(req.Data.Path)
+	builder.SetCreatedAt(now)
+	builder.SetCreatedBy(uint32(viewer.UserID()))
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("insert permission_group failed: %s", err.Error())
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (r *permissionGroupRepo) permissionGroupCustomUpdate(ctx context.Context, req *permissionv1.UpdatePermissionGroupRequest) (*emptypb.Empty, error) {
+	if err := ensurePlatformOnlyMutable(ctx); err != nil {
+		return nil, err
+	}
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	builder := r.entClient.Client().PermissionGroup.UpdateOneID(req.GetId())
+	now, viewer := r.generatedAuditContext(ctx)
+	builder.SetName(req.Data.GetName())
+	if req.Data.Module != nil {
+		builder.SetNillableModule(req.Data.Module)
+	} else if req.GetUpdateMask() != nil && permissionGroupFieldMaskContains(req.GetUpdateMask().GetPaths(), "module") {
+		builder.ClearModule()
+	}
+	builder.SetStatus(permissiongroup.Status(req.Data.GetStatus().String()))
+	if req.Data.SortOrder != nil {
+		builder.SetNillableSortOrder(req.Data.SortOrder)
+	} else if req.GetUpdateMask() != nil && permissionGroupFieldMaskContains(req.GetUpdateMask().GetPaths(), "sort_order", "sortOrder") {
+		builder.ClearSortOrder()
+	}
+	if req.Data.ParentId != nil {
+		builder.SetNillableParentID(req.Data.ParentId)
+	} else if req.GetUpdateMask() != nil && permissionGroupFieldMaskContains(req.GetUpdateMask().GetPaths(), "parent_id", "parentId") {
+		builder.ClearParentID()
+	}
+	if req.Data.Path != nil {
+		builder.SetNillablePath(req.Data.Path)
+	} else if req.GetUpdateMask() != nil && permissionGroupFieldMaskContains(req.GetUpdateMask().GetPaths(), "path") {
+		builder.ClearPath()
+	}
+	builder.SetUpdatedAt(now)
+	builder.SetUpdatedBy(uint32(viewer.UserID()))
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("update permission_group failed: %s", err.Error())
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (r *permissionGroupRepo) permissionGroupCustomDelete(ctx context.Context, req *permissionv1.DeletePermissionGroupRequest) (*emptypb.Empty, error) {
+	if err := ensurePlatformOnlyMutable(ctx); err != nil {
+		return nil, err
+	}
+	if req == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	switch typedReq := any(req).(type) {
+	case interface{ GetId() uint32 }:
+		if err := r.entClient.Client().PermissionGroup.DeleteOneID(typedReq.GetId()).Exec(ctx); err != nil {
+			r.log.Errorf("delete permission_group failed: %s", err.Error())
+			return nil, err
+		}
+	case interface{ GetIds() []uint32 }:
+		if _, err := r.entClient.Client().PermissionGroup.Delete().Where(permissiongroup.IDIn(typedReq.GetIds()...)).Exec(ctx); err != nil {
+			r.log.Errorf("delete permission_group failed: %s", err.Error())
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("invalid delete request: missing id or ids")
+	}
+	return &emptypb.Empty{}, nil
+}
