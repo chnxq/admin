@@ -10,6 +10,7 @@ import (
 	dictv1 "admin/api/gen/dict/v1"
 	storagev1 "admin/api/gen/storage/v1"
 	"admin/internal/data/ent"
+	"admin/internal/data/ent/dictlabel"
 	"admin/internal/data/ent/file"
 	"admin/internal/data/ent/loginpolicy"
 	_ "admin/internal/data/ent/runtime"
@@ -47,17 +48,17 @@ func newTenantBoundaryLoggerForTest() *xlog.Helper {
 	return xlog.NewHelper(xlog.NewStdLogger(io.Discard))
 }
 
-func seedDictTypeForTenantBoundaryTest(t *testing.T, entClient *entCrud.EntClient[*ent.Client], id uint32, typeCode, typeName string, tenantID *uint32) {
+func seedDictCategoryForTenantBoundaryTest(t *testing.T, entClient *entCrud.EntClient[*ent.Client], id uint32, categoryKey, categoryName string, tenantID *uint32) {
 	t.Helper()
 
-	query := "INSERT INTO sys_dict_types (id, type_code, type_name, is_enabled, sort_order, tenant_id, created_by, updated_by, deleted_by, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	query := "INSERT INTO sys_dict_categories (id, category_key, category_name, category_level, scene, is_builtin, is_enabled, sort_order, tenant_id, created_by, updated_by, deleted_by, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 	now := time.Now()
 	var tenantValue any
 	if tenantID != nil {
 		tenantValue = *tenantID
 	}
-	if err := entClient.Exec(context.Background(), query, []any{id, typeCode, typeName, true, 0, tenantValue, 0, 0, 0, now, now, nil}, nil); err != nil {
-		t.Fatalf("seed dict type failed: %v", err)
+	if err := entClient.Exec(context.Background(), query, []any{id, categoryKey, categoryName, "CHILD", "OTHER", false, true, 0, tenantValue, 0, 0, 0, now, now, nil}, nil); err != nil {
+		t.Fatalf("seed dict category failed: %v", err)
 	}
 }
 
@@ -77,21 +78,21 @@ func tenantBoundaryTenantCtx(tenantID uint64) context.Context {
 	})
 }
 
-func newDictTypeRepoForTenantBoundaryTest(entClient *entCrud.EntClient[*ent.Client]) *dictTypeRepo {
-	repo := &dictTypeRepo{
+func newDictCategoryRepoForTenantBoundaryTest(entClient *entCrud.EntClient[*ent.Client]) *dictCategoryRepo {
+	repo := &dictCategoryRepo{
 		log:       newTenantBoundaryLoggerForTest(),
 		entClient: entClient,
-		mapper:    mapper.NewCopierMapper[dictv1.DictType, ent.DictType](),
+		mapper:    mapper.NewCopierMapper[dictv1.DictCategory, ent.DictCategory](),
 	}
 	repo.init()
 	return repo
 }
 
-func newDictEntryRepoForTenantBoundaryTest(entClient *entCrud.EntClient[*ent.Client]) *dictEntryRepo {
-	repo := &dictEntryRepo{
+func newDictLabelRepoForTenantBoundaryTest(entClient *entCrud.EntClient[*ent.Client]) *dictLabelRepo {
+	repo := &dictLabelRepo{
 		log:       newTenantBoundaryLoggerForTest(),
 		entClient: entClient,
-		mapper:    mapper.NewCopierMapper[dictv1.DictEntry, ent.DictEntry](),
+		mapper:    mapper.NewCopierMapper[dictv1.DictLabel, ent.DictLabel](),
 	}
 	repo.init()
 	return repo
@@ -117,128 +118,162 @@ func newLoginPolicyRepoForTenantBoundaryTest(entClient *entCrud.EntClient[*ent.C
 	return repo
 }
 
-func TestDictTypeRepoTenantViewerSeesGlobalAndOwnOnly(t *testing.T) {
-	entClient, _ := newTenantBoundaryEntClientForTest(t, "tenant-boundary-dict-type-list")
-	repo := newDictTypeRepoForTenantBoundaryTest(entClient)
+func TestDictCategoryRepoTenantViewerSeesGlobalAndOwnOnly(t *testing.T) {
+	entClient, _ := newTenantBoundaryEntClientForTest(t, "tenant-boundary-dict-category-list")
+	repo := newDictCategoryRepoForTenantBoundaryTest(entClient)
 	ctx := tenantBoundaryTenantCtx(101)
 
 	globalTenant := uint32(0)
-	seedDictTypeForTenantBoundaryTest(t, entClient, 1, "global", "global", &globalTenant)
+	seedDictCategoryForTenantBoundaryTest(t, entClient, 1, "global", "global", &globalTenant)
 	ownTenant := uint32(101)
-	seedDictTypeForTenantBoundaryTest(t, entClient, 2, "own", "own", &ownTenant)
+	seedDictCategoryForTenantBoundaryTest(t, entClient, 2, "own", "own", &ownTenant)
 	otherTenant := uint32(202)
-	seedDictTypeForTenantBoundaryTest(t, entClient, 3, "other", "other", &otherTenant)
+	seedDictCategoryForTenantBoundaryTest(t, entClient, 3, "other", "other", &otherTenant)
 
 	resp, err := repo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
-		t.Fatalf("list dict types failed: %v", err)
+		t.Fatalf("list dict categories failed: %v", err)
 	}
 	if len(resp.GetItems()) != 2 {
-		t.Fatalf("expected 2 visible dict types, got %d", len(resp.GetItems()))
+		t.Fatalf("expected 2 visible dict categories, got %d", len(resp.GetItems()))
 	}
-	if _, err := repo.Get(ctx, &dictv1.GetDictTypeRequest{QueryBy: &dictv1.GetDictTypeRequest_Id{Id: 3}}); !dictv1.IsForbidden(err) {
-		t.Fatalf("expected forbidden when reading other tenant dict type, got %v", err)
+	if _, err := repo.Get(ctx, &dictv1.GetDictCategoryRequest{QueryBy: &dictv1.GetDictCategoryRequest_Id{Id: 3}}); !dictv1.IsForbidden(err) {
+		t.Fatalf("expected forbidden when reading other tenant dict category, got %v", err)
 	}
 }
 
-func TestDictTypeRepoTenantViewerCannotMutateGlobalOrOtherTenant(t *testing.T) {
-	entClient, _ := newTenantBoundaryEntClientForTest(t, "tenant-boundary-dict-type-mutate")
-	repo := newDictTypeRepoForTenantBoundaryTest(entClient)
+func TestDictCategoryRepoTenantViewerCannotMutateGlobalOrOtherTenant(t *testing.T) {
+	entClient, _ := newTenantBoundaryEntClientForTest(t, "tenant-boundary-dict-category-mutate")
+	repo := newDictCategoryRepoForTenantBoundaryTest(entClient)
 	ctx := tenantBoundaryTenantCtx(101)
 
 	globalTenant := uint32(0)
-	seedDictTypeForTenantBoundaryTest(t, entClient, 1, "global", "global", &globalTenant)
+	seedDictCategoryForTenantBoundaryTest(t, entClient, 1, "global", "global", &globalTenant)
 
-	typeName := "global-updated"
-	if _, err := repo.Update(ctx, &dictv1.UpdateDictTypeRequest{
+	categoryName := "global-updated"
+	if _, err := repo.Update(ctx, &dictv1.UpdateDictCategoryRequest{
 		Id:   1,
-		Data: &dictv1.DictType{TypeName: &typeName},
+		Data: &dictv1.DictCategory{CategoryName: &categoryName},
 	}); !dictv1.IsForbidden(err) {
 		t.Fatalf("expected forbidden update, got %v", err)
 	}
-	if _, err := repo.Delete(ctx, &dictv1.DeleteDictTypeRequest{Ids: []uint32{1}}); !dictv1.IsForbidden(err) {
+	if _, err := repo.Delete(ctx, &dictv1.DeleteDictCategoryRequest{Ids: []uint32{1}}); !dictv1.IsForbidden(err) {
 		t.Fatalf("expected forbidden delete, got %v", err)
 	}
 
 	otherTenant := uint32(202)
-	createdCode := "tenant-created"
+	createdKey := "tenant-created"
 	createdName := "tenant-created"
-	if _, err := repo.Create(ctx, &dictv1.CreateDictTypeRequest{
-		Data: &dictv1.DictType{TypeCode: &createdCode, TypeName: &createdName, TenantId: &otherTenant},
+	level := dictv1.DictCategory_CHILD
+	scene := dictv1.DictCategory_OTHER
+	if _, err := repo.Create(ctx, &dictv1.CreateDictCategoryRequest{
+		Data: &dictv1.DictCategory{
+			CategoryKey:   &createdKey,
+			CategoryName:  &createdName,
+			CategoryLevel: &level,
+			Scene:         &scene,
+			TenantId:      &otherTenant,
+		},
 	}); !dictv1.IsForbidden(err) {
 		t.Fatalf("expected tenant create with other tenant id forbidden, got %v", err)
 	}
 }
 
-func TestDictEntryRepoTenantAndTypeOwnershipMustMatch(t *testing.T) {
-	entClient, client := newTenantBoundaryEntClientForTest(t, "tenant-boundary-dict-entry")
-	repo := newDictEntryRepoForTenantBoundaryTest(entClient)
+func TestDictLabelRepoTenantAndCategoryOwnershipMustMatch(t *testing.T) {
+	entClient, client := newTenantBoundaryEntClientForTest(t, "tenant-boundary-dict-label")
+	repo := newDictLabelRepoForTenantBoundaryTest(entClient)
 	seedCtx := tenantBoundaryPlatformCtx()
 	ctx := tenantBoundaryTenantCtx(101)
 
 	globalTenant := uint32(0)
-	seedDictTypeForTenantBoundaryTest(t, entClient, 1, "global", "global", &globalTenant)
+	seedDictCategoryForTenantBoundaryTest(t, entClient, 1, "global", "global", &globalTenant)
 	ownTenant := uint32(101)
-	seedDictTypeForTenantBoundaryTest(t, entClient, 2, "own", "own", &ownTenant)
+	seedDictCategoryForTenantBoundaryTest(t, entClient, 2, "own", "own", &ownTenant)
 	otherTenant := uint32(202)
-	seedDictTypeForTenantBoundaryTest(t, entClient, 3, "other", "other", &otherTenant)
+	seedDictCategoryForTenantBoundaryTest(t, entClient, 3, "other", "other", &otherTenant)
 
-	ownTypeID := uint32(2)
-	ownEntry, err := client.DictEntry.Create().SetEntryValue("own-entry").SetDictTypeID(ownTypeID).SetTenantID(ownTenant).Save(seedCtx)
+	ownCategoryID := uint32(2)
+	ownLabel, err := client.DictLabel.Create().
+		SetCategoryID(ownCategoryID).
+		SetLabelKey("own-entry").
+		SetLabelKind(dictlabel.LabelKindText).
+		SetStatus(dictlabel.StatusOn).
+		SetTenantID(ownTenant).
+		Save(seedCtx)
 	if err != nil {
-		t.Fatalf("seed own dict entry failed: %v", err)
+		t.Fatalf("seed own dict label failed: %v", err)
 	}
 
-	globalEntryValue := "global-entry"
-	globalTypeID := uint32(1)
-	if _, err := repo.Create(ctx, &dictv1.CreateDictEntryRequest{
-		Data: &dictv1.DictEntry{
-			TypeId:     &globalTypeID,
-			EntryValue: &globalEntryValue,
+	globalLabelKey := "global-entry"
+	globalCategoryID := uint32(1)
+	labelKind := dictv1.DictLabel_TEXT
+	labelStatus := dictv1.DictLabel_ON
+	if _, err := repo.Create(ctx, &dictv1.CreateDictLabelRequest{
+		Data: &dictv1.DictLabel{
+			CategoryId: &globalCategoryID,
+			LabelKey:   &globalLabelKey,
+			LabelKind:  &labelKind,
+			Status:     &labelStatus,
 		},
 	}); !dictv1.IsForbidden(err) {
-		t.Fatalf("expected tenant viewer create on global dict type forbidden, got %v", err)
+		t.Fatalf("expected tenant viewer create on global dict category forbidden, got %v", err)
 	}
 
-	otherTypeID := uint32(3)
-	if _, err := repo.Create(ctx, &dictv1.CreateDictEntryRequest{
-		Data: &dictv1.DictEntry{
-			TypeId:     &otherTypeID,
-			EntryValue: &globalEntryValue,
+	otherCategoryID := uint32(3)
+	if _, err := repo.Create(ctx, &dictv1.CreateDictLabelRequest{
+		Data: &dictv1.DictLabel{
+			CategoryId: &otherCategoryID,
+			LabelKey:   &globalLabelKey,
+			LabelKind:  &labelKind,
+			Status:     &labelStatus,
 		},
 	}); !dictv1.IsForbidden(err) {
-		t.Fatalf("expected tenant viewer create on other tenant dict type forbidden, got %v", err)
+		t.Fatalf("expected tenant viewer create on other tenant dict category forbidden, got %v", err)
 	}
 
 	resp, err := repo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
-		t.Fatalf("list dict entries failed: %v", err)
+		t.Fatalf("list dict labels failed: %v", err)
 	}
 	if len(resp.GetItems()) != 1 {
-		t.Fatalf("expected 1 visible dict entry, got %d", len(resp.GetItems()))
+		t.Fatalf("expected 1 visible dict label, got %d", len(resp.GetItems()))
 	}
 
-	otherEntry, err := client.DictEntry.Create().SetEntryValue("other-entry").SetDictTypeID(otherTypeID).SetTenantID(otherTenant).Save(seedCtx)
+	otherLabel, err := client.DictLabel.Create().
+		SetCategoryID(otherCategoryID).
+		SetLabelKey("other-entry").
+		SetLabelKind(dictlabel.LabelKindText).
+		SetStatus(dictlabel.StatusOn).
+		SetTenantID(otherTenant).
+		Save(seedCtx)
 	if err != nil {
-		t.Fatalf("create other tenant dict entry failed: %v", err)
+		t.Fatalf("create other tenant dict label failed: %v", err)
 	}
-	if _, err := client.DictEntry.Create().SetEntryValue("global-existing").SetDictTypeID(globalTypeID).SetTenantID(0).Save(seedCtx); err != nil {
-		t.Fatalf("create global dict entry failed: %v", err)
+	if _, err := client.DictLabel.Create().
+		SetCategoryID(globalCategoryID).
+		SetLabelKey("global-existing").
+		SetLabelKind(dictlabel.LabelKindText).
+		SetStatus(dictlabel.StatusOn).
+		SetTenantID(0).
+		Save(seedCtx); err != nil {
+		t.Fatalf("create global dict label failed: %v", err)
 	}
-	if _, err := repo.Delete(ctx, &dictv1.DeleteDictEntryRequest{Ids: []uint32{otherEntry.ID}}); !dictv1.IsForbidden(err) {
-		t.Fatalf("expected forbidden delete for other tenant dict entry, got %v", err)
+	if _, err := repo.Delete(ctx, &dictv1.DeleteDictLabelRequest{Ids: []uint32{otherLabel.ID}}); !dictv1.IsForbidden(err) {
+		t.Fatalf("expected forbidden delete for other tenant dict label, got %v", err)
 	}
 
-	updatedValue := "own-entry-updated"
-	if _, err := repo.Update(ctx, &dictv1.UpdateDictEntryRequest{
-		Id: ownEntry.ID,
-		Data: &dictv1.DictEntry{
-			TypeId:     &ownTypeID,
-			EntryValue: &updatedValue,
+	updatedLabelCode := "own-entry-updated"
+	if _, err := repo.Update(ctx, &dictv1.UpdateDictLabelRequest{
+		Id: ownLabel.ID,
+		Data: &dictv1.DictLabel{
+			CategoryId: &ownCategoryID,
+			LabelCode:  &updatedLabelCode,
+			LabelKind:  &labelKind,
+			Status:     &labelStatus,
 		},
-		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"entry_value"}},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"label_code"}},
 	}); err != nil {
-		t.Fatalf("update own dict entry failed: %v", err)
+		t.Fatalf("update own dict label failed: %v", err)
 	}
 }
 

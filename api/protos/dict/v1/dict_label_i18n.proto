@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package dict.service.v1;
+
+import "gnostic/openapi/v3/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "pagination/v1/pagination.proto";
+
+service DictLabelI18nService {
+  rpc List(pagination.PagingRequest) returns (ListDictLabelI18nResponse) {}
+  rpc Count(pagination.PagingRequest) returns (CountDictLabelI18nResponse) {}
+  rpc Get(GetDictLabelI18nRequest) returns (DictLabelI18n) {}
+  rpc Create(CreateDictLabelI18nRequest) returns (google.protobuf.Empty) {}
+  rpc Update(UpdateDictLabelI18nRequest) returns (google.protobuf.Empty) {}
+  rpc Delete(DeleteDictLabelI18nRequest) returns (google.protobuf.Empty) {}
+}
+
+message DictLabelI18n {
+  optional uint32 id = 1 [json_name = "id"];
+  optional uint32 label_id = 2 [json_name = "labelId"];
+  optional string label_key = 3 [json_name = "labelKey"];
+  optional string language_code = 4 [json_name = "languageCode"];
+  optional string language_name = 5 [json_name = "languageName"];
+  optional string text_value = 6 [json_name = "textValue"];
+  optional string short_text = 7 [json_name = "shortText"];
+  optional string description = 8 [json_name = "description"];
+  optional uint32 tenant_id = 9 [json_name = "tenantId"];
+
+  optional uint32 created_by = 100 [json_name = "createdBy"];
+  optional uint32 updated_by = 101 [json_name = "updatedBy"];
+  optional uint32 deleted_by = 102 [json_name = "deletedBy"];
+  optional google.protobuf.Timestamp created_at = 200 [json_name = "createdAt"];
+  optional google.protobuf.Timestamp updated_at = 201 [json_name = "updatedAt"];
+  optional google.protobuf.Timestamp deleted_at = 202 [json_name = "deletedAt"];
+}
+
+message ListDictLabelI18nResponse {
+  repeated DictLabelI18n items = 1;
+  uint64 total = 2;
+}
+
+message GetDictLabelI18nRequest {
+  oneof query_by {
+    uint32 id = 1;
+  }
+
+  optional google.protobuf.FieldMask view_mask = 100 [json_name = "viewMask"];
+}
+
+message CreateDictLabelI18nRequest {
+  DictLabelI18n data = 1;
+}
+
+message UpdateDictLabelI18nRequest {
+  uint32 id = 1;
+  DictLabelI18n data = 2;
+  google.protobuf.FieldMask update_mask = 3 [json_name = "updateMask"];
+  optional bool allow_missing = 4 [json_name = "allowMissing"];
+}
+
+message DeleteDictLabelI18nRequest {
+  repeated uint32 ids = 1;
+}
+
+message CountDictLabelI18nResponse {
+  uint64 count = 1;
+}

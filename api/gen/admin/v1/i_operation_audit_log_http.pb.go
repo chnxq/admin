@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_operation_audit_log.proto
-// generated at        2026-05-25 16:34:22
+// generated at        2026-05-30 19:55:21
 
 package admin
 
@@ -34,11 +34,11 @@ type OperationAuditLogServiceHTTPServer interface {
 
 func RegisterOperationAuditLogServiceHTTPServer(s *http.Server, srv OperationAuditLogServiceHTTPServer) {
 	r := s.Route("/")
-	r.GET("/admin/v1/operation-audit-logs", _OperationAuditLogService_List11_HTTP_Handler(srv))
-	r.GET("/admin/v1/operation-audit-logs/{id}", _OperationAuditLogService_Get11_HTTP_Handler(srv))
+	r.GET("/admin/v1/operation-audit-logs", _OperationAuditLogService_List12_HTTP_Handler(srv))
+	r.GET("/admin/v1/operation-audit-logs/{id}", _OperationAuditLogService_Get14_HTTP_Handler(srv))
 }
 
-func _OperationAuditLogService_List11_HTTP_Handler(srv OperationAuditLogServiceHTTPServer) func(ctx http.Context) error {
+func _OperationAuditLogService_List12_HTTP_Handler(srv OperationAuditLogServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v1.PagingRequest
 		if err := ctx.BindQuery(&in); err != nil {
@@ -57,7 +57,7 @@ func _OperationAuditLogService_List11_HTTP_Handler(srv OperationAuditLogServiceH
 	}
 }
 
-func _OperationAuditLogService_Get11_HTTP_Handler(srv OperationAuditLogServiceHTTPServer) func(ctx http.Context) error {
+func _OperationAuditLogService_Get14_HTTP_Handler(srv OperationAuditLogServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.GetOperationAuditLogRequest
 		if err := ctx.BindQuery(&in); err != nil {

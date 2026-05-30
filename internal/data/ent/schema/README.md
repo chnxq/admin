@@ -1,6 +1,6 @@
 # Ent Schema Overview
 
-本文档梳理 `internal/data/ent/schema` 下的实体模型，帮助快速理解当前后台数据层的领域划分、核心关系与多租户设计。
+本文档梳理 `examples/admin/schema` 下的实体模型，帮助快速理解当前后台数据层的领域划分、核心关系与多租户设计。
 
 ## 总览
 
@@ -10,7 +10,7 @@
 - 组织与岗位：`OrgUnit`、`Position`、`Membership`
 - 角色与权限：`Role`、`Permission`、`PermissionGroup`、`PermissionPolicy`
 - 资源与路由：`Api`、`Menu`
-- 字典与国际化：`DictType`、`DictEntry`、`DictEntryI18n`、`Language`
+- 字典与国际化：`DictCategory`、`DictCategoryI18n`、`DictLabel`、`DictLabelI18n`、`Language`
 - 站内消息：`InternalMessage`、`InternalMessageCategory`、`InternalMessageRecipient`
 - 审计与运维：登录、接口、数据访问、权限、策略评估、任务、文件等
 
@@ -382,10 +382,11 @@ erDiagram
 
 ### 5. 字典与国际化
 
-- `DictType` 是字典类型，如状态、枚举、业务配置项分类。
-- `DictEntry` 是具体字典项，显式通过 Ent edge 归属到 `DictType`。
-- `DictEntryI18n` 是字典项的多语言显示值，也显式通过 Ent edge 归属到 `DictEntry`。
-- `Language` 当前是独立语言主数据，`DictEntryI18n` 通过 `language_code` 与其形成软关联，而非强外键。
+- `DictCategory` 是新的字典分类根实体，承载“主类 + 子类”两级结构，适用于页面、菜单、提示、设备及其它业务分类。
+- `DictCategoryI18n` 为分类提供多语言展示名称，便于分类树本身参与国际化管理。
+- `DictLabel` 是分类下的实体标签，承载 `label_key`、`label_code`、`label_kind`、默认文本和扩展载荷，适合作为页面文案、菜单文案、提示语和业务标签的统一主表。
+- `DictLabelI18n` 是标签的多语言值明细，通过 Ent edge 显式归属到 `DictLabel`。
+- `Language` 当前仍是独立语言主数据；`DictCategoryI18n` 与 `DictLabelI18n` 通过 `language_code` 与其形成软关联，而非强外键。
 
 ### 6. 站内消息
 
@@ -407,7 +408,7 @@ erDiagram
 - 树结构实体有 3 个：`OrgUnit`、`Menu`、`PermissionGroup`。
 - 身份建模分两层：既有面向最终用户的直接关联表，也有面向复杂授权场景的 `Membership` 聚合。
 - 权限建模分三层：`Role -> Permission -> Resource(Api/Menu)`，并可叠加 `PermissionPolicy` 做动态授权。
-- 国际化目前采用“语言码软关联”，迁移成本低，但数据库层不保证 `DictEntryI18n.language_code` 一定存在于 `Language`。
+- 国际化目前采用“语言码软关联”，迁移成本低，但数据库层不保证 `DictCategoryI18n.language_code` 或 `DictLabelI18n.language_code` 一定存在于 `Language`。
 
 ## 建议的阅读顺序
 
@@ -417,5 +418,5 @@ erDiagram
 2. `org_unit.go`、`position.go`、`membership.go`
 3. `role.go`、`permission.go`、`role_permission.go`、`permission_policy.go`
 4. `api.go`、`menu.go`、`permission_api.go`、`permission_menu.go`
-5. `dict_type.go`、`dict_entry.go`、`dict_entry_i18n.go`
+5. `dict_category.go`、`dict_category_i18n.go`、`dict_label.go`、`dict_label_i18n.go`
 6. 消息、文件、任务、审计相关 schema

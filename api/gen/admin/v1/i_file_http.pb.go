@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_file.proto
-// generated at        2026-05-25 16:34:22
+// generated at        2026-05-30 19:55:21
 
 package admin
 
@@ -44,14 +44,14 @@ type FileServiceHTTPServer interface {
 
 func RegisterFileServiceHTTPServer(s *http.Server, srv FileServiceHTTPServer) {
 	r := s.Route("/")
-	r.GET("/admin/v1/files", _FileService_List5_HTTP_Handler(srv))
-	r.GET("/admin/v1/files/{id}", _FileService_Get5_HTTP_Handler(srv))
-	r.POST("/admin/v1/files", _FileService_Create3_HTTP_Handler(srv))
-	r.PUT("/admin/v1/files/{id}", _FileService_Update3_HTTP_Handler(srv))
-	r.DELETE("/admin/v1/files/{id}", _FileService_Delete3_HTTP_Handler(srv))
+	r.GET("/admin/v1/files", _FileService_List6_HTTP_Handler(srv))
+	r.GET("/admin/v1/files/{id}", _FileService_Get8_HTTP_Handler(srv))
+	r.POST("/admin/v1/files", _FileService_Create4_HTTP_Handler(srv))
+	r.PUT("/admin/v1/files/{id}", _FileService_Update4_HTTP_Handler(srv))
+	r.DELETE("/admin/v1/files/{id}", _FileService_Delete4_HTTP_Handler(srv))
 }
 
-func _FileService_List5_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Context) error {
+func _FileService_List6_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v1.PagingRequest
 		if err := ctx.BindQuery(&in); err != nil {
@@ -70,7 +70,7 @@ func _FileService_List5_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Co
 	}
 }
 
-func _FileService_Get5_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Context) error {
+func _FileService_Get8_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.GetFileRequest
 		if err := ctx.BindQuery(&in); err != nil {
@@ -92,7 +92,7 @@ func _FileService_Get5_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Con
 	}
 }
 
-func _FileService_Create3_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Context) error {
+func _FileService_Create4_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.CreateFileRequest
 		if err := ctx.Bind(&in); err != nil {
@@ -114,7 +114,7 @@ func _FileService_Create3_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.
 	}
 }
 
-func _FileService_Update3_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Context) error {
+func _FileService_Update4_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.UpdateFileRequest
 		if err := ctx.Bind(&in); err != nil {
@@ -139,7 +139,7 @@ func _FileService_Update3_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.
 	}
 }
 
-func _FileService_Delete3_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Context) error {
+func _FileService_Delete4_HTTP_Handler(srv FileServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.DeleteFileRequest
 		if err := ctx.BindQuery(&in); err != nil {

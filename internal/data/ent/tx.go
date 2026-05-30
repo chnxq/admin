@@ -18,14 +18,14 @@ type Tx struct {
 	ApiAuditLog *ApiAuditLogClient
 	// DataAccessAuditLog is the client for interacting with the DataAccessAuditLog builders.
 	DataAccessAuditLog *DataAccessAuditLogClient
-	// DictEntry is the client for interacting with the DictEntry builders.
-	DictEntry *DictEntryClient
-	// DictEntryI18n is the client for interacting with the DictEntryI18n builders.
-	DictEntryI18n *DictEntryI18nClient
-	// DictType is the client for interacting with the DictType builders.
-	DictType *DictTypeClient
-	// DictTypeI18n is the client for interacting with the DictTypeI18n builders.
-	DictTypeI18n *DictTypeI18nClient
+	// DictCategory is the client for interacting with the DictCategory builders.
+	DictCategory *DictCategoryClient
+	// DictCategoryI18n is the client for interacting with the DictCategoryI18n builders.
+	DictCategoryI18n *DictCategoryI18nClient
+	// DictLabel is the client for interacting with the DictLabel builders.
+	DictLabel *DictLabelClient
+	// DictLabelI18n is the client for interacting with the DictLabelI18n builders.
+	DictLabelI18n *DictLabelI18nClient
 	// File is the client for interacting with the File builders.
 	File *FileClient
 	// InternalMessage is the client for interacting with the InternalMessage builders.
@@ -224,10 +224,10 @@ func (tx *Tx) init() {
 	tx.Api = NewAPIClient(tx.config)
 	tx.ApiAuditLog = NewApiAuditLogClient(tx.config)
 	tx.DataAccessAuditLog = NewDataAccessAuditLogClient(tx.config)
-	tx.DictEntry = NewDictEntryClient(tx.config)
-	tx.DictEntryI18n = NewDictEntryI18nClient(tx.config)
-	tx.DictType = NewDictTypeClient(tx.config)
-	tx.DictTypeI18n = NewDictTypeI18nClient(tx.config)
+	tx.DictCategory = NewDictCategoryClient(tx.config)
+	tx.DictCategoryI18n = NewDictCategoryI18nClient(tx.config)
+	tx.DictLabel = NewDictLabelClient(tx.config)
+	tx.DictLabelI18n = NewDictLabelI18nClient(tx.config)
 	tx.File = NewFileClient(tx.config)
 	tx.InternalMessage = NewInternalMessageClient(tx.config)
 	tx.InternalMessageCategory = NewInternalMessageCategoryClient(tx.config)

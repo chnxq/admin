@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package dict.service.v1;
+
+import "gnostic/openapi/v3/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "pagination/v1/pagination.proto";
+import "dict/v1/dict_label_i18n.proto";
+
+service DictLabelService {
+  rpc List(pagination.PagingRequest) returns (ListDictLabelResponse) {}
+  rpc Count(pagination.PagingRequest) returns (CountDictLabelResponse) {}
+  rpc Get(GetDictLabelRequest) returns (DictLabel) {}
+  rpc Create(CreateDictLabelRequest) returns (google.protobuf.Empty) {}
+  rpc Update(UpdateDictLabelRequest) returns (google.protobuf.Empty) {}
+  rpc Delete(DeleteDictLabelRequest) returns (google.protobuf.Empty) {}
+}
+
+message DictLabel {
+  enum LabelKind {
+    LABEL_KIND_UNSPECIFIED = 0;
+    TEXT = 1;
+    MENU = 2;
+    MESSAGE = 3;
+    ENUM = 4;
+    HINT = 5;
+    BADGE = 6;
+  }
+
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    OFF = 1;
+    ON = 2;
+  }
+
+  optional uint32 id = 1 [json_name = "id"];
+  optional uint32 category_id = 2 [json_name = "categoryId"];
+  optional string category_key = 3 [json_name = "categoryKey"];
+  optional string label_key = 4 [json_name = "labelKey"];
+  optional string label_code = 5 [json_name = "labelCode"];
+  optional LabelKind label_kind = 6 [json_name = "labelKind"];
+  optional string default_text = 7 [json_name = "defaultText"];
+  optional string payload_json = 8 [json_name = "payloadJson"];
+  optional bool is_builtin = 9 [json_name = "isBuiltin"];
+  optional bool is_enabled = 10 [json_name = "isEnabled"];
+  optional Status status = 11 [json_name = "status"];
+  optional uint32 sort_order = 12 [json_name = "sortOrder"];
+  optional uint32 tenant_id = 13 [json_name = "tenantId"];
+  optional string tenant_name = 14 [json_name = "tenantName"];
+  optional string remark = 15 [json_name = "remark"];
+  optional string description = 16 [json_name = "description"];
+  repeated DictLabelI18n items_i18n = 17 [json_name = "itemsI18n"];
+  optional DictLabelI18n current_i18n = 18 [json_name = "currentI18n"];
+
+  optional uint32 created_by = 100 [json_name = "createdBy"];
+  optional uint32 updated_by = 101 [json_name = "updatedBy"];
+  optional uint32 deleted_by = 102 [json_name = "deletedBy"];
+  optional google.protobuf.Timestamp created_at = 200 [json_name = "createdAt"];
+  optional google.protobuf.Timestamp updated_at = 201 [json_name = "updatedAt"];
+  optional google.protobuf.Timestamp deleted_at = 202 [json_name = "deletedAt"];
+}
+
+message ListDictLabelResponse {
+  repeated DictLabel items = 1;
+  uint64 total = 2;
+}
+
+message GetDictLabelRequest {
+  oneof query_by {
+    uint32 id = 1;
+    string label_key = 2 [json_name = "labelKey"];
+  }
+
+  optional google.protobuf.FieldMask view_mask = 100 [json_name = "viewMask"];
+}
+
+message CreateDictLabelRequest {
+  DictLabel data = 1;
+}
+
+message UpdateDictLabelRequest {
+  uint32 id = 1;
+  DictLabel data = 2;
+  google.protobuf.FieldMask update_mask = 3 [json_name = "updateMask"];
+  optional bool allow_missing = 4 [json_name = "allowMissing"];
+}
+
+message DeleteDictLabelRequest {
+  repeated uint32 ids = 1;
+}
+
+message CountDictLabelResponse {
+  uint64 count = 1;
+}

@@ -225,7 +225,7 @@
 - permission
 - menu
 - api
-- dict_type / dict_entry
+- dict_category / dict_label / dict_label_i18n
 - internal_message
 - logs
 
@@ -262,7 +262,7 @@
 - `position_repo`
 - `role_repo`
 - `permission_repo`
-- `dict_*_repo`
+- `dict_category_repo` / `dict_label_repo` / `dict_label_i18n_repo`
 - `internal_message_*_repo`
 
 原则：
@@ -289,7 +289,7 @@
 
 - 用户绑定的组织、岗位、角色必须与用户处于同一租户
 - 权限绑定的菜单/API 如属于全局资源，应有明确允许规则
-- 字典条目所属租户必须与字典类型一致
+- 字典标签及语言值所属租户必须与所属分类一致
 
 5. 补单测
 
@@ -565,4 +565,3 @@
 - 明确它们到底是全局、租户还是混合资源
 
 这四步完成后，系统才算真正开始从“支持租户字段”进入“支持租户业务”。
-
