@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package admin.service.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "pagination/v1/pagination.proto";
+import "dict/v1/dict_label_i18n.proto";
+
+service DictLabelI18nService {
+  rpc List(pagination.PagingRequest) returns (dict.service.v1.ListDictLabelI18nResponse) {
+    option (google.api.http) = { get: "/admin/v1/dict/label-i18n" };
+  }
+
+  rpc Get(dict.service.v1.GetDictLabelI18nRequest) returns (dict.service.v1.DictLabelI18n) {
+    option (google.api.http) = { get: "/admin/v1/dict/label-i18n/{id}" };
+  }
+
+  rpc Create(dict.service.v1.CreateDictLabelI18nRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/admin/v1/dict/label-i18n"
+      body: "*"
+    };
+  }
+
+  rpc Update(dict.service.v1.UpdateDictLabelI18nRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      put: "/admin/v1/dict/label-i18n/{id}"
+      body: "*"
+    };
+  }
+
+  rpc Delete(dict.service.v1.DeleteDictLabelI18nRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { delete: "/admin/v1/dict/label-i18n" };
+  }
+}

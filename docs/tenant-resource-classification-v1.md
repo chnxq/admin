@@ -61,8 +61,8 @@
 | `permission` | `HybridScoped` | 权限点可能绑定平台全局菜单/API，也可能承载租户内授权语义 |
 | `menu` | `HybridScoped` | 菜单结构更像平台定义，但租户可见范围和绑定关系是租户化的 |
 | `api` | `GlobalScoped` | API 资源本体来自系统后端定义，应由平台统一维护 |
-| `dict_type` | `HybridScoped` | 存在全局字典模板与租户业务字典两种可能 |
-| `dict_entry` | `HybridScoped` | 同上，应跟随字典类型归属 |
+| `dict_category` | `HybridScoped` | 存在平台级分类模板与租户级业务分类两种可能 |
+| `dict_label` / `dict_label_i18n` | `HybridScoped` | 标签及其多语言值需跟随所属分类归属，且要同时支持平台模板与租户业务扩展 |
 | `internal_message` | `TenantScoped` | 站内消息主体与接收关系应默认属于某个租户 |
 | `login_audit_log` | `GlobalScoped` | 登录是平台认证入口，日志应归平台域，但要记录租户上下文 |
 | `api_audit_log` | `HybridScoped` | 日志归平台统一存储较合理，但目标操作数据通常有租户归属 |
@@ -274,7 +274,7 @@
 
 ---
 
-## 4.9 `dict_type` / `dict_entry`
+## 4.9 `dict_category` / `dict_label` / `dict_label_i18n`
 
 ### 分类
 
@@ -282,21 +282,21 @@
 
 ### 当前判断
 
-字典存在两种现实场景：
+字典新模型存在两种现实场景：
 
-1. 平台全局基础字典
-2. 租户自定义业务字典
+1. 平台全局分类模板、标签模板与多语言值
+2. 租户自定义业务分类、业务标签与多语言值
 
 ### 规则建议
 
-- 字典类型决定归属
-- 字典项必须跟随字典类型归属
-- 不允许字典类型和字典项跨租户混挂
+- 分类决定归属
+- 标签与语言值必须跟随所属分类和标签归属
+- 不允许分类、标签、语言值跨租户混挂
 
 ### 后续动作
 
-- 优先明确“哪些字典是全局模板”
-- 再决定页面上如何展示全局/租户字典
+- 优先明确“哪些分类/标签是平台模板”
+- 再决定页面上如何展示平台模板与租户业务字典
 
 ---
 
@@ -358,7 +358,7 @@
 
 1. `tenant`、`api` 视作全局资源
 2. `user`、`org_unit`、`position`、`internal_message` 视作租户资源
-3. `role`、`permission`、`menu`、`dict_*` 视作混合资源
+3. `role`、`permission`、`menu`、`dict_category`、`dict_label`、`dict_label_i18n` 视作混合资源
 4. 混合资源在未明确前，不做激进跨租户自动重写，只先补可见性和数据边界检查
 
 ---
@@ -371,4 +371,3 @@
 2. 在 `user/org_unit/position` repo 中补“租户态自动过滤”
 3. 在 `admin-ui` 的用户/组织/岗位页补“租户列 + 租户筛选”
 4. 单独写一份 `role / permission / menu / dict` 的混合资源专项设计文档
-

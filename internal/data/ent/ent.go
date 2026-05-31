@@ -6,10 +6,10 @@ import (
 	"admin/internal/data/ent/api"
 	"admin/internal/data/ent/apiauditlog"
 	"admin/internal/data/ent/dataaccessauditlog"
-	"admin/internal/data/ent/dictentry"
-	"admin/internal/data/ent/dictentryi18n"
-	"admin/internal/data/ent/dicttype"
-	"admin/internal/data/ent/dicttypei18n"
+	"admin/internal/data/ent/dictcategory"
+	"admin/internal/data/ent/dictcategoryi18n"
+	"admin/internal/data/ent/dictlabel"
+	"admin/internal/data/ent/dictlabeli18n"
 	"admin/internal/data/ent/file"
 	"admin/internal/data/ent/internalmessage"
 	"admin/internal/data/ent/internalmessagecategory"
@@ -114,10 +114,10 @@ func checkColumn(t, c string) error {
 			api.Table:                      api.ValidColumn,
 			apiauditlog.Table:              apiauditlog.ValidColumn,
 			dataaccessauditlog.Table:       dataaccessauditlog.ValidColumn,
-			dictentry.Table:                dictentry.ValidColumn,
-			dictentryi18n.Table:            dictentryi18n.ValidColumn,
-			dicttype.Table:                 dicttype.ValidColumn,
-			dicttypei18n.Table:             dicttypei18n.ValidColumn,
+			dictcategory.Table:             dictcategory.ValidColumn,
+			dictcategoryi18n.Table:         dictcategoryi18n.ValidColumn,
+			dictlabel.Table:                dictlabel.ValidColumn,
+			dictlabeli18n.Table:            dictlabeli18n.ValidColumn,
 			file.Table:                     file.ValidColumn,
 			internalmessage.Table:          internalmessage.ValidColumn,
 			internalmessagecategory.Table:  internalmessagecategory.ValidColumn,

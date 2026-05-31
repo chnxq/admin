@@ -54,4 +54,4 @@ plugins:
 #      - paths=source_relative # 使用相对路径
 
   - local: protoc-gen-typescript-http
-    out: ../.generated-ui/apps/web-antd/src/api/generated
+    out: ../../admin-ui/apps/web-antd/src/api/generated

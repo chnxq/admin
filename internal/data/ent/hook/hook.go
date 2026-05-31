@@ -44,52 +44,52 @@ func (f DataAccessAuditLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DataAccessAuditLogMutation", m)
 }
 
-// The DictEntryFunc type is an adapter to allow the use of ordinary
-// function as DictEntry mutator.
-type DictEntryFunc func(context.Context, *ent.DictEntryMutation) (ent.Value, error)
+// The DictCategoryFunc type is an adapter to allow the use of ordinary
+// function as DictCategory mutator.
+type DictCategoryFunc func(context.Context, *ent.DictCategoryMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f DictEntryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.DictEntryMutation); ok {
+func (f DictCategoryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DictCategoryMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictEntryMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictCategoryMutation", m)
 }
 
-// The DictEntryI18nFunc type is an adapter to allow the use of ordinary
-// function as DictEntryI18n mutator.
-type DictEntryI18nFunc func(context.Context, *ent.DictEntryI18nMutation) (ent.Value, error)
+// The DictCategoryI18nFunc type is an adapter to allow the use of ordinary
+// function as DictCategoryI18n mutator.
+type DictCategoryI18nFunc func(context.Context, *ent.DictCategoryI18nMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f DictEntryI18nFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.DictEntryI18nMutation); ok {
+func (f DictCategoryI18nFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DictCategoryI18nMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictEntryI18nMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictCategoryI18nMutation", m)
 }
 
-// The DictTypeFunc type is an adapter to allow the use of ordinary
-// function as DictType mutator.
-type DictTypeFunc func(context.Context, *ent.DictTypeMutation) (ent.Value, error)
+// The DictLabelFunc type is an adapter to allow the use of ordinary
+// function as DictLabel mutator.
+type DictLabelFunc func(context.Context, *ent.DictLabelMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f DictTypeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.DictTypeMutation); ok {
+func (f DictLabelFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DictLabelMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictTypeMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictLabelMutation", m)
 }
 
-// The DictTypeI18nFunc type is an adapter to allow the use of ordinary
-// function as DictTypeI18n mutator.
-type DictTypeI18nFunc func(context.Context, *ent.DictTypeI18nMutation) (ent.Value, error)
+// The DictLabelI18nFunc type is an adapter to allow the use of ordinary
+// function as DictLabelI18n mutator.
+type DictLabelI18nFunc func(context.Context, *ent.DictLabelI18nMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f DictTypeI18nFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.DictTypeI18nMutation); ok {
+func (f DictLabelI18nFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DictLabelI18nMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictTypeI18nMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DictLabelI18nMutation", m)
 }
 
 // The FileFunc type is an adapter to allow the use of ordinary

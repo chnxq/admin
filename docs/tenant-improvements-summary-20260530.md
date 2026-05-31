@@ -105,7 +105,7 @@
 - `role`
 - `permission`
 - `menu`
-- `dict_type` / `dict_entry`
+- `dict_category` / `dict_label` / `dict_label_i18n`
 - 多类审计日志
 
 特点：

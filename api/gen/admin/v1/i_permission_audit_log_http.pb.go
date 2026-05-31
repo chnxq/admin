@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_permission_audit_log.proto
-// generated at        2026-05-25 16:34:22
+// generated at        2026-05-30 19:55:21
 
 package admin
 
@@ -34,11 +34,11 @@ type PermissionAuditLogServiceHTTPServer interface {
 
 func RegisterPermissionAuditLogServiceHTTPServer(s *http.Server, srv PermissionAuditLogServiceHTTPServer) {
 	r := s.Route("/")
-	r.GET("/admin/v1/permission-audit-logs", _PermissionAuditLogService_List14_HTTP_Handler(srv))
-	r.GET("/admin/v1/permission-audit-logs/{id}", _PermissionAuditLogService_Get14_HTTP_Handler(srv))
+	r.GET("/admin/v1/permission-audit-logs", _PermissionAuditLogService_List15_HTTP_Handler(srv))
+	r.GET("/admin/v1/permission-audit-logs/{id}", _PermissionAuditLogService_Get17_HTTP_Handler(srv))
 }
 
-func _PermissionAuditLogService_List14_HTTP_Handler(srv PermissionAuditLogServiceHTTPServer) func(ctx http.Context) error {
+func _PermissionAuditLogService_List15_HTTP_Handler(srv PermissionAuditLogServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v1.PagingRequest
 		if err := ctx.BindQuery(&in); err != nil {
@@ -57,7 +57,7 @@ func _PermissionAuditLogService_List14_HTTP_Handler(srv PermissionAuditLogServic
 	}
 }
 
-func _PermissionAuditLogService_Get14_HTTP_Handler(srv PermissionAuditLogServiceHTTPServer) func(ctx http.Context) error {
+func _PermissionAuditLogService_Get17_HTTP_Handler(srv PermissionAuditLogServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.GetPermissionAuditLogRequest
 		if err := ctx.BindQuery(&in); err != nil {

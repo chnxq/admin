@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_task.proto
-// generated at        2026-05-25 16:34:22
+// generated at        2026-05-30 19:55:21
 
 package admin
 
@@ -59,12 +59,12 @@ type TaskServiceHTTPServer interface {
 
 func RegisterTaskServiceHTTPServer(s *http.Server, srv TaskServiceHTTPServer) {
 	r := s.Route("/")
-	r.GET("/admin/v1/tasks", _TaskService_List19_HTTP_Handler(srv))
-	r.GET("/admin/v1/tasks/type-name/{type_name}", _TaskService_Get19_HTTP_Handler(srv))
-	r.GET("/admin/v1/tasks/{id}", _TaskService_Get20_HTTP_Handler(srv))
-	r.POST("/admin/v1/tasks", _TaskService_Create13_HTTP_Handler(srv))
-	r.PUT("/admin/v1/tasks/{id}", _TaskService_Update13_HTTP_Handler(srv))
-	r.DELETE("/admin/v1/tasks/{id}", _TaskService_Delete13_HTTP_Handler(srv))
+	r.GET("/admin/v1/tasks", _TaskService_List20_HTTP_Handler(srv))
+	r.GET("/admin/v1/tasks/type-name/{type_name}", _TaskService_Get22_HTTP_Handler(srv))
+	r.GET("/admin/v1/tasks/{id}", _TaskService_Get23_HTTP_Handler(srv))
+	r.POST("/admin/v1/tasks", _TaskService_Create14_HTTP_Handler(srv))
+	r.PUT("/admin/v1/tasks/{id}", _TaskService_Update14_HTTP_Handler(srv))
+	r.DELETE("/admin/v1/tasks/{id}", _TaskService_Delete14_HTTP_Handler(srv))
 	r.GET("/admin/v1/tasks:type-names", _TaskService_ListTaskTypeName0_HTTP_Handler(srv))
 	r.POST("/admin/v1/tasks:restart", _TaskService_RestartAllTask0_HTTP_Handler(srv))
 	r.POST("/admin/v1/tasks:start", _TaskService_StartAllTask0_HTTP_Handler(srv))
@@ -72,7 +72,7 @@ func RegisterTaskServiceHTTPServer(s *http.Server, srv TaskServiceHTTPServer) {
 	r.POST("/admin/v1/tasks:control", _TaskService_ControlTask0_HTTP_Handler(srv))
 }
 
-func _TaskService_List19_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Context) error {
+func _TaskService_List20_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v1.PagingRequest
 		if err := ctx.BindQuery(&in); err != nil {
@@ -91,7 +91,7 @@ func _TaskService_List19_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.C
 	}
 }
 
-func _TaskService_Get19_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Context) error {
+func _TaskService_Get22_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.GetTaskRequest
 		if err := ctx.BindQuery(&in); err != nil {
@@ -113,7 +113,7 @@ func _TaskService_Get19_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Co
 	}
 }
 
-func _TaskService_Get20_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Context) error {
+func _TaskService_Get23_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.GetTaskRequest
 		if err := ctx.BindQuery(&in); err != nil {
@@ -135,7 +135,7 @@ func _TaskService_Get20_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Co
 	}
 }
 
-func _TaskService_Create13_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Context) error {
+func _TaskService_Create14_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.CreateTaskRequest
 		if err := ctx.Bind(&in); err != nil {
@@ -157,7 +157,7 @@ func _TaskService_Create13_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http
 	}
 }
 
-func _TaskService_Update13_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Context) error {
+func _TaskService_Update14_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.UpdateTaskRequest
 		if err := ctx.Bind(&in); err != nil {
@@ -182,7 +182,7 @@ func _TaskService_Update13_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http
 	}
 }
 
-func _TaskService_Delete13_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Context) error {
+func _TaskService_Delete14_HTTP_Handler(srv TaskServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.DeleteTaskRequest
 		if err := ctx.BindQuery(&in); err != nil {

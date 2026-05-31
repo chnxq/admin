@@ -429,12 +429,11 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/DataAccessAuditLog'
-    /admin/v1/dict/entries:
+    /admin/v1/dict/categories:
         get:
             tags:
-                - DictEntryService
-            description: 分页查询字典条目列表
-            operationId: DictEntryService_List
+                - DictCategoryService
+            operationId: DictCategoryService_List
             parameters:
                 - name: page
                   in: query
@@ -506,17 +505,16 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/ListDictEntryResponse'
+                                $ref: '#/components/schemas/ListDictCategoryResponse'
         post:
             tags:
-                - DictEntryService
-            description: 创建字典条目
-            operationId: DictEntryService_Create
+                - DictCategoryService
+            operationId: DictCategoryService_Create
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/CreateDictEntryRequest'
+                            $ref: '#/components/schemas/CreateDictCategoryRequest'
                 required: true
             responses:
                 "200":
@@ -524,9 +522,8 @@ paths:
                     content: {}
         delete:
             tags:
-                - DictEntryService
-            description: 删除字典条目
-            operationId: DictEntryService_Delete
+                - DictCategoryService
+            operationId: DictCategoryService_Delete
             parameters:
                 - name: ids
                   in: query
@@ -539,34 +536,66 @@ paths:
                 "200":
                     description: OK
                     content: {}
-    /admin/v1/dict/entries/by-type-code:
+    /admin/v1/dict/categories/key/{categoryKey}:
         get:
             tags:
-                - DictEntryService
-            description: 查询启用的字典条目
-            operationId: DictEntryService_ListByTypeCode
+                - DictCategoryService
+            operationId: DictCategoryService_Get
             parameters:
-                - name: typeCode
+                - name: categoryKey
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: id
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: viewMask
                   in: query
                   schema:
                     type: string
-                - name: local
-                  in: query
-                  schema:
-                    type: string
+                    format: field-mask
             responses:
                 "200":
                     description: OK
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/ListDictEntryByTypeCodeResponse'
-    /admin/v1/dict/entries/{id}:
+                                $ref: '#/components/schemas/DictCategory'
+    /admin/v1/dict/categories/{id}:
+        get:
+            tags:
+                - DictCategoryService
+            operationId: DictCategoryService_Get
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: categoryKey
+                  in: query
+                  schema:
+                    type: string
+                - name: viewMask
+                  in: query
+                  schema:
+                    type: string
+                    format: field-mask
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DictCategory'
         put:
             tags:
-                - DictEntryService
-            description: 更新字典条目
-            operationId: DictEntryService_Update
+                - DictCategoryService
+            operationId: DictCategoryService_Update
             parameters:
                 - name: id
                   in: path
@@ -578,7 +607,343 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/UpdateDictEntryRequest'
+                            $ref: '#/components/schemas/UpdateDictCategoryRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/dict/label-i18n:
+        get:
+            tags:
+                - DictLabelI18NService
+            operationId: DictLabelI18NService_List
+            parameters:
+                - name: page
+                  in: query
+                  description: 当前页码（从1开始，默认1）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: pageSize
+                  in: query
+                  description: 每页条数（默认10，建议设置上限如100）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: offset
+                  in: query
+                  description: 跳过的记录数（从0开始，默认0）
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  description: 最多返回的记录数（默认10，建议设置上限如100）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: token
+                  in: query
+                  description: 上一页最后一条记录的游标（如ID/时间戳+ID，首次请求为空）
+                  schema:
+                    type: string
+                - name: noPaging
+                  in: query
+                  description: 是否不分页，如果为true，则page和pageSize参数无效。
+                  schema:
+                    type: boolean
+                - name: query
+                  in: query
+                  description: JSON字符串过滤条件，基础语法：{"field1":"val1", "field2___icontains":"val2"}，具体请参见：https://github.com/chnxq/x-crud/tree/main/pagination/filter/README.md
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: Google AIP规范字符串过滤条件
+                  schema:
+                    type: string
+                - name: filterExpr.type
+                  in: query
+                  description: 过滤表达式类型
+                  schema:
+                    enum:
+                        - EXPR_TYPE_UNSPECIFIED
+                        - AND
+                        - OR
+                    type: string
+                    format: enum
+                - name: orderBy
+                  in: query
+                  description: 排序条件
+                  schema:
+                    type: string
+                - name: fieldMask
+                  in: query
+                  description: 字段掩码，其作用为SELECT中的字段，其语法为使用逗号分隔字段名，例如：id,realName,userName。如果为空则选中所有字段，即SELECT *。
+                  schema:
+                    type: string
+                    format: field-mask
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListDictLabelI18nResponse'
+        post:
+            tags:
+                - DictLabelI18NService
+            operationId: DictLabelI18NService_Create
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateDictLabelI18nRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+        delete:
+            tags:
+                - DictLabelI18NService
+            operationId: DictLabelI18NService_Delete
+            parameters:
+                - name: ids
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: integer
+                        format: uint32
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/dict/label-i18n/{id}:
+        get:
+            tags:
+                - DictLabelI18NService
+            operationId: DictLabelI18NService_Get
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: viewMask
+                  in: query
+                  schema:
+                    type: string
+                    format: field-mask
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DictLabelI18n'
+        put:
+            tags:
+                - DictLabelI18NService
+            operationId: DictLabelI18NService_Update
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: integer
+                    format: uint32
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateDictLabelI18nRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/dict/labels:
+        get:
+            tags:
+                - DictLabelService
+            operationId: DictLabelService_List
+            parameters:
+                - name: page
+                  in: query
+                  description: 当前页码（从1开始，默认1）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: pageSize
+                  in: query
+                  description: 每页条数（默认10，建议设置上限如100）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: offset
+                  in: query
+                  description: 跳过的记录数（从0开始，默认0）
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  description: 最多返回的记录数（默认10，建议设置上限如100）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: token
+                  in: query
+                  description: 上一页最后一条记录的游标（如ID/时间戳+ID，首次请求为空）
+                  schema:
+                    type: string
+                - name: noPaging
+                  in: query
+                  description: 是否不分页，如果为true，则page和pageSize参数无效。
+                  schema:
+                    type: boolean
+                - name: query
+                  in: query
+                  description: JSON字符串过滤条件，基础语法：{"field1":"val1", "field2___icontains":"val2"}，具体请参见：https://github.com/chnxq/x-crud/tree/main/pagination/filter/README.md
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: Google AIP规范字符串过滤条件
+                  schema:
+                    type: string
+                - name: filterExpr.type
+                  in: query
+                  description: 过滤表达式类型
+                  schema:
+                    enum:
+                        - EXPR_TYPE_UNSPECIFIED
+                        - AND
+                        - OR
+                    type: string
+                    format: enum
+                - name: orderBy
+                  in: query
+                  description: 排序条件
+                  schema:
+                    type: string
+                - name: fieldMask
+                  in: query
+                  description: 字段掩码，其作用为SELECT中的字段，其语法为使用逗号分隔字段名，例如：id,realName,userName。如果为空则选中所有字段，即SELECT *。
+                  schema:
+                    type: string
+                    format: field-mask
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListDictLabelResponse'
+        post:
+            tags:
+                - DictLabelService
+            operationId: DictLabelService_Create
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateDictLabelRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+        delete:
+            tags:
+                - DictLabelService
+            operationId: DictLabelService_Delete
+            parameters:
+                - name: ids
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: integer
+                        format: uint32
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/dict/labels/key/{labelKey}:
+        get:
+            tags:
+                - DictLabelService
+            operationId: DictLabelService_Get
+            parameters:
+                - name: labelKey
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: id
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: viewMask
+                  in: query
+                  schema:
+                    type: string
+                    format: field-mask
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DictLabel'
+    /admin/v1/dict/labels/{id}:
+        get:
+            tags:
+                - DictLabelService
+            operationId: DictLabelService_Get
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: labelKey
+                  in: query
+                  schema:
+                    type: string
+                - name: viewMask
+                  in: query
+                  schema:
+                    type: string
+                    format: field-mask
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DictLabel'
+        put:
+            tags:
+                - DictLabelService
+            operationId: DictLabelService_Update
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: integer
+                    format: uint32
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateDictLabelRequest'
                 required: true
             responses:
                 "200":
@@ -754,196 +1119,6 @@ paths:
                     application/json:
                         schema:
                             $ref: '#/components/schemas/UpdateLanguageRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content: {}
-    /admin/v1/dict/types:
-        get:
-            tags:
-                - DictTypeService
-            description: 分页查询字典类型列表
-            operationId: DictTypeService_List
-            parameters:
-                - name: page
-                  in: query
-                  description: 当前页码（从1开始，默认1）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: pageSize
-                  in: query
-                  description: 每页条数（默认10，建议设置上限如100）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: offset
-                  in: query
-                  description: 跳过的记录数（从0开始，默认0）
-                  schema:
-                    type: string
-                - name: limit
-                  in: query
-                  description: 最多返回的记录数（默认10，建议设置上限如100）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: token
-                  in: query
-                  description: 上一页最后一条记录的游标（如ID/时间戳+ID，首次请求为空）
-                  schema:
-                    type: string
-                - name: noPaging
-                  in: query
-                  description: 是否不分页，如果为true，则page和pageSize参数无效。
-                  schema:
-                    type: boolean
-                - name: query
-                  in: query
-                  description: JSON字符串过滤条件，基础语法：{"field1":"val1", "field2___icontains":"val2"}，具体请参见：https://github.com/chnxq/x-crud/tree/main/pagination/filter/README.md
-                  schema:
-                    type: string
-                - name: filter
-                  in: query
-                  description: Google AIP规范字符串过滤条件
-                  schema:
-                    type: string
-                - name: filterExpr.type
-                  in: query
-                  description: 过滤表达式类型
-                  schema:
-                    enum:
-                        - EXPR_TYPE_UNSPECIFIED
-                        - AND
-                        - OR
-                    type: string
-                    format: enum
-                - name: orderBy
-                  in: query
-                  description: 排序条件
-                  schema:
-                    type: string
-                - name: fieldMask
-                  in: query
-                  description: 字段掩码，其作用为SELECT中的字段，其语法为使用逗号分隔字段名，例如：id,realName,userName。如果为空则选中所有字段，即SELECT *。
-                  schema:
-                    type: string
-                    format: field-mask
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ListDictTypeResponse'
-        post:
-            tags:
-                - DictTypeService
-            description: 创建字典类型
-            operationId: DictTypeService_Create
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/CreateDictTypeRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content: {}
-        delete:
-            tags:
-                - DictTypeService
-            description: 删除字典类型
-            operationId: DictTypeService_Delete
-            parameters:
-                - name: ids
-                  in: query
-                  schema:
-                    type: array
-                    items:
-                        type: integer
-                        format: uint32
-            responses:
-                "200":
-                    description: OK
-                    content: {}
-    /admin/v1/dict/types/code/{code}:
-        get:
-            tags:
-                - DictTypeService
-            description: 查询字典类型详情
-            operationId: DictTypeService_Get
-            parameters:
-                - name: code
-                  in: path
-                  required: true
-                  schema:
-                    type: string
-                - name: id
-                  in: query
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: viewMask
-                  in: query
-                  schema:
-                    type: string
-                    format: field-mask
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/DictType'
-    /admin/v1/dict/types/{id}:
-        get:
-            tags:
-                - DictTypeService
-            description: 查询字典类型详情
-            operationId: DictTypeService_Get
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: code
-                  in: query
-                  schema:
-                    type: string
-                - name: viewMask
-                  in: query
-                  schema:
-                    type: string
-                    format: field-mask
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/DictType'
-        put:
-            tags:
-                - DictTypeService
-            description: 更新字典类型
-            operationId: DictTypeService_Update
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                    type: integer
-                    format: uint32
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/UpdateDictTypeRequest'
                 required: true
             responses:
                 "200":
@@ -4417,18 +4592,21 @@ components:
                 data:
                     $ref: '#/components/schemas/Api'
             description: 创建 - 请求
-        CreateDictEntryRequest:
+        CreateDictCategoryRequest:
             type: object
             properties:
                 data:
-                    $ref: '#/components/schemas/DictEntry'
-            description: 创建字典项 - 请求
-        CreateDictTypeRequest:
+                    $ref: '#/components/schemas/DictCategory'
+        CreateDictLabelI18nRequest:
             type: object
             properties:
                 data:
-                    $ref: '#/components/schemas/DictType'
-            description: 创建字典类型 - 请求
+                    $ref: '#/components/schemas/DictLabelI18n'
+        CreateDictLabelRequest:
+            type: object
+            properties:
+                data:
+                    $ref: '#/components/schemas/DictLabel'
         CreateFileRequest:
             type: object
             properties:
@@ -4731,141 +4909,195 @@ components:
                     type: string
                     description: 内核版本
             description: 设备信息
-        DictEntry:
+        DictCategory:
             type: object
             properties:
                 id:
                     type: integer
-                    description: 字典项ID
                     format: uint32
-                typeId:
+                parentId:
                     type: integer
-                    description: 字典类型ID
                     format: uint32
-                entryValue:
-                    example: MALE
+                path:
                     type: string
-                    description: 字典项的实际值（在字典类型内唯一）
-                numericValue:
-                    example: 1
-                    type: integer
-                    description: 可选的数值型值（用于排序、计算等）
-                    format: int32
+                categoryKey:
+                    type: string
+                categoryName:
+                    type: string
+                categoryLevel:
+                    enum:
+                        - CATEGORY_LEVEL_UNSPECIFIED
+                        - ROOT
+                        - CHILD
+                    type: string
+                    format: enum
+                scene:
+                    enum:
+                        - SCENE_UNSPECIFIED
+                        - PAGE
+                        - MENU
+                        - PROMPT
+                        - DEVICE
+                        - OTHER
+                    type: string
+                    format: enum
+                isBuiltin:
+                    type: boolean
                 isEnabled:
                     type: boolean
-                    description: 是否启用
                 sortOrder:
                     type: integer
-                    description: 排序顺序，值越小越靠前
                     format: uint32
-                i18n:
-                    example: {"zh-CN": {"entryLabel": "男"}, "en-US": {"entryLabel": "Male"}}
-                    type: object
-                    additionalProperties:
-                        $ref: '#/components/schemas/DictEntryI18n'
-                    description: 多语言信息，key 为 BCP-47 语言标签（如 zh-CN、en-US）
-                currentI18n:
-                    $ref: '#/components/schemas/DictEntryI18n'
                 tenantId:
                     type: integer
-                    description: 租户ID，0代表系统全局角色
                     format: uint32
                 tenantName:
                     type: string
-                    description: 租户名称
-                createdBy:
-                    type: integer
-                    description: 创建者用户ID
-                    format: uint32
-                updatedBy:
-                    type: integer
-                    description: 更新者用户ID
-                    format: uint32
-                deletedBy:
-                    type: integer
-                    description: 删除者用户ID
-                    format: uint32
-                createdAt:
+                remark:
                     type: string
-                    description: 创建时间
-                    format: date-time
-                updatedAt:
-                    type: string
-                    description: 更新时间
-                    format: date-time
-                deletedAt:
-                    type: string
-                    description: 删除时间
-                    format: date-time
-            description: 字典项
-        DictEntryI18n:
-            type: object
-            properties:
-                entryLabel:
-                    type: string
-                    description: 显示标签
                 description:
                     type: string
-                    description: 描述信息
-                languageCode:
+                children:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/DictCategory'
+                createdBy:
+                    type: integer
+                    format: uint32
+                updatedBy:
+                    type: integer
+                    format: uint32
+                deletedBy:
+                    type: integer
+                    format: uint32
+                createdAt:
                     type: string
-                    description: 语言代码，如 zh-CN、en-US 等
-                languageName:
+                    format: date-time
+                updatedAt:
                     type: string
-                    description: 语言名称
-            description: 字典项多语言信息
-        DictType:
+                    format: date-time
+                deletedAt:
+                    type: string
+                    format: date-time
+        DictLabel:
             type: object
             properties:
                 id:
                     type: integer
-                    description: 字典类型ID
                     format: uint32
-                typeCode:
+                categoryId:
+                    type: integer
+                    format: uint32
+                categoryKey:
                     type: string
-                    description: 字典类型唯一编码，如 app_type、platform、risk_type
-                typeName:
+                labelKey:
                     type: string
-                    description: 字典类型名称（中文，仅后台用）
+                labelCode:
+                    type: string
+                labelKind:
+                    enum:
+                        - LABEL_KIND_UNSPECIFIED
+                        - TEXT
+                        - MENU
+                        - MESSAGE
+                        - ENUM
+                        - HINT
+                        - BADGE
+                    type: string
+                    format: enum
+                defaultText:
+                    type: string
+                payloadJson:
+                    type: string
+                isBuiltin:
+                    type: boolean
                 isEnabled:
                     type: boolean
-                    description: 是否启用
+                status:
+                    enum:
+                        - STATUS_UNSPECIFIED
+                        - OFF
+                        - ON
+                    type: string
+                    format: enum
                 sortOrder:
                     type: integer
-                    description: 排序号，越小越靠前
                     format: uint32
                 tenantId:
                     type: integer
-                    description: 租户ID，0代表系统全局角色
                     format: uint32
                 tenantName:
                     type: string
-                    description: 租户名称
+                remark:
+                    type: string
+                description:
+                    type: string
+                itemsI18n:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/DictLabelI18n'
+                currentI18n:
+                    $ref: '#/components/schemas/DictLabelI18n'
                 createdBy:
                     type: integer
-                    description: 创建者用户ID
                     format: uint32
                 updatedBy:
                     type: integer
-                    description: 更新者用户ID
                     format: uint32
                 deletedBy:
                     type: integer
-                    description: 删除者用户ID
                     format: uint32
                 createdAt:
                     type: string
-                    description: 创建时间
                     format: date-time
                 updatedAt:
                     type: string
-                    description: 更新时间
                     format: date-time
                 deletedAt:
                     type: string
-                    description: 删除时间
                     format: date-time
-            description: 字典类型
+        DictLabelI18n:
+            type: object
+            properties:
+                id:
+                    type: integer
+                    format: uint32
+                labelId:
+                    type: integer
+                    format: uint32
+                labelKey:
+                    type: string
+                languageCode:
+                    type: string
+                languageName:
+                    type: string
+                textValue:
+                    type: string
+                shortText:
+                    type: string
+                description:
+                    type: string
+                tenantId:
+                    type: integer
+                    format: uint32
+                createdBy:
+                    type: integer
+                    format: uint32
+                updatedBy:
+                    type: integer
+                    format: uint32
+                deletedBy:
+                    type: integer
+                    format: uint32
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+                deletedAt:
+                    type: string
+                    format: date-time
         DownloadFileResponse:
             type: object
             properties:
@@ -5339,33 +5571,33 @@ components:
                 total:
                     type: string
             description: 查询数据访问审计日志列表 - 回应
-        ListDictEntryByTypeCodeResponse:
+        ListDictCategoryResponse:
             type: object
             properties:
                 items:
                     type: array
                     items:
-                        $ref: '#/components/schemas/DictEntry'
-        ListDictEntryResponse:
-            type: object
-            properties:
-                items:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/DictEntry'
+                        $ref: '#/components/schemas/DictCategory'
                 total:
                     type: string
-            description: 查询字典项列表 - 回应
-        ListDictTypeResponse:
+        ListDictLabelI18nResponse:
             type: object
             properties:
                 items:
                     type: array
                     items:
-                        $ref: '#/components/schemas/DictType'
+                        $ref: '#/components/schemas/DictLabelI18n'
                 total:
                     type: string
-            description: 查询字典类型列表 - 回应
+        ListDictLabelResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/DictLabel'
+                total:
+                    type: string
         ListFileResponse:
             type: object
             properties:
@@ -7090,40 +7322,45 @@ components:
                     type: boolean
                     description: 如果设置为true的时候，资源不存在则会新增(插入)，并且在这种情况下`updateMask`字段将会被忽略。
             description: 更新 - 请求
-        UpdateDictEntryRequest:
+        UpdateDictCategoryRequest:
             type: object
             properties:
                 id:
                     type: integer
                     format: uint32
                 data:
-                    $ref: '#/components/schemas/DictEntry'
+                    $ref: '#/components/schemas/DictCategory'
                 updateMask:
-                    example: id,realname,username
                     type: string
-                    description: 要更新的字段列表
                     format: field-mask
                 allowMissing:
                     type: boolean
-                    description: 如果设置为true的时候，资源不存在则会新增(插入)，并且在这种情况下`updateMask`字段将会被忽略。
-            description: 更新字典项 - 请求
-        UpdateDictTypeRequest:
+        UpdateDictLabelI18nRequest:
             type: object
             properties:
                 id:
                     type: integer
                     format: uint32
                 data:
-                    $ref: '#/components/schemas/DictType'
+                    $ref: '#/components/schemas/DictLabelI18n'
                 updateMask:
-                    example: id,realname,username
                     type: string
-                    description: 要更新的字段列表
                     format: field-mask
                 allowMissing:
                     type: boolean
-                    description: 如果设置为true的时候，资源不存在则会新增(插入)，并且在这种情况下`updateMask`字段将会被忽略。
-            description: 更新字典类型 - 请求
+        UpdateDictLabelRequest:
+            type: object
+            properties:
+                id:
+                    type: integer
+                    format: uint32
+                data:
+                    $ref: '#/components/schemas/DictLabel'
+                updateMask:
+                    type: string
+                    format: field-mask
+                allowMissing:
+                    type: boolean
         UpdateFileRequest:
             type: object
             properties:
@@ -7630,10 +7867,9 @@ tags:
       description: 用户后台登录认证服务
     - name: DataAccessAuditLogService
       description: 数据访问审计日志管理服务
-    - name: DictEntryService
-      description: 数据字典条目管理服务
-    - name: DictTypeService
-      description: 数据字典分类管理服务
+    - name: DictCategoryService
+    - name: DictLabelI18NService
+    - name: DictLabelService
     - name: FileService
       description: 文件管理服务
     - name: FileTransferService

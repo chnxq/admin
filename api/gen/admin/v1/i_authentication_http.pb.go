@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_authentication.proto
-// generated at        2026-05-25 16:34:22
+// generated at        2026-05-30 19:55:21
 
 package admin
 

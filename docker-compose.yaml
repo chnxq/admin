@@ -19,7 +19,7 @@ services:
       - app-tier
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=~Xyz4321Ab
+      - POSTGRES_PASSWORD=*Abcd123456
       - POSTGRES_DB=admin
 
 #  mysql:
@@ -30,9 +30,9 @@ services:
 #    networks:
 #      - app-tier
 #    environment:
-#      - MARIADB_ROOT_PASSWORD=~Xyz4321Ab
+#      - MARIADB_ROOT_PASSWORD=*Abcd123456
 #      - MARIADB_USER=admin
-#      - MARIADB_PASSWORD=~Xyz4321Ab
+#      - MARIADB_PASSWORD=*Abcd123456
 #      - MARIADB_DATABASE=gwa
 #      - ALLOW_EMPTY_PASSWORD=yes
 #      - TZ=Asia/Shanghai
@@ -47,7 +47,7 @@ services:
       - app-tier
     environment:
       - ALLOW_EMPTY_PASSWORD=no
-      - REDIS_PASSWORD=~Xyz4321Ab
+      - REDIS_PASSWORD=*Abcd123456
       - REDIS_AOF_ENABLED=no
       - REDIS_IO_THREADS_DO_READS=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL,CONFIG
@@ -65,7 +65,7 @@ services:
       - app-tier
     environment:
       - MINIO_ROOT_USER=root
-      - MINIO_ROOT_PASSWORD=~Xyz4321Ab
+      - MINIO_ROOT_PASSWORD=*Abcd123456
       - MINIO_DEFAULT_BUCKETS=images
       - MINIO_FORCE_NEW_KEYS=yes
       - BITNAMI_DEBUG=true

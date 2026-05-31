@@ -15,17 +15,17 @@ type ApiAuditLog func(*sql.Selector)
 // DataAccessAuditLog is the predicate function for dataaccessauditlog builders.
 type DataAccessAuditLog func(*sql.Selector)
 
-// DictEntry is the predicate function for dictentry builders.
-type DictEntry func(*sql.Selector)
+// DictCategory is the predicate function for dictcategory builders.
+type DictCategory func(*sql.Selector)
 
-// DictEntryI18n is the predicate function for dictentryi18n builders.
-type DictEntryI18n func(*sql.Selector)
+// DictCategoryI18n is the predicate function for dictcategoryi18n builders.
+type DictCategoryI18n func(*sql.Selector)
 
-// DictType is the predicate function for dicttype builders.
-type DictType func(*sql.Selector)
+// DictLabel is the predicate function for dictlabel builders.
+type DictLabel func(*sql.Selector)
 
-// DictTypeI18n is the predicate function for dicttypei18n builders.
-type DictTypeI18n func(*sql.Selector)
+// DictLabelI18n is the predicate function for dictlabeli18n builders.
+type DictLabelI18n func(*sql.Selector)
 
 // File is the predicate function for file builders.
 type File func(*sql.Selector)

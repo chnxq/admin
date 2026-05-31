@@ -7,10 +7,10 @@ START TRANSACTION;
 -- Non-user domain demo data can be fully refreshed.
 TRUNCATE TABLE sys_tasks;
 TRUNCATE TABLE sys_login_policies;
-TRUNCATE TABLE sys_dict_entry_i18n;
-TRUNCATE TABLE sys_dict_entries;
-TRUNCATE TABLE sys_dict_type_i18n;
-TRUNCATE TABLE sys_dict_types;
+TRUNCATE TABLE sys_dict_label_i18n;
+TRUNCATE TABLE sys_dict_labels;
+TRUNCATE TABLE sys_dict_category_i18n;
+TRUNCATE TABLE sys_dict_categories;
 TRUNCATE TABLE internal_message_categories;
 
 -- User-domain demo data must be incremental and must not overwrite base seed data.
@@ -184,90 +184,83 @@ VALUES
     (2, 1, 'WHITELIST', 'MAC', '00:1B:44:11:3A:B7', '演示环境白名单示例', NOW());
 ALTER TABLE sys_login_policies AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_login_policies);
 
-INSERT INTO sys_dict_types(id, type_code, type_name, sort_order, description, is_enabled, created_at)
+INSERT INTO sys_dict_categories(
+    id, parent_id, path, category_key, category_name, category_level, scene, is_builtin, is_enabled, sort_order, tenant_id, description, created_at, updated_at
+)
 VALUES
-    (1, 'USER_STATUS', '用户状态', 10, '系统用户状态管理', true, NOW()),
-    (2, 'DEVICE_TYPE', '设备类型', 20, '平台接入设备分类', true, NOW()),
-    (3, 'ORDER_STATUS', '订单状态', 30, '订单全生命周期状态', true, NOW()),
-    (4, 'GENDER', '性别', 40, '用户性别枚举', true, NOW()),
-    (5, 'PAYMENT_METHOD', '支付方式', 50, '系统支持的支付方式', true, NOW());
-ALTER TABLE sys_dict_types AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_dict_types);
+    (1, NULL, '/', 'page', '页面', 'ROOT', 'PAGE', true, true, 10, 0, '页面类国际化分类根节点', NOW(), NOW()),
+    (2, 1, '/1/', 'page.user_management', '用户管理页面', 'CHILD', 'PAGE', true, true, 11, 0, '用户与组织相关页面', NOW(), NOW()),
+    (3, 1, '/1/', 'page.device_management', '设备管理页面', 'CHILD', 'PAGE', true, true, 12, 0, '设备与物联相关页面', NOW(), NOW()),
+    (4, NULL, '/', 'menu', '菜单', 'ROOT', 'MENU', true, true, 20, 0, '菜单类国际化分类根节点', NOW(), NOW()),
+    (5, 4, '/4/', 'menu.platform', '平台菜单', 'CHILD', 'MENU', true, true, 21, 0, '后台平台菜单项', NOW(), NOW()),
+    (6, NULL, '/', 'prompt', '提示', 'ROOT', 'PROMPT', true, true, 30, 0, '提示语国际化分类根节点', NOW(), NOW()),
+    (7, 6, '/6/', 'prompt.common', '通用提示', 'CHILD', 'PROMPT', true, true, 31, 0, '通用成功/确认类提示', NOW(), NOW()),
+    (8, NULL, '/', 'device', '设备', 'ROOT', 'DEVICE', true, true, 40, 0, '设备业务标签分类根节点', NOW(), NOW()),
+    (9, 8, '/8/', 'device.type', '设备类型', 'CHILD', 'DEVICE', true, true, 41, 0, '设备类型标签', NOW(), NOW());
+ALTER TABLE sys_dict_categories AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_dict_categories);
 
-INSERT INTO sys_dict_type_i18n(dict_type_id, language_code, type_name, description, tenant_id, created_at, updated_at)
+INSERT INTO sys_dict_category_i18n(
+    category_id, language_code, display_name, description, tenant_id, created_at, updated_at
+)
 VALUES
-    (1, 'zh-CN', '用户状态', '系统用户状态管理', 0, NOW(), NOW()),
-    (2, 'zh-CN', '设备类型', '平台接入设备分类', 0, NOW(), NOW()),
-    (3, 'zh-CN', '订单状态', '订单全生命周期状态', 0, NOW(), NOW()),
-    (4, 'zh-CN', '性别', '用户性别枚举', 0, NOW(), NOW()),
-    (5, 'zh-CN', '支付方式', '系统支持的支付方式', 0, NOW(), NOW()),
-    (1, 'en-US', 'User Status', 'System user status management', 0, NOW(), NOW()),
-    (2, 'en-US', 'Device Type', 'Device categories connected to the platform', 0, NOW(), NOW()),
-    (3, 'en-US', 'Order Status', 'Full lifecycle statuses for orders', 0, NOW(), NOW()),
-    (4, 'en-US', 'Gender', 'User gender enumeration', 0, NOW(), NOW()),
-    (5, 'en-US', 'Payment Method', 'Supported payment channels', 0, NOW(), NOW());
-ALTER TABLE sys_dict_type_i18n AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_dict_type_i18n);
+    (1, 'zh-CN', '页面', '页面类国际化分类根节点', 0, NOW(), NOW()),
+    (2, 'zh-CN', '用户管理页面', '用户与组织相关页面', 0, NOW(), NOW()),
+    (3, 'zh-CN', '设备管理页面', '设备与物联相关页面', 0, NOW(), NOW()),
+    (4, 'zh-CN', '菜单', '菜单类国际化分类根节点', 0, NOW(), NOW()),
+    (5, 'zh-CN', '平台菜单', '后台平台菜单项', 0, NOW(), NOW()),
+    (6, 'zh-CN', '提示', '提示语国际化分类根节点', 0, NOW(), NOW()),
+    (7, 'zh-CN', '通用提示', '通用成功/确认类提示', 0, NOW(), NOW()),
+    (8, 'zh-CN', '设备', '设备业务标签分类根节点', 0, NOW(), NOW()),
+    (9, 'zh-CN', '设备类型', '设备类型标签', 0, NOW(), NOW()),
+    (1, 'en-US', 'Page', 'Root category for page translations', 0, NOW(), NOW()),
+    (2, 'en-US', 'User Management Pages', 'Pages for user and organization management', 0, NOW(), NOW()),
+    (3, 'en-US', 'Device Management Pages', 'Pages for device and IoT management', 0, NOW(), NOW()),
+    (4, 'en-US', 'Menu', 'Root category for menu translations', 0, NOW(), NOW()),
+    (5, 'en-US', 'Platform Menu', 'Back-office platform menu items', 0, NOW(), NOW()),
+    (6, 'en-US', 'Prompt', 'Root category for prompt translations', 0, NOW(), NOW()),
+    (7, 'en-US', 'Common Prompt', 'Shared success and confirmation prompts', 0, NOW(), NOW()),
+    (8, 'en-US', 'Device', 'Root category for device business labels', 0, NOW(), NOW()),
+    (9, 'en-US', 'Device Type', 'Device type labels', 0, NOW(), NOW());
+ALTER TABLE sys_dict_category_i18n AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_dict_category_i18n);
 
-INSERT INTO sys_dict_entries(id, type_id, entry_value, entry_label, numeric_value, sort_order, description, is_enabled, created_at)
+INSERT INTO sys_dict_labels(
+    id, category_id, label_key, label_code, label_kind, default_text, payload_json, is_builtin, is_enabled, status, sort_order, tenant_id, description, created_at, updated_at
+)
 VALUES
-    (1, 1, 'NORMAL', '正常', 1, 1, '用户可以正常登录和操作', true, NOW()),
-    (2, 1, 'FROZEN', '冻结', 2, 2, '用户被暂时冻结', true, NOW()),
-    (3, 1, 'CANCELED', '注销', 3, 3, '用户已注销', true, NOW()),
-    (4, 2, 'TEMP_SENSOR', '温湿度传感器', 101, 1, '支持温湿度采集', true, NOW()),
-    (5, 2, 'CURRENT_METER', '电流仪表', 102, 2, '支持交流和直流电流测量', true, NOW()),
-    (6, 2, 'GAS_DETECTOR', '气体探测器', 103, 3, '等待后续硬件适配', false, NOW()),
-    (7, 3, 'PENDING', '待支付', 1, 1, '订单待支付', true, NOW()),
-    (8, 3, 'PAID', '已支付', 2, 2, '订单已支付', true, NOW()),
-    (9, 3, 'SHIPPED', '已发货', 3, 3, '订单已发货', true, NOW()),
-    (10, 3, 'COMPLETED', '已完成', 4, 4, '订单已完成', true, NOW()),
-    (11, 3, 'CANCELED', '已取消', 5, 5, '订单已取消', true, NOW()),
-    (12, 4, 'MALE', '男', 1, 1, '', true, NOW()),
-    (13, 4, 'FEMALE', '女', 2, 2, '', true, NOW()),
-    (14, 4, 'UNKNOWN', '未知', 0, 3, '默认值', true, NOW()),
-    (15, 5, 'ALIPAY', '支付宝', 1, 1, '支持花呗和余额宝', true, NOW()),
-    (16, 5, 'WECHAT', '微信支付', 2, 2, '需要绑定微信', true, NOW()),
-    (17, 5, 'UNIONPAY', '银联支付', 3, 3, '支持信用卡和借记卡', true, NOW()),
-    (18, 5, 'CASH', '现金支付', 4, 4, '线下支付，已废弃', false, NOW());
-ALTER TABLE sys_dict_entries AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_dict_entries);
+    (1, 2, 'page.user.list.title', 'PAGE_USER_LIST_TITLE', 'TEXT', '用户列表', JSON_OBJECT('module', 'user', 'view', 'list'), true, true, 'ON', 10, 0, '用户列表页标题', NOW(), NOW()),
+    (2, 2, 'page.user.detail.title', 'PAGE_USER_DETAIL_TITLE', 'TEXT', '用户详情', JSON_OBJECT('module', 'user', 'view', 'detail'), true, true, 'ON', 11, 0, '用户详情页标题', NOW(), NOW()),
+    (3, 5, 'menu.system.user', 'MENU_SYSTEM_USER', 'MENU', '用户管理', JSON_OBJECT('icon', 'mdi:account-cog', 'route', '/system/user'), true, true, 'ON', 20, 0, '系统菜单-用户管理', NOW(), NOW()),
+    (4, 5, 'menu.system.role', 'MENU_SYSTEM_ROLE', 'MENU', '角色管理', JSON_OBJECT('icon', 'mdi:shield-account', 'route', '/system/role'), true, true, 'ON', 21, 0, '系统菜单-角色管理', NOW(), NOW()),
+    (5, 7, 'prompt.common.save_success', 'PROMPT_COMMON_SAVE_SUCCESS', 'MESSAGE', '保存成功', JSON_OBJECT('tone', 'success'), true, true, 'ON', 30, 0, '通用保存成功提示', NOW(), NOW()),
+    (6, 7, 'prompt.common.delete_confirm', 'PROMPT_COMMON_DELETE_CONFIRM', 'HINT', '确认删除当前数据？', JSON_OBJECT('tone', 'warning'), true, true, 'ON', 31, 0, '通用删除确认提示', NOW(), NOW()),
+    (7, 9, 'device.type.temp_sensor', 'DEVICE_TYPE_TEMP_SENSOR', 'ENUM', '温湿度传感器', JSON_OBJECT('deviceType', 'sensor', 'code', 'TEMP_SENSOR'), true, true, 'ON', 40, 0, '设备类型-温湿度传感器', NOW(), NOW()),
+    (8, 9, 'device.type.current_meter', 'DEVICE_TYPE_CURRENT_METER', 'ENUM', '电流表', JSON_OBJECT('deviceType', 'meter', 'code', 'CURRENT_METER'), true, true, 'ON', 41, 0, '设备类型-电流表', NOW(), NOW()),
+    (9, 9, 'device.type.gas_detector', 'DEVICE_TYPE_GAS_DETECTOR', 'ENUM', '气体探测器', JSON_OBJECT('deviceType', 'detector', 'code', 'GAS_DETECTOR'), true, true, 'ON', 42, 0, '设备类型-气体探测器', NOW(), NOW());
+ALTER TABLE sys_dict_labels AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_dict_labels);
 
-INSERT INTO sys_dict_entry_i18n(entry_id, language_code, entry_label, description, sort_order, tenant_id, created_at, updated_at)
+INSERT INTO sys_dict_label_i18n(
+    label_id, language_code, text_value, short_text, description, tenant_id, created_at, updated_at
+)
 VALUES
-    (1, 'zh-CN', '正常', '用户可以正常登录和操作', 1, 0, NOW(), NOW()),
-    (2, 'zh-CN', '冻结', '用户被暂时冻结', 2, 0, NOW(), NOW()),
-    (3, 'zh-CN', '注销', '用户已注销', 3, 0, NOW(), NOW()),
-    (4, 'zh-CN', '温湿度传感器', '支持温湿度采集', 1, 0, NOW(), NOW()),
-    (5, 'zh-CN', '电流仪表', '支持交流和直流电流测量', 2, 0, NOW(), NOW()),
-    (6, 'zh-CN', '气体探测器', '等待后续硬件适配', 3, 0, NOW(), NOW()),
-    (7, 'zh-CN', '待支付', '订单待支付', 1, 0, NOW(), NOW()),
-    (8, 'zh-CN', '已支付', '订单已支付', 2, 0, NOW(), NOW()),
-    (9, 'zh-CN', '已发货', '订单已发货', 3, 0, NOW(), NOW()),
-    (10, 'zh-CN', '已完成', '订单已完成', 4, 0, NOW(), NOW()),
-    (11, 'zh-CN', '已取消', '订单已取消', 5, 0, NOW(), NOW()),
-    (12, 'zh-CN', '男', '', 1, 0, NOW(), NOW()),
-    (13, 'zh-CN', '女', '', 2, 0, NOW(), NOW()),
-    (14, 'zh-CN', '未知', '默认值', 3, 0, NOW(), NOW()),
-    (15, 'zh-CN', '支付宝', '支持花呗和余额宝', 1, 0, NOW(), NOW()),
-    (16, 'zh-CN', '微信支付', '需要绑定微信', 2, 0, NOW(), NOW()),
-    (17, 'zh-CN', '银联支付', '支持信用卡和借记卡', 3, 0, NOW(), NOW()),
-    (18, 'zh-CN', '现金支付', '线下支付，已废弃', 4, 0, NOW(), NOW()),
-    (1, 'en-US', 'Normal', 'User can log in and operate normally', 1, 0, NOW(), NOW()),
-    (2, 'en-US', 'Frozen', 'User is temporarily frozen', 2, 0, NOW(), NOW()),
-    (3, 'en-US', 'Canceled', 'User has been canceled', 3, 0, NOW(), NOW()),
-    (4, 'en-US', 'Temperature & Humidity Sensor', 'Supports temperature and humidity collection', 1, 0, NOW(), NOW()),
-    (5, 'en-US', 'Current Meter', 'Supports AC and DC current measurement', 2, 0, NOW(), NOW()),
-    (6, 'en-US', 'Gas Detector', 'Waiting for later hardware integration', 3, 0, NOW(), NOW()),
-    (7, 'en-US', 'Pending Payment', 'Order is pending payment', 1, 0, NOW(), NOW()),
-    (8, 'en-US', 'Paid', 'Order has been paid', 2, 0, NOW(), NOW()),
-    (9, 'en-US', 'Shipped', 'Order has been shipped', 3, 0, NOW(), NOW()),
-    (10, 'en-US', 'Completed', 'Order has been completed', 4, 0, NOW(), NOW()),
-    (11, 'en-US', 'Canceled', 'Order has been canceled', 5, 0, NOW(), NOW()),
-    (12, 'en-US', 'Male', '', 1, 0, NOW(), NOW()),
-    (13, 'en-US', 'Female', '', 2, 0, NOW(), NOW()),
-    (14, 'en-US', 'Unknown', 'Default value', 3, 0, NOW(), NOW()),
-    (15, 'en-US', 'Alipay', 'Supports Huabei and Yu''ebao', 1, 0, NOW(), NOW()),
-    (16, 'en-US', 'WeChat Pay', 'Requires WeChat binding', 2, 0, NOW(), NOW()),
-    (17, 'en-US', 'UnionPay', 'Supports credit and debit cards', 3, 0, NOW(), NOW()),
-    (18, 'en-US', 'Cash', 'Offline payment, deprecated', 4, 0, NOW(), NOW());
-ALTER TABLE sys_dict_entry_i18n AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_dict_entry_i18n);
+    (1, 'zh-CN', '用户列表', '列表', '用户列表页标题', 0, NOW(), NOW()),
+    (2, 'zh-CN', '用户详情', '详情', '用户详情页标题', 0, NOW(), NOW()),
+    (3, 'zh-CN', '用户管理', '用户', '系统菜单-用户管理', 0, NOW(), NOW()),
+    (4, 'zh-CN', '角色管理', '角色', '系统菜单-角色管理', 0, NOW(), NOW()),
+    (5, 'zh-CN', '保存成功', '成功', '通用保存成功提示', 0, NOW(), NOW()),
+    (6, 'zh-CN', '确认删除当前数据？', '确认删除', '通用删除确认提示', 0, NOW(), NOW()),
+    (7, 'zh-CN', '温湿度传感器', '温湿度', '设备类型-温湿度传感器', 0, NOW(), NOW()),
+    (8, 'zh-CN', '电流表', '电流表', '设备类型-电流表', 0, NOW(), NOW()),
+    (9, 'zh-CN', '气体探测器', '气体探测', '设备类型-气体探测器', 0, NOW(), NOW()),
+    (1, 'en-US', 'User List', 'List', 'User list page title', 0, NOW(), NOW()),
+    (2, 'en-US', 'User Detail', 'Detail', 'User detail page title', 0, NOW(), NOW()),
+    (3, 'en-US', 'User Management', 'Users', 'System menu - user management', 0, NOW(), NOW()),
+    (4, 'en-US', 'Role Management', 'Roles', 'System menu - role management', 0, NOW(), NOW()),
+    (5, 'en-US', 'Saved successfully', 'Saved', 'Common save success prompt', 0, NOW(), NOW()),
+    (6, 'en-US', 'Are you sure you want to delete this record?', 'Delete?', 'Common delete confirmation prompt', 0, NOW(), NOW()),
+    (7, 'en-US', 'Temperature Sensor', 'Temp', 'Device type - temperature sensor', 0, NOW(), NOW()),
+    (8, 'en-US', 'Current Meter', 'Meter', 'Device type - current meter', 0, NOW(), NOW()),
+    (9, 'en-US', 'Gas Detector', 'Gas', 'Device type - gas detector', 0, NOW(), NOW());
+ALTER TABLE sys_dict_label_i18n AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_dict_label_i18n);
 
 INSERT INTO internal_message_categories (id, code, name, remark, sort_order, is_enabled, created_at)
 VALUES

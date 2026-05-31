@@ -78,11 +78,11 @@ docker compose -f ./docker-compose.yaml up -d
 data:
   database:
     driver: postgres       # 可选 mysql、sqlite3
-    source: "host=localhost port=5432 user=postgres password=~Xyz4321Ab dbname=admin sslmode=disable"
+    source: "host=localhost port=5432 user=postgres password=*Abcd123456 dbname=admin sslmode=disable"
     migrate: true           # 启动时自动建表
   redis:
     addr: "localhost:6379"
-    password: "~Xyz4321Ab"
+    password: "*Abcd123456"
 ```
 
 ## 快速入门

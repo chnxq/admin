@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_policy_evaluation_log.proto
-// generated at        2026-05-25 16:34:22
+// generated at        2026-05-30 19:55:21
 
 package admin
 
@@ -34,11 +34,11 @@ type PolicyEvaluationLogServiceHTTPServer interface {
 
 func RegisterPolicyEvaluationLogServiceHTTPServer(s *http.Server, srv PolicyEvaluationLogServiceHTTPServer) {
 	r := s.Route("/")
-	r.GET("/admin/v1/policy-evaluation-logs", _PolicyEvaluationLogService_List16_HTTP_Handler(srv))
-	r.GET("/admin/v1/policy-evaluation-logs/{id}", _PolicyEvaluationLogService_Get16_HTTP_Handler(srv))
+	r.GET("/admin/v1/policy-evaluation-logs", _PolicyEvaluationLogService_List17_HTTP_Handler(srv))
+	r.GET("/admin/v1/policy-evaluation-logs/{id}", _PolicyEvaluationLogService_Get19_HTTP_Handler(srv))
 }
 
-func _PolicyEvaluationLogService_List16_HTTP_Handler(srv PolicyEvaluationLogServiceHTTPServer) func(ctx http.Context) error {
+func _PolicyEvaluationLogService_List17_HTTP_Handler(srv PolicyEvaluationLogServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v1.PagingRequest
 		if err := ctx.BindQuery(&in); err != nil {
@@ -57,7 +57,7 @@ func _PolicyEvaluationLogService_List16_HTTP_Handler(srv PolicyEvaluationLogServ
 	}
 }
 
-func _PolicyEvaluationLogService_Get16_HTTP_Handler(srv PolicyEvaluationLogServiceHTTPServer) func(ctx http.Context) error {
+func _PolicyEvaluationLogService_Get19_HTTP_Handler(srv PolicyEvaluationLogServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.GetPolicyEvaluationLogRequest
 		if err := ctx.BindQuery(&in); err != nil {
