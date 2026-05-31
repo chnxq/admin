@@ -13,6 +13,5 @@ import (
 // afterEntSchemaCreate is the handwritten hook that runs after schema migration.
 // This file is created once and is never overwritten by xkit.
 func afterEntSchemaCreate(ctx *app.AppCtx, entClient *entCrud.EntClient[*ent.Client]) error {
-	_, _ = ctx, entClient
-	return nil
+	return ensureDefaultData(ctx, entClient)
 }
