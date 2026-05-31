@@ -139,6 +139,23 @@ func (s *PermissionService) collectDesiredPermissions(ctx context.Context) ([]de
 		}
 
 		fullPath := composeMenuFullPath(menu, menuResp.GetItems())
+		explicitAuthorities := menuAuthorityCodes(menu)
+		if len(explicitAuthorities) > 0 {
+			for _, code := range explicitAuthorities {
+				current, ok := desired[code]
+				if !ok {
+					current = &desiredPermission{
+						code:        code,
+						name:        firstNonEmpty(displayMenuTitle(menu), menu.GetName(), code),
+						groupModule: moduleFromMenuPath(fullPath),
+					}
+					desired[code] = current
+				}
+				current.menuIDs = appendUniqueUint32(current.menuIDs, menu.GetId())
+			}
+			continue
+		}
+
 		code := menuPermissionCode(fullPath, displayMenuTitle(menu), menu.GetType())
 		if code == "" {
 			continue
@@ -540,6 +557,26 @@ func displayMenuTitle(menu *resourcev1.Menu) string {
 		return ""
 	}
 	return strings.TrimSpace(menu.GetMeta().GetTitle())
+}
+
+func menuAuthorityCodes(menu *resourcev1.Menu) []string {
+	if menu == nil || menu.GetMeta() == nil || len(menu.GetMeta().GetAuthority()) == 0 {
+		return nil
+	}
+	result := make([]string, 0, len(menu.GetMeta().GetAuthority()))
+	seen := make(map[string]struct{}, len(menu.GetMeta().GetAuthority()))
+	for _, code := range menu.GetMeta().GetAuthority() {
+		code = strings.TrimSpace(code)
+		if code == "" {
+			continue
+		}
+		if _, ok := seen[code]; ok {
+			continue
+		}
+		seen[code] = struct{}{}
+		result = append(result, code)
+	}
+	return result
 }
 
 func moduleFromMenuPath(path string) string {

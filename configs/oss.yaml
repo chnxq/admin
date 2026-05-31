@@ -4,6 +4,6 @@ oss:
     upload_host: "localhost:9000"
     download_host: "localhost:9000"
     access_key: "root"
-    secret_key: "~Xyz4321Ab"
+    secret_key: "*Abcd123456"
     token: ""
     use_ssl: false

@@ -6,6 +6,7 @@ package repo
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	resourcev1 "admin/api/gen/resource/v1"
@@ -298,7 +299,7 @@ func (r *menuRepo) mergePermissionMenuBindings(ctx context.Context, targetMenuID
 
 func defaultDictNavigationMenu() defaultNavigationMenu {
 	return defaultNavigationMenu{
-		Authority: []string{"dict:types:view", "dict:entries:view"},
+		Authority: []string{"dict:categories:view", "dict:labels:view"},
 		Component: "/system/dict/index",
 		Icon:      "lucide:book-type",
 		Name:      "SystemDict",
@@ -612,12 +613,21 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 					Type:            menu.TypeLink,
 				},
 				{
-					Authority: []string{"dict:types:view", "dict:entries:view"},
+					Authority: []string{"dict:categories:view", "dict:labels:view"},
 					Component: "/system/dict/index",
 					Icon:      "lucide:book-type",
 					Name:      "SystemDict",
 					Path:      "/system/dict",
 					Title:     "menu.system.dict",
+					Type:      menu.TypeMenu,
+				},
+				{
+					Authority: []string{"files:view"},
+					Component: "/system/file/index",
+					Icon:      "lucide:folder-open",
+					Name:      "SystemFile",
+					Path:      "/system/file",
+					Title:     "menu.system.file",
 					Type:      menu.TypeMenu,
 				},
 				{
@@ -721,6 +731,7 @@ func buildNavigationRouteTree(entities []*ent.Menu) []*resourcev1.MenuRouteItem 
 	nodeMap := make(map[uint32]*resourcev1.MenuRouteItem, len(entities))
 	parentMap := make(map[uint32]uint32, len(entities))
 	roots := make([]*resourcev1.MenuRouteItem, 0)
+	orderMap := buildDefaultNavigationOrderMap()
 
 	for _, entity := range entities {
 		if entity == nil {
@@ -746,7 +757,56 @@ func buildNavigationRouteTree(entities []*ent.Menu) []*resourcev1.MenuRouteItem 
 		roots = append(roots, node)
 	}
 
+	sortNavigationRouteItems("", roots, orderMap)
 	return roots
+}
+
+func buildDefaultNavigationOrderMap() map[string]int {
+	orderMap := make(map[string]int)
+	var walk func(parentPath string, items []defaultNavigationMenu)
+	walk = func(parentPath string, items []defaultNavigationMenu) {
+		for index, item := range items {
+			key := navigationOrderKey(parentPath, item.Path, item.Name)
+			orderMap[key] = index
+			walk(item.Path, item.Children)
+		}
+	}
+	walk("", defaultNavigationMenus())
+	return orderMap
+}
+
+func sortNavigationRouteItems(parentPath string, items []*resourcev1.MenuRouteItem, orderMap map[string]int) {
+	if len(items) == 0 {
+		return
+	}
+	sort.SliceStable(items, func(i, j int) bool {
+		left := navigationRouteOrder(orderMap, parentPath, items[i])
+		right := navigationRouteOrder(orderMap, parentPath, items[j])
+		if left != right {
+			return left < right
+		}
+		return items[i].GetPath() < items[j].GetPath()
+	})
+	for _, item := range items {
+		if item == nil || len(item.Children) == 0 {
+			continue
+		}
+		sortNavigationRouteItems(item.GetPath(), item.Children, orderMap)
+	}
+}
+
+func navigationRouteOrder(orderMap map[string]int, parentPath string, item *resourcev1.MenuRouteItem) int {
+	if item == nil {
+		return 1 << 30
+	}
+	if order, ok := orderMap[navigationOrderKey(parentPath, item.GetPath(), item.GetName())]; ok {
+		return order
+	}
+	return 1 << 30
+}
+
+func navigationOrderKey(parentPath, path, name string) string {
+	return parentPath + "|" + path + "|" + name
 }
 
 func menuEntityToRouteItem(entity *ent.Menu) *resourcev1.MenuRouteItem {

@@ -120,6 +120,9 @@ func (s *defaultDataSeed) run() error {
 	if err != nil {
 		return err
 	}
+	if _, err := s.ensurePlatformSuperRole(ctx, permissionIDs); err != nil {
+		return err
+	}
 	normalPermissionIDs, err := s.collectNormalUserPermissionIDs(ctx)
 	if err != nil {
 		return err

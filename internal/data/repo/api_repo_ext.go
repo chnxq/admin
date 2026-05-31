@@ -272,6 +272,46 @@ func appendManualAdminRoutes(routes []openAPIRoute) []openAPIRoute {
 			operation:         "MenuService_SyncMenus",
 			path:              "/admin/v1/menus:sync",
 		},
+		{
+			description:       "upload file multipart",
+			method:            "POST",
+			module:            "FileService",
+			moduleDescription: "file management service",
+			operation:         "FileService_Create",
+			path:              "/admin/v1/files/upload-multipart",
+		},
+		{
+			description:       "preview file",
+			method:            "GET",
+			module:            "FileService",
+			moduleDescription: "file management service",
+			operation:         "FileService_Get",
+			path:              "/admin/v1/files/{id}/preview",
+		},
+		{
+			description:       "download file",
+			method:            "GET",
+			module:            "FileService",
+			moduleDescription: "file management service",
+			operation:         "FileService_Get",
+			path:              "/admin/v1/files/{id}/download",
+		},
+		{
+			description:       "get file browser info",
+			method:            "GET",
+			module:            "FileService",
+			moduleDescription: "file management service",
+			operation:         "FileService_Get",
+			path:              "/admin/v1/files/{id}/browser",
+		},
+		{
+			description:       "delete file binary",
+			method:            "DELETE",
+			module:            "FileService",
+			moduleDescription: "file management service",
+			operation:         "FileService_Delete",
+			path:              "/admin/v1/files/{id}/binary",
+		},
 	}
 
 	known := make(map[string]struct{}, len(routes))

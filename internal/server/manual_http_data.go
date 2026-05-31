@@ -31,6 +31,7 @@ func RegisterManualHTTPServicesWithData(srv *httptransport.Server, appCtx *app.A
 	adminv1.RegisterAdminPortalServiceHTTPServer(srv, newManualAdminPortalService(data))
 	adminv1.RegisterUserProfileServiceHTTPServer(srv, newManualUserProfileService(data))
 	registerManualMenuSyncHTTP(srv, data)
+	registerManualFileHTTP(srv, data)
 }
 
 type generatedDataWithUserCredentialRepo interface {
@@ -335,11 +336,21 @@ func defaultNavigationRoutes() *adminv1.ListRouteResponse {
 						},
 					},
 					{
+						Path:      ptr("/system/file"),
+						Name:      ptr("SystemFile"),
+						Component: ptr("/system/file/index"),
+						Meta: &resourcev1.MenuMeta{
+							Authority: []string{"files:view"},
+							Title:     ptr("menu.system.file"),
+							Icon:      ptr("lucide:folder-open"),
+						},
+					},
+					{
 						Path:      ptr("/system/dict"),
 						Name:      ptr("SystemDict"),
 						Component: ptr("/system/dict/index"),
 						Meta: &resourcev1.MenuMeta{
-							Authority: []string{"dict:types:view", "dict:entries:view"},
+							Authority: []string{"dict:categories:view", "dict:labels:view"},
 							Title:     ptr("menu.system.dict"),
 							Icon:      ptr("lucide:book-type"),
 						},

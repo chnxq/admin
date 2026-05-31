@@ -78,11 +78,11 @@ After the services are healthy, update the database connection in `configs/data.
 data:
   database:
     driver: postgres       # or mysql, sqlite3
-    source: "host=localhost port=5432 user=postgres password=~Xyz4321Ab dbname=admin sslmode=disable"
+    source: "host=localhost port=5432 user=postgres password=*Abcd123456 dbname=admin sslmode=disable"
     migrate: true           # auto-create tables on startup
   redis:
     addr: "localhost:6379"
-    password: "~Xyz4321Ab"
+    password: "*Abcd123456"
 ```
 
 ## Quick Start
