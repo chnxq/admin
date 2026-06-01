@@ -26,16 +26,24 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// 标签类型
 type DictLabel_LabelKind int32
 
 const (
+	// 未指定
 	DictLabel_LABEL_KIND_UNSPECIFIED DictLabel_LabelKind = 0
-	DictLabel_TEXT                   DictLabel_LabelKind = 1
-	DictLabel_MENU                   DictLabel_LabelKind = 2
-	DictLabel_MESSAGE                DictLabel_LabelKind = 3
-	DictLabel_ENUM                   DictLabel_LabelKind = 4
-	DictLabel_HINT                   DictLabel_LabelKind = 5
-	DictLabel_BADGE                  DictLabel_LabelKind = 6
+	// 普通文本
+	DictLabel_TEXT DictLabel_LabelKind = 1
+	// 菜单文本
+	DictLabel_MENU DictLabel_LabelKind = 2
+	// 消息文本
+	DictLabel_MESSAGE DictLabel_LabelKind = 3
+	// 枚举项
+	DictLabel_ENUM DictLabel_LabelKind = 4
+	// 提示文本
+	DictLabel_HINT DictLabel_LabelKind = 5
+	// 徽标文本
+	DictLabel_BADGE DictLabel_LabelKind = 6
 )
 
 // Enum value maps for DictLabel_LabelKind.
@@ -87,12 +95,16 @@ func (DictLabel_LabelKind) EnumDescriptor() ([]byte, []int) {
 	return file_dict_v1_dict_label_proto_rawDescGZIP(), []int{0, 0}
 }
 
+// 启用状态
 type DictLabel_Status int32
 
 const (
+	// 未指定
 	DictLabel_STATUS_UNSPECIFIED DictLabel_Status = 0
-	DictLabel_OFF                DictLabel_Status = 1
-	DictLabel_ON                 DictLabel_Status = 2
+	// 禁用
+	DictLabel_OFF DictLabel_Status = 1
+	// 启用
+	DictLabel_ON DictLabel_Status = 2
 )
 
 // Enum value maps for DictLabel_Status.
@@ -136,31 +148,56 @@ func (DictLabel_Status) EnumDescriptor() ([]byte, []int) {
 	return file_dict_v1_dict_label_proto_rawDescGZIP(), []int{0, 1}
 }
 
+// 字典标签
 type DictLabel struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            *uint32                `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`
-	CategoryId    *uint32                `protobuf:"varint,2,opt,name=category_id,json=categoryId,proto3,oneof" json:"category_id,omitempty"`
-	CategoryKey   *string                `protobuf:"bytes,3,opt,name=category_key,json=categoryKey,proto3,oneof" json:"category_key,omitempty"`
-	LabelKey      *string                `protobuf:"bytes,4,opt,name=label_key,json=labelKey,proto3,oneof" json:"label_key,omitempty"`
-	LabelCode     *string                `protobuf:"bytes,5,opt,name=label_code,json=labelCode,proto3,oneof" json:"label_code,omitempty"`
-	LabelKind     *DictLabel_LabelKind   `protobuf:"varint,6,opt,name=label_kind,json=labelKind,proto3,enum=dict.service.v1.DictLabel_LabelKind,oneof" json:"label_kind,omitempty"`
-	DefaultText   *string                `protobuf:"bytes,7,opt,name=default_text,json=defaultText,proto3,oneof" json:"default_text,omitempty"`
-	PayloadJson   *string                `protobuf:"bytes,8,opt,name=payload_json,json=payloadJson,proto3,oneof" json:"payload_json,omitempty"`
-	IsBuiltin     *bool                  `protobuf:"varint,9,opt,name=is_builtin,json=isBuiltin,proto3,oneof" json:"is_builtin,omitempty"`
-	IsEnabled     *bool                  `protobuf:"varint,10,opt,name=is_enabled,json=isEnabled,proto3,oneof" json:"is_enabled,omitempty"`
-	Status        *DictLabel_Status      `protobuf:"varint,11,opt,name=status,proto3,enum=dict.service.v1.DictLabel_Status,oneof" json:"status,omitempty"`
-	SortOrder     *uint32                `protobuf:"varint,12,opt,name=sort_order,json=sortOrder,proto3,oneof" json:"sort_order,omitempty"`
-	TenantId      *uint32                `protobuf:"varint,13,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`
-	TenantName    *string                `protobuf:"bytes,14,opt,name=tenant_name,json=tenantName,proto3,oneof" json:"tenant_name,omitempty"`
-	Remark        *string                `protobuf:"bytes,15,opt,name=remark,proto3,oneof" json:"remark,omitempty"`
-	Description   *string                `protobuf:"bytes,16,opt,name=description,proto3,oneof" json:"description,omitempty"`
-	ItemsI18N     []*DictLabelI18N       `protobuf:"bytes,17,rep,name=items_i18n,json=itemsI18n,proto3" json:"items_i18n,omitempty"`
-	CurrentI18N   *DictLabelI18N         `protobuf:"bytes,18,opt,name=current_i18n,json=currentI18n,proto3,oneof" json:"current_i18n,omitempty"`
-	CreatedBy     *uint32                `protobuf:"varint,100,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`
-	UpdatedBy     *uint32                `protobuf:"varint,101,opt,name=updated_by,json=updatedBy,proto3,oneof" json:"updated_by,omitempty"`
-	DeletedBy     *uint32                `protobuf:"varint,102,opt,name=deleted_by,json=deletedBy,proto3,oneof" json:"deleted_by,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,200,opt,name=created_at,json=createdAt,proto3,oneof" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,201,opt,name=updated_at,json=updatedAt,proto3,oneof" json:"updated_at,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 主键ID
+	Id *uint32 `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`
+	// 所属分类ID
+	CategoryId *uint32 `protobuf:"varint,2,opt,name=category_id,json=categoryId,proto3,oneof" json:"category_id,omitempty"`
+	// 所属分类标识
+	CategoryKey *string `protobuf:"bytes,3,opt,name=category_key,json=categoryKey,proto3,oneof" json:"category_key,omitempty"`
+	// 标签唯一标识
+	LabelKey *string `protobuf:"bytes,4,opt,name=label_key,json=labelKey,proto3,oneof" json:"label_key,omitempty"`
+	// 标签编码
+	LabelCode *string `protobuf:"bytes,5,opt,name=label_code,json=labelCode,proto3,oneof" json:"label_code,omitempty"`
+	// 标签类型
+	LabelKind *DictLabel_LabelKind `protobuf:"varint,6,opt,name=label_kind,json=labelKind,proto3,enum=dict.service.v1.DictLabel_LabelKind,oneof" json:"label_kind,omitempty"`
+	// 默认文本
+	DefaultText *string `protobuf:"bytes,7,opt,name=default_text,json=defaultText,proto3,oneof" json:"default_text,omitempty"`
+	// 扩展载荷JSON
+	PayloadJson *string `protobuf:"bytes,8,opt,name=payload_json,json=payloadJson,proto3,oneof" json:"payload_json,omitempty"`
+	// 是否内置
+	IsBuiltin *bool `protobuf:"varint,9,opt,name=is_builtin,json=isBuiltin,proto3,oneof" json:"is_builtin,omitempty"`
+	// 是否启用
+	IsEnabled *bool `protobuf:"varint,10,opt,name=is_enabled,json=isEnabled,proto3,oneof" json:"is_enabled,omitempty"`
+	// 状态
+	Status *DictLabel_Status `protobuf:"varint,11,opt,name=status,proto3,enum=dict.service.v1.DictLabel_Status,oneof" json:"status,omitempty"`
+	// 排序值
+	SortOrder *uint32 `protobuf:"varint,12,opt,name=sort_order,json=sortOrder,proto3,oneof" json:"sort_order,omitempty"`
+	// 所属租户ID
+	TenantId *uint32 `protobuf:"varint,13,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`
+	// 所属租户名称
+	TenantName *string `protobuf:"bytes,14,opt,name=tenant_name,json=tenantName,proto3,oneof" json:"tenant_name,omitempty"`
+	// 备注
+	Remark *string `protobuf:"bytes,15,opt,name=remark,proto3,oneof" json:"remark,omitempty"`
+	// 描述
+	Description *string `protobuf:"bytes,16,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	// 多语言条目列表
+	ItemsI18N []*DictLabelI18N `protobuf:"bytes,17,rep,name=items_i18n,json=itemsI18n,proto3" json:"items_i18n,omitempty"`
+	// 当前语言条目
+	CurrentI18N *DictLabelI18N `protobuf:"bytes,18,opt,name=current_i18n,json=currentI18n,proto3,oneof" json:"current_i18n,omitempty"`
+	// 创建者ID
+	CreatedBy *uint32 `protobuf:"varint,100,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`
+	// 更新者ID
+	UpdatedBy *uint32 `protobuf:"varint,101,opt,name=updated_by,json=updatedBy,proto3,oneof" json:"updated_by,omitempty"`
+	// 删除者ID
+	DeletedBy *uint32 `protobuf:"varint,102,opt,name=deleted_by,json=deletedBy,proto3,oneof" json:"deleted_by,omitempty"`
+	// 创建时间
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,200,opt,name=created_at,json=createdAt,proto3,oneof" json:"created_at,omitempty"`
+	// 更新时间
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,201,opt,name=updated_at,json=updatedAt,proto3,oneof" json:"updated_at,omitempty"`
+	// 删除时间
 	DeletedAt     *timestamppb.Timestamp `protobuf:"bytes,202,opt,name=deleted_at,json=deletedAt,proto3,oneof" json:"deleted_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -364,10 +401,13 @@ func (x *DictLabel) GetDeletedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// 字典标签列表响应
 type ListDictLabelResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []*DictLabel           `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	Total         uint64                 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 数据项
+	Items []*DictLabel `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	// 总数
+	Total         uint64 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -416,14 +456,18 @@ func (x *ListDictLabelResponse) GetTotal() uint64 {
 	return 0
 }
 
+// 查询字典标签请求
 type GetDictLabelRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// 查询条件
+	//
 	// Types that are valid to be assigned to QueryBy:
 	//
 	//	*GetDictLabelRequest_Id
 	//	*GetDictLabelRequest_LabelKey
-	QueryBy       isGetDictLabelRequest_QueryBy `protobuf_oneof:"query_by"`
-	ViewMask      *fieldmaskpb.FieldMask        `protobuf:"bytes,100,opt,name=view_mask,json=viewMask,proto3,oneof" json:"view_mask,omitempty"`
+	QueryBy isGetDictLabelRequest_QueryBy `protobuf_oneof:"query_by"`
+	// 返回字段掩码
+	ViewMask      *fieldmaskpb.FieldMask `protobuf:"bytes,100,opt,name=view_mask,json=viewMask,proto3,oneof" json:"view_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -495,10 +539,12 @@ type isGetDictLabelRequest_QueryBy interface {
 }
 
 type GetDictLabelRequest_Id struct {
+	// 按ID查询
 	Id uint32 `protobuf:"varint,1,opt,name=id,proto3,oneof"`
 }
 
 type GetDictLabelRequest_LabelKey struct {
+	// 按标签标识查询
 	LabelKey string `protobuf:"bytes,2,opt,name=label_key,json=labelKey,proto3,oneof"`
 }
 
@@ -506,9 +552,11 @@ func (*GetDictLabelRequest_Id) isGetDictLabelRequest_QueryBy() {}
 
 func (*GetDictLabelRequest_LabelKey) isGetDictLabelRequest_QueryBy() {}
 
+// 创建字典标签请求
 type CreateDictLabelRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Data          *DictLabel             `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 待创建数据
+	Data          *DictLabel `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -550,12 +598,17 @@ func (x *CreateDictLabelRequest) GetData() *DictLabel {
 	return nil
 }
 
+// 更新字典标签请求
 type UpdateDictLabelRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Data          *DictLabel             `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
-	AllowMissing  *bool                  `protobuf:"varint,4,opt,name=allow_missing,json=allowMissing,proto3,oneof" json:"allow_missing,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 目标ID
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// 更新数据
+	Data *DictLabel `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	// 更新字段掩码
+	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
+	// 不存在时是否允许创建
+	AllowMissing  *bool `protobuf:"varint,4,opt,name=allow_missing,json=allowMissing,proto3,oneof" json:"allow_missing,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -618,9 +671,11 @@ func (x *UpdateDictLabelRequest) GetAllowMissing() bool {
 	return false
 }
 
+// 删除字典标签请求
 type DeleteDictLabelRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ids           []uint32               `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 待删除ID列表
+	Ids           []uint32 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -662,9 +717,11 @@ func (x *DeleteDictLabelRequest) GetIds() []uint32 {
 	return nil
 }
 
+// 字典标签数量响应
 type CountDictLabelResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Count         uint64                 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 数量
+	Count         uint64 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

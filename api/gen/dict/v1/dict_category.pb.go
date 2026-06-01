@@ -26,12 +26,16 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// 分类层级
 type DictCategory_CategoryLevel int32
 
 const (
+	// 未指定
 	DictCategory_CATEGORY_LEVEL_UNSPECIFIED DictCategory_CategoryLevel = 0
-	DictCategory_ROOT                       DictCategory_CategoryLevel = 1
-	DictCategory_CHILD                      DictCategory_CategoryLevel = 2
+	// 一级分类
+	DictCategory_ROOT DictCategory_CategoryLevel = 1
+	// 二级分类
+	DictCategory_CHILD DictCategory_CategoryLevel = 2
 )
 
 // Enum value maps for DictCategory_CategoryLevel.
@@ -75,15 +79,22 @@ func (DictCategory_CategoryLevel) EnumDescriptor() ([]byte, []int) {
 	return file_dict_v1_dict_category_proto_rawDescGZIP(), []int{0, 0}
 }
 
+// 分类场景
 type DictCategory_Scene int32
 
 const (
+	// 未指定
 	DictCategory_SCENE_UNSPECIFIED DictCategory_Scene = 0
-	DictCategory_PAGE              DictCategory_Scene = 1
-	DictCategory_MENU              DictCategory_Scene = 2
-	DictCategory_PROMPT            DictCategory_Scene = 3
-	DictCategory_DEVICE            DictCategory_Scene = 4
-	DictCategory_OTHER             DictCategory_Scene = 5
+	// 页面
+	DictCategory_PAGE DictCategory_Scene = 1
+	// 菜单
+	DictCategory_MENU DictCategory_Scene = 2
+	// 提示信息
+	DictCategory_PROMPT DictCategory_Scene = 3
+	// 设备
+	DictCategory_DEVICE DictCategory_Scene = 4
+	// 其它
+	DictCategory_OTHER DictCategory_Scene = 5
 )
 
 // Enum value maps for DictCategory_Scene.
@@ -133,29 +144,51 @@ func (DictCategory_Scene) EnumDescriptor() ([]byte, []int) {
 	return file_dict_v1_dict_category_proto_rawDescGZIP(), []int{0, 1}
 }
 
+// 字典分类
 type DictCategory struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	Id            *uint32                     `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`
-	ParentId      *uint32                     `protobuf:"varint,2,opt,name=parent_id,json=parentId,proto3,oneof" json:"parent_id,omitempty"`
-	Path          *string                     `protobuf:"bytes,3,opt,name=path,proto3,oneof" json:"path,omitempty"`
-	CategoryKey   *string                     `protobuf:"bytes,4,opt,name=category_key,json=categoryKey,proto3,oneof" json:"category_key,omitempty"`
-	CategoryName  *string                     `protobuf:"bytes,5,opt,name=category_name,json=categoryName,proto3,oneof" json:"category_name,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 主键ID
+	Id *uint32 `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`
+	// 父分类ID
+	ParentId *uint32 `protobuf:"varint,2,opt,name=parent_id,json=parentId,proto3,oneof" json:"parent_id,omitempty"`
+	// 树路径
+	Path *string `protobuf:"bytes,3,opt,name=path,proto3,oneof" json:"path,omitempty"`
+	// 分类唯一标识
+	CategoryKey *string `protobuf:"bytes,4,opt,name=category_key,json=categoryKey,proto3,oneof" json:"category_key,omitempty"`
+	// 分类名称
+	CategoryName *string `protobuf:"bytes,5,opt,name=category_name,json=categoryName,proto3,oneof" json:"category_name,omitempty"`
+	// 分类层级
 	CategoryLevel *DictCategory_CategoryLevel `protobuf:"varint,6,opt,name=category_level,json=categoryLevel,proto3,enum=dict.service.v1.DictCategory_CategoryLevel,oneof" json:"category_level,omitempty"`
-	Scene         *DictCategory_Scene         `protobuf:"varint,7,opt,name=scene,proto3,enum=dict.service.v1.DictCategory_Scene,oneof" json:"scene,omitempty"`
-	IsBuiltin     *bool                       `protobuf:"varint,8,opt,name=is_builtin,json=isBuiltin,proto3,oneof" json:"is_builtin,omitempty"`
-	IsEnabled     *bool                       `protobuf:"varint,9,opt,name=is_enabled,json=isEnabled,proto3,oneof" json:"is_enabled,omitempty"`
-	SortOrder     *uint32                     `protobuf:"varint,10,opt,name=sort_order,json=sortOrder,proto3,oneof" json:"sort_order,omitempty"`
-	TenantId      *uint32                     `protobuf:"varint,11,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`
-	TenantName    *string                     `protobuf:"bytes,12,opt,name=tenant_name,json=tenantName,proto3,oneof" json:"tenant_name,omitempty"`
-	Remark        *string                     `protobuf:"bytes,13,opt,name=remark,proto3,oneof" json:"remark,omitempty"`
-	Description   *string                     `protobuf:"bytes,14,opt,name=description,proto3,oneof" json:"description,omitempty"`
-	Children      []*DictCategory             `protobuf:"bytes,15,rep,name=children,proto3" json:"children,omitempty"`
-	CreatedBy     *uint32                     `protobuf:"varint,100,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`
-	UpdatedBy     *uint32                     `protobuf:"varint,101,opt,name=updated_by,json=updatedBy,proto3,oneof" json:"updated_by,omitempty"`
-	DeletedBy     *uint32                     `protobuf:"varint,102,opt,name=deleted_by,json=deletedBy,proto3,oneof" json:"deleted_by,omitempty"`
-	CreatedAt     *timestamppb.Timestamp      `protobuf:"bytes,200,opt,name=created_at,json=createdAt,proto3,oneof" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp      `protobuf:"bytes,201,opt,name=updated_at,json=updatedAt,proto3,oneof" json:"updated_at,omitempty"`
-	DeletedAt     *timestamppb.Timestamp      `protobuf:"bytes,202,opt,name=deleted_at,json=deletedAt,proto3,oneof" json:"deleted_at,omitempty"`
+	// 使用场景
+	Scene *DictCategory_Scene `protobuf:"varint,7,opt,name=scene,proto3,enum=dict.service.v1.DictCategory_Scene,oneof" json:"scene,omitempty"`
+	// 是否内置
+	IsBuiltin *bool `protobuf:"varint,8,opt,name=is_builtin,json=isBuiltin,proto3,oneof" json:"is_builtin,omitempty"`
+	// 是否启用
+	IsEnabled *bool `protobuf:"varint,9,opt,name=is_enabled,json=isEnabled,proto3,oneof" json:"is_enabled,omitempty"`
+	// 排序值
+	SortOrder *uint32 `protobuf:"varint,10,opt,name=sort_order,json=sortOrder,proto3,oneof" json:"sort_order,omitempty"`
+	// 所属租户ID
+	TenantId *uint32 `protobuf:"varint,11,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`
+	// 所属租户名称
+	TenantName *string `protobuf:"bytes,12,opt,name=tenant_name,json=tenantName,proto3,oneof" json:"tenant_name,omitempty"`
+	// 备注
+	Remark *string `protobuf:"bytes,13,opt,name=remark,proto3,oneof" json:"remark,omitempty"`
+	// 描述
+	Description *string `protobuf:"bytes,14,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	// 子分类
+	Children []*DictCategory `protobuf:"bytes,15,rep,name=children,proto3" json:"children,omitempty"`
+	// 创建者ID
+	CreatedBy *uint32 `protobuf:"varint,100,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`
+	// 更新者ID
+	UpdatedBy *uint32 `protobuf:"varint,101,opt,name=updated_by,json=updatedBy,proto3,oneof" json:"updated_by,omitempty"`
+	// 删除者ID
+	DeletedBy *uint32 `protobuf:"varint,102,opt,name=deleted_by,json=deletedBy,proto3,oneof" json:"deleted_by,omitempty"`
+	// 创建时间
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,200,opt,name=created_at,json=createdAt,proto3,oneof" json:"created_at,omitempty"`
+	// 更新时间
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,201,opt,name=updated_at,json=updatedAt,proto3,oneof" json:"updated_at,omitempty"`
+	// 删除时间
+	DeletedAt     *timestamppb.Timestamp `protobuf:"bytes,202,opt,name=deleted_at,json=deletedAt,proto3,oneof" json:"deleted_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -337,10 +370,13 @@ func (x *DictCategory) GetDeletedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// 字典分类列表响应
 type ListDictCategoryResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []*DictCategory        `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	Total         uint64                 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 数据项
+	Items []*DictCategory `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	// 总数
+	Total         uint64 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -389,14 +425,18 @@ func (x *ListDictCategoryResponse) GetTotal() uint64 {
 	return 0
 }
 
+// 查询字典分类请求
 type GetDictCategoryRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// 查询条件
+	//
 	// Types that are valid to be assigned to QueryBy:
 	//
 	//	*GetDictCategoryRequest_Id
 	//	*GetDictCategoryRequest_CategoryKey
-	QueryBy       isGetDictCategoryRequest_QueryBy `protobuf_oneof:"query_by"`
-	ViewMask      *fieldmaskpb.FieldMask           `protobuf:"bytes,100,opt,name=view_mask,json=viewMask,proto3,oneof" json:"view_mask,omitempty"`
+	QueryBy isGetDictCategoryRequest_QueryBy `protobuf_oneof:"query_by"`
+	// 返回字段掩码
+	ViewMask      *fieldmaskpb.FieldMask `protobuf:"bytes,100,opt,name=view_mask,json=viewMask,proto3,oneof" json:"view_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -468,10 +508,12 @@ type isGetDictCategoryRequest_QueryBy interface {
 }
 
 type GetDictCategoryRequest_Id struct {
+	// 按ID查询
 	Id uint32 `protobuf:"varint,1,opt,name=id,proto3,oneof"`
 }
 
 type GetDictCategoryRequest_CategoryKey struct {
+	// 按分类标识查询
 	CategoryKey string `protobuf:"bytes,2,opt,name=category_key,json=categoryKey,proto3,oneof"`
 }
 
@@ -479,9 +521,11 @@ func (*GetDictCategoryRequest_Id) isGetDictCategoryRequest_QueryBy() {}
 
 func (*GetDictCategoryRequest_CategoryKey) isGetDictCategoryRequest_QueryBy() {}
 
+// 创建字典分类请求
 type CreateDictCategoryRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Data          *DictCategory          `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 待创建数据
+	Data          *DictCategory `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -523,12 +567,17 @@ func (x *CreateDictCategoryRequest) GetData() *DictCategory {
 	return nil
 }
 
+// 更新字典分类请求
 type UpdateDictCategoryRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Data          *DictCategory          `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
-	AllowMissing  *bool                  `protobuf:"varint,4,opt,name=allow_missing,json=allowMissing,proto3,oneof" json:"allow_missing,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 目标ID
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// 更新数据
+	Data *DictCategory `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	// 更新字段掩码
+	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
+	// 不存在时是否允许创建
+	AllowMissing  *bool `protobuf:"varint,4,opt,name=allow_missing,json=allowMissing,proto3,oneof" json:"allow_missing,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -591,9 +640,11 @@ func (x *UpdateDictCategoryRequest) GetAllowMissing() bool {
 	return false
 }
 
+// 删除字典分类请求
 type DeleteDictCategoryRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ids           []uint32               `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 待删除ID列表
+	Ids           []uint32 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -635,9 +686,11 @@ func (x *DeleteDictCategoryRequest) GetIds() []uint32 {
 	return nil
 }
 
+// 字典分类数量响应
 type CountDictCategoryResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Count         uint64                 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 数量
+	Count         uint64 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

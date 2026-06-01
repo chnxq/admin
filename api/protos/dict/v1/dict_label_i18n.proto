@@ -8,62 +8,103 @@ import "google/protobuf/field_mask.proto";
 import "google/protobuf/timestamp.proto";
 import "pagination/v1/pagination.proto";
 
+// 字典标签多语言管理服务
 service DictLabelI18nService {
+  // 查询字典标签多语言列表
   rpc List(pagination.PagingRequest) returns (ListDictLabelI18nResponse) {}
+  // 统计字典标签多语言数量
   rpc Count(pagination.PagingRequest) returns (CountDictLabelI18nResponse) {}
+  // 查询字典标签多语言详情
   rpc Get(GetDictLabelI18nRequest) returns (DictLabelI18n) {}
+  // 创建字典标签多语言
   rpc Create(CreateDictLabelI18nRequest) returns (google.protobuf.Empty) {}
+  // 更新字典标签多语言
   rpc Update(UpdateDictLabelI18nRequest) returns (google.protobuf.Empty) {}
+  // 删除字典标签多语言
   rpc Delete(DeleteDictLabelI18nRequest) returns (google.protobuf.Empty) {}
 }
 
+// 字典标签多语言值
 message DictLabelI18n {
+  // 主键ID
   optional uint32 id = 1 [json_name = "id"];
+  // 所属标签ID
   optional uint32 label_id = 2 [json_name = "labelId"];
+  // 所属标签标识
   optional string label_key = 3 [json_name = "labelKey"];
+  // 语言编码
   optional string language_code = 4 [json_name = "languageCode"];
+  // 语言名称
   optional string language_name = 5 [json_name = "languageName"];
+  // 文本值
   optional string text_value = 6 [json_name = "textValue"];
+  // 短文本
   optional string short_text = 7 [json_name = "shortText"];
+  // 描述
   optional string description = 8 [json_name = "description"];
+  // 所属租户ID
   optional uint32 tenant_id = 9 [json_name = "tenantId"];
 
+  // 创建者ID
   optional uint32 created_by = 100 [json_name = "createdBy"];
+  // 更新者ID
   optional uint32 updated_by = 101 [json_name = "updatedBy"];
+  // 删除者ID
   optional uint32 deleted_by = 102 [json_name = "deletedBy"];
+  // 创建时间
   optional google.protobuf.Timestamp created_at = 200 [json_name = "createdAt"];
+  // 更新时间
   optional google.protobuf.Timestamp updated_at = 201 [json_name = "updatedAt"];
+  // 删除时间
   optional google.protobuf.Timestamp deleted_at = 202 [json_name = "deletedAt"];
 }
 
+// 字典标签多语言列表响应
 message ListDictLabelI18nResponse {
+  // 数据项
   repeated DictLabelI18n items = 1;
+  // 总数
   uint64 total = 2;
 }
 
+// 查询字典标签多语言请求
 message GetDictLabelI18nRequest {
+  // 查询条件
   oneof query_by {
+    // 按ID查询
     uint32 id = 1;
   }
 
+  // 返回字段掩码
   optional google.protobuf.FieldMask view_mask = 100 [json_name = "viewMask"];
 }
 
+// 创建字典标签多语言请求
 message CreateDictLabelI18nRequest {
+  // 待创建数据
   DictLabelI18n data = 1;
 }
 
+// 更新字典标签多语言请求
 message UpdateDictLabelI18nRequest {
+  // 目标ID
   uint32 id = 1;
+  // 更新数据
   DictLabelI18n data = 2;
+  // 更新字段掩码
   google.protobuf.FieldMask update_mask = 3 [json_name = "updateMask"];
+  // 不存在时是否允许创建
   optional bool allow_missing = 4 [json_name = "allowMissing"];
 }
 
+// 删除字典标签多语言请求
 message DeleteDictLabelI18nRequest {
+  // 待删除ID列表
   repeated uint32 ids = 1;
 }
 
+// 字典标签多语言数量响应
 message CountDictLabelI18nResponse {
+  // 数量
   uint64 count = 1;
 }

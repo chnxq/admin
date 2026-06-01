@@ -9,88 +9,151 @@ import "google/protobuf/timestamp.proto";
 import "pagination/v1/pagination.proto";
 import "dict/v1/dict_label_i18n.proto";
 
+// 字典标签管理服务
 service DictLabelService {
+  // 查询字典标签列表
   rpc List(pagination.PagingRequest) returns (ListDictLabelResponse) {}
+  // 统计字典标签数量
   rpc Count(pagination.PagingRequest) returns (CountDictLabelResponse) {}
+  // 查询字典标签详情
   rpc Get(GetDictLabelRequest) returns (DictLabel) {}
+  // 创建字典标签
   rpc Create(CreateDictLabelRequest) returns (google.protobuf.Empty) {}
+  // 更新字典标签
   rpc Update(UpdateDictLabelRequest) returns (google.protobuf.Empty) {}
+  // 删除字典标签
   rpc Delete(DeleteDictLabelRequest) returns (google.protobuf.Empty) {}
 }
 
+// 字典标签
 message DictLabel {
+  // 标签类型
   enum LabelKind {
+    // 未指定
     LABEL_KIND_UNSPECIFIED = 0;
+    // 普通文本
     TEXT = 1;
+    // 菜单文本
     MENU = 2;
+    // 消息文本
     MESSAGE = 3;
+    // 枚举项
     ENUM = 4;
+    // 提示文本
     HINT = 5;
+    // 徽标文本
     BADGE = 6;
   }
 
+  // 启用状态
   enum Status {
+    // 未指定
     STATUS_UNSPECIFIED = 0;
+    // 禁用
     OFF = 1;
+    // 启用
     ON = 2;
   }
 
+  // 主键ID
   optional uint32 id = 1 [json_name = "id"];
+  // 所属分类ID
   optional uint32 category_id = 2 [json_name = "categoryId"];
+  // 所属分类标识
   optional string category_key = 3 [json_name = "categoryKey"];
+  // 标签唯一标识
   optional string label_key = 4 [json_name = "labelKey"];
+  // 标签编码
   optional string label_code = 5 [json_name = "labelCode"];
+  // 标签类型
   optional LabelKind label_kind = 6 [json_name = "labelKind"];
+  // 默认文本
   optional string default_text = 7 [json_name = "defaultText"];
+  // 扩展载荷JSON
   optional string payload_json = 8 [json_name = "payloadJson"];
+  // 是否内置
   optional bool is_builtin = 9 [json_name = "isBuiltin"];
+  // 是否启用
   optional bool is_enabled = 10 [json_name = "isEnabled"];
+  // 状态
   optional Status status = 11 [json_name = "status"];
+  // 排序值
   optional uint32 sort_order = 12 [json_name = "sortOrder"];
+  // 所属租户ID
   optional uint32 tenant_id = 13 [json_name = "tenantId"];
+  // 所属租户名称
   optional string tenant_name = 14 [json_name = "tenantName"];
+  // 备注
   optional string remark = 15 [json_name = "remark"];
+  // 描述
   optional string description = 16 [json_name = "description"];
+  // 多语言条目列表
   repeated DictLabelI18n items_i18n = 17 [json_name = "itemsI18n"];
+  // 当前语言条目
   optional DictLabelI18n current_i18n = 18 [json_name = "currentI18n"];
 
+  // 创建者ID
   optional uint32 created_by = 100 [json_name = "createdBy"];
+  // 更新者ID
   optional uint32 updated_by = 101 [json_name = "updatedBy"];
+  // 删除者ID
   optional uint32 deleted_by = 102 [json_name = "deletedBy"];
+  // 创建时间
   optional google.protobuf.Timestamp created_at = 200 [json_name = "createdAt"];
+  // 更新时间
   optional google.protobuf.Timestamp updated_at = 201 [json_name = "updatedAt"];
+  // 删除时间
   optional google.protobuf.Timestamp deleted_at = 202 [json_name = "deletedAt"];
 }
 
+// 字典标签列表响应
 message ListDictLabelResponse {
+  // 数据项
   repeated DictLabel items = 1;
+  // 总数
   uint64 total = 2;
 }
 
+// 查询字典标签请求
 message GetDictLabelRequest {
+  // 查询条件
   oneof query_by {
+    // 按ID查询
     uint32 id = 1;
+    // 按标签标识查询
     string label_key = 2 [json_name = "labelKey"];
   }
 
+  // 返回字段掩码
   optional google.protobuf.FieldMask view_mask = 100 [json_name = "viewMask"];
 }
 
+// 创建字典标签请求
 message CreateDictLabelRequest {
+  // 待创建数据
   DictLabel data = 1;
 }
 
+// 更新字典标签请求
 message UpdateDictLabelRequest {
+  // 目标ID
   uint32 id = 1;
+  // 更新数据
   DictLabel data = 2;
+  // 更新字段掩码
   google.protobuf.FieldMask update_mask = 3 [json_name = "updateMask"];
+  // 不存在时是否允许创建
   optional bool allow_missing = 4 [json_name = "allowMissing"];
 }
 
+// 删除字典标签请求
 message DeleteDictLabelRequest {
+  // 待删除ID列表
   repeated uint32 ids = 1;
 }
 
+// 字典标签数量响应
 message CountDictLabelResponse {
+  // 数量
   uint64 count = 1;
 }

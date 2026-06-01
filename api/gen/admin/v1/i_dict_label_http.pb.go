@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_dict_label.proto
-// generated at        2026-05-30 19:55:21
+// generated at        2026-06-01 23:52:57
 
 package admin
 
