@@ -228,7 +228,7 @@ paths:
         get:
             tags:
                 - ApiService
-            description: 查询路由数据
+            description: 获取路由数据
             operationId: ApiService_GetWalkRouteData
             responses:
                 "200":
@@ -433,6 +433,7 @@ paths:
         get:
             tags:
                 - DictCategoryService
+            description: 查询字典分类列表
             operationId: DictCategoryService_List
             parameters:
                 - name: page
@@ -509,6 +510,7 @@ paths:
         post:
             tags:
                 - DictCategoryService
+            description: 创建字典分类
             operationId: DictCategoryService_Create
             requestBody:
                 content:
@@ -523,6 +525,7 @@ paths:
         delete:
             tags:
                 - DictCategoryService
+            description: 删除字典分类
             operationId: DictCategoryService_Delete
             parameters:
                 - name: ids
@@ -541,6 +544,7 @@ paths:
         get:
             tags:
                 - DictCategoryService
+            description: 查询字典分类详情
             operationId: DictCategoryService_Get
             parameters:
                 - name: categoryKey
@@ -572,6 +576,7 @@ paths:
         get:
             tags:
                 - DictCategoryService
+            description: 查询字典分类详情
             operationId: DictCategoryService_Get
             parameters:
                 - name: id
@@ -602,6 +607,7 @@ paths:
         put:
             tags:
                 - DictCategoryService
+            description: 更新字典分类
             operationId: DictCategoryService_Update
             parameters:
                 - name: id
@@ -625,6 +631,7 @@ paths:
         get:
             tags:
                 - DictLabelI18NService
+            description: 查询字典标签多语言列表
             operationId: DictLabelI18NService_List
             parameters:
                 - name: page
@@ -701,6 +708,7 @@ paths:
         post:
             tags:
                 - DictLabelI18NService
+            description: 创建字典标签多语言
             operationId: DictLabelI18NService_Create
             requestBody:
                 content:
@@ -715,6 +723,7 @@ paths:
         delete:
             tags:
                 - DictLabelI18NService
+            description: 删除字典标签多语言
             operationId: DictLabelI18NService_Delete
             parameters:
                 - name: ids
@@ -733,6 +742,7 @@ paths:
         get:
             tags:
                 - DictLabelI18NService
+            description: 查询字典标签多语言详情
             operationId: DictLabelI18NService_Get
             parameters:
                 - name: id
@@ -758,6 +768,7 @@ paths:
         put:
             tags:
                 - DictLabelI18NService
+            description: 更新字典标签多语言
             operationId: DictLabelI18NService_Update
             parameters:
                 - name: id
@@ -781,6 +792,7 @@ paths:
         get:
             tags:
                 - DictLabelService
+            description: 查询字典标签列表
             operationId: DictLabelService_List
             parameters:
                 - name: page
@@ -857,6 +869,7 @@ paths:
         post:
             tags:
                 - DictLabelService
+            description: 创建字典标签
             operationId: DictLabelService_Create
             requestBody:
                 content:
@@ -871,6 +884,7 @@ paths:
         delete:
             tags:
                 - DictLabelService
+            description: 删除字典标签
             operationId: DictLabelService_Delete
             parameters:
                 - name: ids
@@ -889,6 +903,7 @@ paths:
         get:
             tags:
                 - DictLabelService
+            description: 查询字典标签详情
             operationId: DictLabelService_Get
             parameters:
                 - name: labelKey
@@ -920,6 +935,7 @@ paths:
         get:
             tags:
                 - DictLabelService
+            description: 查询字典标签详情
             operationId: DictLabelService_Get
             parameters:
                 - name: id
@@ -950,6 +966,7 @@ paths:
         put:
             tags:
                 - DictLabelService
+            description: 更新字典标签
             operationId: DictLabelService_Update
             parameters:
                 - name: id
@@ -7988,8 +8005,11 @@ tags:
     - name: DataAccessAuditLogService
       description: 数据访问审计日志管理服务
     - name: DictCategoryService
+      description: 字典分类管理服务
     - name: DictLabelI18NService
+      description: 字典标签多语言管理服务
     - name: DictLabelService
+      description: 字典标签管理服务
     - name: FileService
       description: 文件管理服务
     - name: FileTransferService

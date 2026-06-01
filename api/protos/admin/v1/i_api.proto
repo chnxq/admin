@@ -56,7 +56,7 @@ service ApiService {
     };
   }
 
-  // 查询路由数据
+  // 获取路由数据
   rpc GetWalkRouteData (google.protobuf.Empty) returns (resource.service.v1.ListApiResponse) {
     option (google.api.http) = {
       get: "/admin/v1/apis/walk-route"

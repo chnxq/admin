@@ -32,11 +32,18 @@ const (
 // DictLabelServiceClient is the client API for DictLabelService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// 字典标签管理服务
 type DictLabelServiceClient interface {
+	// 查询字典标签列表
 	List(ctx context.Context, in *v1.PagingRequest, opts ...grpc.CallOption) (*v11.ListDictLabelResponse, error)
+	// 查询字典标签详情
 	Get(ctx context.Context, in *v11.GetDictLabelRequest, opts ...grpc.CallOption) (*v11.DictLabel, error)
+	// 创建字典标签
 	Create(ctx context.Context, in *v11.CreateDictLabelRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// 更新字典标签
 	Update(ctx context.Context, in *v11.UpdateDictLabelRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// 删除字典标签
 	Delete(ctx context.Context, in *v11.DeleteDictLabelRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -101,11 +108,18 @@ func (c *dictLabelServiceClient) Delete(ctx context.Context, in *v11.DeleteDictL
 // DictLabelServiceServer is the server API for DictLabelService service.
 // All implementations must embed UnimplementedDictLabelServiceServer
 // for forward compatibility.
+//
+// 字典标签管理服务
 type DictLabelServiceServer interface {
+	// 查询字典标签列表
 	List(context.Context, *v1.PagingRequest) (*v11.ListDictLabelResponse, error)
+	// 查询字典标签详情
 	Get(context.Context, *v11.GetDictLabelRequest) (*v11.DictLabel, error)
+	// 创建字典标签
 	Create(context.Context, *v11.CreateDictLabelRequest) (*emptypb.Empty, error)
+	// 更新字典标签
 	Update(context.Context, *v11.UpdateDictLabelRequest) (*emptypb.Empty, error)
+	// 删除字典标签
 	Delete(context.Context, *v11.DeleteDictLabelRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDictLabelServiceServer()
 }

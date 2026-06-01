@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_dict_label_i18n.proto
-// generated at        2026-06-01 23:52:57
+// generated at        2026-06-02 01:56:21
 
 package admin
 
@@ -30,10 +30,15 @@ const OperationDictLabelI18NServiceList = "/admin.service.v1.DictLabelI18nServic
 const OperationDictLabelI18NServiceUpdate = "/admin.service.v1.DictLabelI18nService/Update"
 
 type DictLabelI18NServiceHTTPServer interface {
+	// Create 创建字典标签多语言
 	Create(context.Context, *v11.CreateDictLabelI18NRequest) (*emptypb.Empty, error)
+	// Delete 删除字典标签多语言
 	Delete(context.Context, *v11.DeleteDictLabelI18NRequest) (*emptypb.Empty, error)
+	// Get 查询字典标签多语言详情
 	Get(context.Context, *v11.GetDictLabelI18NRequest) (*v11.DictLabelI18N, error)
+	// List 查询字典标签多语言列表
 	List(context.Context, *v1.PagingRequest) (*v11.ListDictLabelI18NResponse, error)
+	// Update 更新字典标签多语言
 	Update(context.Context, *v11.UpdateDictLabelI18NRequest) (*emptypb.Empty, error)
 }
 

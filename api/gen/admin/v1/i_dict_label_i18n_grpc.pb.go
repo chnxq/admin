@@ -32,11 +32,18 @@ const (
 // DictLabelI18NServiceClient is the client API for DictLabelI18NService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// 字典标签多语言管理服务
 type DictLabelI18NServiceClient interface {
+	// 查询字典标签多语言列表
 	List(ctx context.Context, in *v1.PagingRequest, opts ...grpc.CallOption) (*v11.ListDictLabelI18NResponse, error)
+	// 查询字典标签多语言详情
 	Get(ctx context.Context, in *v11.GetDictLabelI18NRequest, opts ...grpc.CallOption) (*v11.DictLabelI18N, error)
+	// 创建字典标签多语言
 	Create(ctx context.Context, in *v11.CreateDictLabelI18NRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// 更新字典标签多语言
 	Update(ctx context.Context, in *v11.UpdateDictLabelI18NRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// 删除字典标签多语言
 	Delete(ctx context.Context, in *v11.DeleteDictLabelI18NRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -101,11 +108,18 @@ func (c *dictLabelI18NServiceClient) Delete(ctx context.Context, in *v11.DeleteD
 // DictLabelI18NServiceServer is the server API for DictLabelI18NService service.
 // All implementations must embed UnimplementedDictLabelI18NServiceServer
 // for forward compatibility.
+//
+// 字典标签多语言管理服务
 type DictLabelI18NServiceServer interface {
+	// 查询字典标签多语言列表
 	List(context.Context, *v1.PagingRequest) (*v11.ListDictLabelI18NResponse, error)
+	// 查询字典标签多语言详情
 	Get(context.Context, *v11.GetDictLabelI18NRequest) (*v11.DictLabelI18N, error)
+	// 创建字典标签多语言
 	Create(context.Context, *v11.CreateDictLabelI18NRequest) (*emptypb.Empty, error)
+	// 更新字典标签多语言
 	Update(context.Context, *v11.UpdateDictLabelI18NRequest) (*emptypb.Empty, error)
+	// 删除字典标签多语言
 	Delete(context.Context, *v11.DeleteDictLabelI18NRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDictLabelI18NServiceServer()
 }

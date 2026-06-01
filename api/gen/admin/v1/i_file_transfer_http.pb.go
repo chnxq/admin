@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_file_transfer.proto
-// generated at        2026-06-01 23:52:57
+// generated at        2026-06-02 01:56:21
 
 package admin
 

@@ -202,9 +202,16 @@ func (s *PermissionService) collectDesiredPermissions(ctx context.Context) ([]de
 		}
 		exportCurrent, ok := desired[exportCode]
 		if !ok {
+			expName := current.name
+			if strings.HasPrefix(expName, "查询") {
+				expName = "导出" + strings.TrimPrefix(expName, "查询")
+			} else {
+				expName = "导出" + expName
+			}
+
 			exportCurrent = &desiredPermission{
 				code:        exportCode,
-				name:        firstNonEmpty(current.name, exportCode),
+				name:        firstNonEmpty(expName, exportCode),
 				groupModule: firstNonEmpty(current.groupModule, uncategorizedPermissionGroup),
 			}
 			desired[exportCode] = exportCurrent
