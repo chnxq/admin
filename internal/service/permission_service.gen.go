@@ -25,15 +25,17 @@ type PermissionService struct {
 	permissionGroupRepo repo.PermissionGroupRepo
 	menuRepo            repo.MenuRepo
 	apiRepo             repo.ApiRepo
+	roleRepo            repo.RoleRepo
 }
 
-func NewPermissionService(ctx *app.AppCtx, permissionRepo repo.PermissionRepo, permissionGroupRepo repo.PermissionGroupRepo, menuRepo repo.MenuRepo, apiRepo repo.ApiRepo) *PermissionService {
+func NewPermissionService(ctx *app.AppCtx, permissionRepo repo.PermissionRepo, permissionGroupRepo repo.PermissionGroupRepo, menuRepo repo.MenuRepo, apiRepo repo.ApiRepo, roleRepo repo.RoleRepo) *PermissionService {
 	return &PermissionService{
 		log:                 ctx.NewLoggerHelper("permission/service"),
 		permissionRepo:      permissionRepo,
 		permissionGroupRepo: permissionGroupRepo,
 		menuRepo:            menuRepo,
 		apiRepo:             apiRepo,
+		roleRepo:            roleRepo,
 	}
 }
 

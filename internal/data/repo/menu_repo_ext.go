@@ -569,6 +569,13 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 		{
 			Children: []defaultNavigationMenu{
 				{
+					Authority: []string{
+						"users:view",
+						"users:create",
+						"users:edit",
+						"users:delete",
+						"users:export",
+					},
 					Component: "/system/user/index",
 					Icon:      "lucide:users",
 					Name:      "SystemUser",
@@ -577,6 +584,13 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 					Type:      menu.TypeMenu,
 				},
 				{
+					Authority: []string{
+						"roles:view",
+						"roles:create",
+						"roles:edit",
+						"roles:delete",
+						"roles:export",
+					},
 					Component: "/system/role/index",
 					Icon:      "lucide:shield-user",
 					Name:      "SystemRole",
@@ -585,6 +599,14 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 					Type:      menu.TypeMenu,
 				},
 				{
+					Authority: []string{
+						"menus:view",
+						"menus:create",
+						"menus:edit",
+						"menus:delete",
+						"menus:export",
+						"menus:sync:create",
+					},
 					Component: "/system/menu/index",
 					Icon:      "lucide:list-tree",
 					Name:      "SystemMenu",
@@ -593,8 +615,15 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 					Type:      menu.TypeMenu,
 				},
 				{
+					Authority: []string{
+						"apis:view",
+						"apis:create",
+						"apis:edit",
+						"apis:delete",
+						"apis:export",
+						"apis:sync:create",
+					},
 					Component: "/system/api/index",
-					Authority: []string{"apis:view"},
 					Icon:      "lucide:route",
 					Name:      "SystemApi",
 					Path:      "/system/api",
@@ -613,7 +642,18 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 					Type:            menu.TypeLink,
 				},
 				{
-					Authority: []string{"dict:categories:view", "dict:labels:view"},
+					Authority: []string{
+						"dict:categories:view",
+						"dict:categories:create",
+						"dict:categories:edit",
+						"dict:categories:delete",
+						"dict:categories:export",
+						"dict:labels:view",
+						"dict:labels:create",
+						"dict:labels:edit",
+						"dict:labels:delete",
+						"dict:labels:export",
+					},
 					Component: "/system/dict/index",
 					Icon:      "lucide:book-type",
 					Name:      "SystemDict",
@@ -631,6 +671,13 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 					Type:      menu.TypeMenu,
 				},
 				{
+					Authority: []string{
+						"tenants:view",
+						"tenants:create",
+						"tenants:edit",
+						"tenants:delete",
+						"tenants:export",
+					},
 					Component: "/system/tenant/index",
 					Icon:      "lucide:building-2",
 					Name:      "SystemTenant",
@@ -639,6 +686,13 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 					Type:      menu.TypeMenu,
 				},
 				{
+					Authority: []string{
+						"org:units:view",
+						"org:units:create",
+						"org:units:edit",
+						"org:units:delete",
+						"org:units:export",
+					},
 					Component: "/system/org-unit/index",
 					Icon:      "lucide:network",
 					Name:      "SystemOrgUnit",
@@ -647,6 +701,13 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 					Type:      menu.TypeMenu,
 				},
 				{
+					Authority: []string{
+						"positions:view",
+						"positions:create",
+						"positions:edit",
+						"positions:delete",
+						"positions:export",
+					},
 					Component: "/system/position/index",
 					Icon:      "lucide:briefcase-business",
 					Name:      "SystemPosition",
@@ -655,6 +716,17 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 					Type:      menu.TypeMenu,
 				},
 				{
+					Authority: []string{
+						"permissions:view",
+						"permissions:create",
+						"permissions:edit",
+						"permissions:delete",
+						"permissions:export",
+						"permissions:sync:perms:create",
+						"permission:groups:create",
+						"permission:groups:edit",
+						"permission:groups:delete",
+					},
 					Component: "/app/permission/permission/index",
 					Icon:      "lucide:key-round",
 					Name:      "PermissionPoint",

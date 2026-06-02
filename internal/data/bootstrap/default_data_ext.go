@@ -380,7 +380,8 @@ func (s *defaultDataSeed) syncResources(ctx context.Context) error {
 
 	permissionRepo := repo.NewPermissionRepo(s.appCtx, s.entClient)
 	permissionGroupRepo := repo.NewPermissionGroupRepo(s.appCtx, s.entClient)
-	permissionService := service.NewPermissionService(s.appCtx, permissionRepo, permissionGroupRepo, menuRepo, apiRepo)
+	roleRepo := repo.NewRoleRepo(s.appCtx, s.entClient)
+	permissionService := service.NewPermissionService(s.appCtx, permissionRepo, permissionGroupRepo, menuRepo, apiRepo, roleRepo)
 	if _, err := permissionService.SyncPermissions(ctx, nil); err != nil {
 		return fmt.Errorf("sync permissions: %w", err)
 	}
