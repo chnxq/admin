@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_internal_message_category.proto
-// generated at        2026-06-02 01:56:21
+// generated at        2026-06-03 23:29:27
 
 package admin
 

@@ -23,7 +23,7 @@ var (
 	_ status.Status
 	_ emptypb.Empty
 	_ pagination.Sorting
-	_ taskv1.TaskOption
+	_ taskv1.Task
 )
 
 // RegisterRedactedTaskServiceServer wraps the TaskServiceServer with the redacted server and registers the service in GRPC
@@ -99,10 +99,10 @@ func (s *redactedTaskServiceServer) Delete(ctx context.Context, in *taskv1.Delet
 	return res, err
 }
 
-// ListTaskTypeName is the redacted wrapper for the actual TaskServiceServer.ListTaskTypeName method
+// Start is the redacted wrapper for the actual TaskServiceServer.Start method
 // Unary RPC
-func (s *redactedTaskServiceServer) ListTaskTypeName(ctx context.Context, in *emptypb.Empty) (*taskv1.ListTaskTypeNameResponse, error) {
-	res, err := s.srv.ListTaskTypeName(ctx, in)
+func (s *redactedTaskServiceServer) Start(ctx context.Context, in *taskv1.StartTaskRequest) (*emptypb.Empty, error) {
+	res, err := s.srv.Start(ctx, in)
 	if !s.bypass.CheckInternal(ctx) {
 		// Apply redaction to the response
 		redact.Apply(res)
@@ -110,10 +110,10 @@ func (s *redactedTaskServiceServer) ListTaskTypeName(ctx context.Context, in *em
 	return res, err
 }
 
-// RestartAllTask is the redacted wrapper for the actual TaskServiceServer.RestartAllTask method
+// Stop is the redacted wrapper for the actual TaskServiceServer.Stop method
 // Unary RPC
-func (s *redactedTaskServiceServer) RestartAllTask(ctx context.Context, in *emptypb.Empty) (*taskv1.RestartAllTaskResponse, error) {
-	res, err := s.srv.RestartAllTask(ctx, in)
+func (s *redactedTaskServiceServer) Stop(ctx context.Context, in *taskv1.StopTaskRequest) (*emptypb.Empty, error) {
+	res, err := s.srv.Stop(ctx, in)
 	if !s.bypass.CheckInternal(ctx) {
 		// Apply redaction to the response
 		redact.Apply(res)
@@ -121,32 +121,10 @@ func (s *redactedTaskServiceServer) RestartAllTask(ctx context.Context, in *empt
 	return res, err
 }
 
-// StartAllTask is the redacted wrapper for the actual TaskServiceServer.StartAllTask method
+// RunOnce is the redacted wrapper for the actual TaskServiceServer.RunOnce method
 // Unary RPC
-func (s *redactedTaskServiceServer) StartAllTask(ctx context.Context, in *emptypb.Empty) (*emptypb.Empty, error) {
-	res, err := s.srv.StartAllTask(ctx, in)
-	if !s.bypass.CheckInternal(ctx) {
-		// Apply redaction to the response
-		redact.Apply(res)
-	}
-	return res, err
-}
-
-// StopAllTask is the redacted wrapper for the actual TaskServiceServer.StopAllTask method
-// Unary RPC
-func (s *redactedTaskServiceServer) StopAllTask(ctx context.Context, in *emptypb.Empty) (*emptypb.Empty, error) {
-	res, err := s.srv.StopAllTask(ctx, in)
-	if !s.bypass.CheckInternal(ctx) {
-		// Apply redaction to the response
-		redact.Apply(res)
-	}
-	return res, err
-}
-
-// ControlTask is the redacted wrapper for the actual TaskServiceServer.ControlTask method
-// Unary RPC
-func (s *redactedTaskServiceServer) ControlTask(ctx context.Context, in *taskv1.ControlTaskRequest) (*emptypb.Empty, error) {
-	res, err := s.srv.ControlTask(ctx, in)
+func (s *redactedTaskServiceServer) RunOnce(ctx context.Context, in *taskv1.RunTaskOnceRequest) (*emptypb.Empty, error) {
+	res, err := s.srv.RunOnce(ctx, in)
 	if !s.bypass.CheckInternal(ctx) {
 		// Apply redaction to the response
 		redact.Apply(res)

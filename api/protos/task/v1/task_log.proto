@@ -51,7 +51,7 @@ message TaskLog {
   // 执行时间
   optional google.protobuf.Timestamp execute_time = 8 [json_name = "executeTime"];
   // 租户ID，0表示全局
-  optional uint64 tenant_id = 9 [json_name = "tenantId"];
+  optional uint32 tenant_id = 9 [json_name = "tenantId"];
 }
 
 // 任务执行日志列表响应

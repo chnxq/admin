@@ -9,10 +9,8 @@ package taskv1
 import (
 	v1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
 	_ "github.com/google/gnostic/openapiv3"
-	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -28,240 +26,168 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// 调度任务类型
-type Task_Type int32
+// 任务类型
+type Task_TaskType int32
 
 const (
-	Task_PERIODIC    Task_Type = 0 // 周期性任务
-	Task_DELAY       Task_Type = 1 // 延时任务
-	Task_WAIT_RESULT Task_Type = 2 // 等待结果
+	// 未指定
+	Task_TASK_TYPE_UNSPECIFIED Task_TaskType = 0
+	// 函数
+	Task_FUNCTION Task_TaskType = 1
+	// 接口
+	Task_API Task_TaskType = 2
+	// 外部执行
+	Task_EXTERNAL Task_TaskType = 3
 )
 
-// Enum value maps for Task_Type.
+// Enum value maps for Task_TaskType.
 var (
-	Task_Type_name = map[int32]string{
-		0: "PERIODIC",
-		1: "DELAY",
-		2: "WAIT_RESULT",
+	Task_TaskType_name = map[int32]string{
+		0: "TASK_TYPE_UNSPECIFIED",
+		1: "FUNCTION",
+		2: "API",
+		3: "EXTERNAL",
 	}
-	Task_Type_value = map[string]int32{
-		"PERIODIC":    0,
-		"DELAY":       1,
-		"WAIT_RESULT": 2,
+	Task_TaskType_value = map[string]int32{
+		"TASK_TYPE_UNSPECIFIED": 0,
+		"FUNCTION":              1,
+		"API":                   2,
+		"EXTERNAL":              3,
 	}
 )
 
-func (x Task_Type) Enum() *Task_Type {
-	p := new(Task_Type)
+func (x Task_TaskType) Enum() *Task_TaskType {
+	p := new(Task_TaskType)
 	*p = x
 	return p
 }
 
-func (x Task_Type) String() string {
+func (x Task_TaskType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (Task_Type) Descriptor() protoreflect.EnumDescriptor {
+func (Task_TaskType) Descriptor() protoreflect.EnumDescriptor {
 	return file_task_v1_task_proto_enumTypes[0].Descriptor()
 }
 
-func (Task_Type) Type() protoreflect.EnumType {
+func (Task_TaskType) Type() protoreflect.EnumType {
 	return &file_task_v1_task_proto_enumTypes[0]
 }
 
-func (x Task_Type) Number() protoreflect.EnumNumber {
+func (x Task_TaskType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use Task_Type.Descriptor instead.
-func (Task_Type) EnumDescriptor() ([]byte, []int) {
-	return file_task_v1_task_proto_rawDescGZIP(), []int{1, 0}
+// Deprecated: Use Task_TaskType.Descriptor instead.
+func (Task_TaskType) EnumDescriptor() ([]byte, []int) {
+	return file_task_v1_task_proto_rawDescGZIP(), []int{0, 0}
 }
 
-// 调度任务控制类型
-type ControlTaskRequest_ControlType int32
+// 任务状态
+type Task_Status int32
 
 const (
-	ControlTaskRequest_Start   ControlTaskRequest_ControlType = 0 // 启动
-	ControlTaskRequest_Stop    ControlTaskRequest_ControlType = 1 // 停止
-	ControlTaskRequest_Restart ControlTaskRequest_ControlType = 2 // 重启
+	// 未指定
+	Task_STATUS_UNSPECIFIED Task_Status = 0
+	// 已停止
+	Task_STOPPED Task_Status = 1
+	// 运行中
+	Task_RUNNING Task_Status = 2
+	// 已禁用
+	Task_DISABLED Task_Status = 3
 )
 
-// Enum value maps for ControlTaskRequest_ControlType.
+// Enum value maps for Task_Status.
 var (
-	ControlTaskRequest_ControlType_name = map[int32]string{
-		0: "Start",
-		1: "Stop",
-		2: "Restart",
+	Task_Status_name = map[int32]string{
+		0: "STATUS_UNSPECIFIED",
+		1: "STOPPED",
+		2: "RUNNING",
+		3: "DISABLED",
 	}
-	ControlTaskRequest_ControlType_value = map[string]int32{
-		"Start":   0,
-		"Stop":    1,
-		"Restart": 2,
+	Task_Status_value = map[string]int32{
+		"STATUS_UNSPECIFIED": 0,
+		"STOPPED":            1,
+		"RUNNING":            2,
+		"DISABLED":           3,
 	}
 )
 
-func (x ControlTaskRequest_ControlType) Enum() *ControlTaskRequest_ControlType {
-	p := new(ControlTaskRequest_ControlType)
+func (x Task_Status) Enum() *Task_Status {
+	p := new(Task_Status)
 	*p = x
 	return p
 }
 
-func (x ControlTaskRequest_ControlType) String() string {
+func (x Task_Status) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (ControlTaskRequest_ControlType) Descriptor() protoreflect.EnumDescriptor {
+func (Task_Status) Descriptor() protoreflect.EnumDescriptor {
 	return file_task_v1_task_proto_enumTypes[1].Descriptor()
 }
 
-func (ControlTaskRequest_ControlType) Type() protoreflect.EnumType {
+func (Task_Status) Type() protoreflect.EnumType {
 	return &file_task_v1_task_proto_enumTypes[1]
 }
 
-func (x ControlTaskRequest_ControlType) Number() protoreflect.EnumNumber {
+func (x Task_Status) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use ControlTaskRequest_ControlType.Descriptor instead.
-func (ControlTaskRequest_ControlType) EnumDescriptor() ([]byte, []int) {
-	return file_task_v1_task_proto_rawDescGZIP(), []int{8, 0}
+// Deprecated: Use Task_Status.Descriptor instead.
+func (Task_Status) EnumDescriptor() ([]byte, []int) {
+	return file_task_v1_task_proto_rawDescGZIP(), []int{0, 1}
 }
 
-// 任务选项
-type TaskOption struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MaxRetry      *uint32                `protobuf:"varint,1,opt,name=max_retry,json=maxRetry,proto3,oneof" json:"max_retry,omitempty"`   // 任务最多可以重试的次数
-	Timeout       *durationpb.Duration   `protobuf:"bytes,2,opt,name=timeout,proto3,oneof" json:"timeout,omitempty"`                      // 任务超时时间
-	Deadline      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=deadline,proto3,oneof" json:"deadline,omitempty"`                    // 任务截止时间
-	ProcessIn     *durationpb.Duration   `protobuf:"bytes,4,opt,name=process_in,json=processIn,proto3,oneof" json:"process_in,omitempty"` // 任务延迟处理时间
-	ProcessAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=process_at,json=processAt,proto3,oneof" json:"process_at,omitempty"` // 任务执行时间点
-	UniqueTtl     *durationpb.Duration   `protobuf:"bytes,6,opt,name=unique_ttl,json=uniqueTTL,proto3,oneof" json:"unique_ttl,omitempty"` // 任务唯一锁定时间
-	Retention     *durationpb.Duration   `protobuf:"bytes,7,opt,name=retention,proto3,oneof" json:"retention,omitempty"`                  // 任务结果保留时间
-	Group         *string                `protobuf:"bytes,8,opt,name=group,proto3,oneof" json:"group,omitempty"`                          // 任务分组
-	TaskId        *string                `protobuf:"bytes,9,opt,name=task_id,json=taskID,proto3,oneof" json:"task_id,omitempty"`          // 任务唯一标识ID
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TaskOption) Reset() {
-	*x = TaskOption{}
-	mi := &file_task_v1_task_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TaskOption) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TaskOption) ProtoMessage() {}
-
-func (x *TaskOption) ProtoReflect() protoreflect.Message {
-	mi := &file_task_v1_task_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TaskOption.ProtoReflect.Descriptor instead.
-func (*TaskOption) Descriptor() ([]byte, []int) {
-	return file_task_v1_task_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *TaskOption) GetMaxRetry() uint32 {
-	if x != nil && x.MaxRetry != nil {
-		return *x.MaxRetry
-	}
-	return 0
-}
-
-func (x *TaskOption) GetTimeout() *durationpb.Duration {
-	if x != nil {
-		return x.Timeout
-	}
-	return nil
-}
-
-func (x *TaskOption) GetDeadline() *timestamppb.Timestamp {
-	if x != nil {
-		return x.Deadline
-	}
-	return nil
-}
-
-func (x *TaskOption) GetProcessIn() *durationpb.Duration {
-	if x != nil {
-		return x.ProcessIn
-	}
-	return nil
-}
-
-func (x *TaskOption) GetProcessAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.ProcessAt
-	}
-	return nil
-}
-
-func (x *TaskOption) GetUniqueTtl() *durationpb.Duration {
-	if x != nil {
-		return x.UniqueTtl
-	}
-	return nil
-}
-
-func (x *TaskOption) GetRetention() *durationpb.Duration {
-	if x != nil {
-		return x.Retention
-	}
-	return nil
-}
-
-func (x *TaskOption) GetGroup() string {
-	if x != nil && x.Group != nil {
-		return *x.Group
-	}
-	return ""
-}
-
-func (x *TaskOption) GetTaskId() string {
-	if x != nil && x.TaskId != nil {
-		return *x.TaskId
-	}
-	return ""
-}
-
-// 调度任务
+// 任务
 type Task struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            *uint32                `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`                                     // 任务ID
-	Type          *Task_Type             `protobuf:"varint,2,opt,name=type,proto3,enum=task.service.v1.Task_Type,oneof" json:"type,omitempty"`  // 任务类型
-	TypeName      *string                `protobuf:"bytes,3,opt,name=type_name,json=typeName,proto3,oneof" json:"type_name,omitempty"`          // 任务执行类型名
-	TaskPayload   *string                `protobuf:"bytes,4,opt,name=task_payload,json=taskPayload,proto3,oneof" json:"task_payload,omitempty"` // 任务数据，以 JSON 格式存储，方便存储不同类型和数量的参数
-	CronSpec      *string                `protobuf:"bytes,5,opt,name=cron_spec,json=cronSpec,proto3,oneof" json:"cron_spec,omitempty"`          // cron表达式
-	TaskOptions   *TaskOption            `protobuf:"bytes,6,opt,name=task_options,json=taskOptions,proto3,oneof" json:"task_options,omitempty"` // 任务选项
-	Enable        *bool                  `protobuf:"varint,10,opt,name=enable,proto3,oneof" json:"enable,omitempty"`                            // 启用/禁用任务
-	Remark        *string                `protobuf:"bytes,11,opt,name=remark,proto3,oneof" json:"remark,omitempty"`                             // 备注
-	TenantId      *uint32                `protobuf:"varint,20,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`        // 租户ID，0代表系统全局角色
-	CreatedBy     *uint32                `protobuf:"varint,100,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`    // 创建者ID
-	UpdatedBy     *uint32                `protobuf:"varint,101,opt,name=updated_by,json=updatedBy,proto3,oneof" json:"updated_by,omitempty"`    // 更新者ID
-	DeletedBy     *uint32                `protobuf:"varint,102,opt,name=deleted_by,json=deletedBy,proto3,oneof" json:"deleted_by,omitempty"`    // 删除者用户ID
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,200,opt,name=created_at,json=createdAt,proto3,oneof" json:"created_at,omitempty"`     // 创建时间
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,201,opt,name=updated_at,json=updatedAt,proto3,oneof" json:"updated_at,omitempty"`     // 更新时间
-	DeletedAt     *timestamppb.Timestamp `protobuf:"bytes,202,opt,name=deleted_at,json=deletedAt,proto3,oneof" json:"deleted_at,omitempty"`     // 删除时间
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 任务ID
+	Id *uint64 `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`
+	// 任务名称
+	TaskName *string `protobuf:"bytes,2,opt,name=task_name,json=taskName,proto3,oneof" json:"task_name,omitempty"`
+	// 任务分组ID
+	GroupId *uint64 `protobuf:"varint,3,opt,name=group_id,json=groupId,proto3,oneof" json:"group_id,omitempty"`
+	// 任务类型
+	TaskType *Task_TaskType `protobuf:"varint,4,opt,name=task_type,json=taskType,proto3,enum=task.service.v1.Task_TaskType,oneof" json:"task_type,omitempty"`
+	// cron表达式
+	CronExpression *string `protobuf:"bytes,5,opt,name=cron_expression,json=cronExpression,proto3,oneof" json:"cron_expression,omitempty"`
+	// 调用目标
+	InvokeTarget *string `protobuf:"bytes,6,opt,name=invoke_target,json=invokeTarget,proto3,oneof" json:"invoke_target,omitempty"`
+	// 目标参数
+	Args *string `protobuf:"bytes,7,opt,name=args,proto3,oneof" json:"args,omitempty"`
+	// 重试次数
+	Retry *uint32 `protobuf:"varint,8,opt,name=retry,proto3,oneof" json:"retry,omitempty"`
+	// 是否并发
+	Concurrent *bool `protobuf:"varint,9,opt,name=concurrent,proto3,oneof" json:"concurrent,omitempty"`
+	// 启动时返回的ID
+	EntryId *uint32 `protobuf:"varint,10,opt,name=entry_id,json=entryId,proto3,oneof" json:"entry_id,omitempty"`
+	// 任务状态
+	Status *Task_Status `protobuf:"varint,11,opt,name=status,proto3,enum=task.service.v1.Task_Status,oneof" json:"status,omitempty"`
+	// 备注
+	Remark *string `protobuf:"bytes,12,opt,name=remark,proto3,oneof" json:"remark,omitempty"`
+	// 租户ID，0表示全局
+	TenantId *uint32 `protobuf:"varint,13,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`
+	// 创建者ID
+	CreatedBy *uint32 `protobuf:"varint,100,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`
+	// 更新者ID
+	UpdatedBy *uint32 `protobuf:"varint,101,opt,name=updated_by,json=updatedBy,proto3,oneof" json:"updated_by,omitempty"`
+	// 删除者ID
+	DeletedBy *uint32 `protobuf:"varint,102,opt,name=deleted_by,json=deletedBy,proto3,oneof" json:"deleted_by,omitempty"`
+	// 创建时间
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,200,opt,name=created_at,json=createdAt,proto3,oneof" json:"created_at,omitempty"`
+	// 更新时间
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,201,opt,name=updated_at,json=updatedAt,proto3,oneof" json:"updated_at,omitempty"`
+	// 删除时间
+	DeletedAt     *timestamppb.Timestamp `protobuf:"bytes,202,opt,name=deleted_at,json=deletedAt,proto3,oneof" json:"deleted_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Task) Reset() {
 	*x = Task{}
-	mi := &file_task_v1_task_proto_msgTypes[1]
+	mi := &file_task_v1_task_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -273,7 +199,7 @@ func (x *Task) String() string {
 func (*Task) ProtoMessage() {}
 
 func (x *Task) ProtoReflect() protoreflect.Message {
-	mi := &file_task_v1_task_proto_msgTypes[1]
+	mi := &file_task_v1_task_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -286,56 +212,84 @@ func (x *Task) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Task.ProtoReflect.Descriptor instead.
 func (*Task) Descriptor() ([]byte, []int) {
-	return file_task_v1_task_proto_rawDescGZIP(), []int{1}
+	return file_task_v1_task_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Task) GetId() uint32 {
+func (x *Task) GetId() uint64 {
 	if x != nil && x.Id != nil {
 		return *x.Id
 	}
 	return 0
 }
 
-func (x *Task) GetType() Task_Type {
-	if x != nil && x.Type != nil {
-		return *x.Type
-	}
-	return Task_PERIODIC
-}
-
-func (x *Task) GetTypeName() string {
-	if x != nil && x.TypeName != nil {
-		return *x.TypeName
+func (x *Task) GetTaskName() string {
+	if x != nil && x.TaskName != nil {
+		return *x.TaskName
 	}
 	return ""
 }
 
-func (x *Task) GetTaskPayload() string {
-	if x != nil && x.TaskPayload != nil {
-		return *x.TaskPayload
+func (x *Task) GetGroupId() uint64 {
+	if x != nil && x.GroupId != nil {
+		return *x.GroupId
+	}
+	return 0
+}
+
+func (x *Task) GetTaskType() Task_TaskType {
+	if x != nil && x.TaskType != nil {
+		return *x.TaskType
+	}
+	return Task_TASK_TYPE_UNSPECIFIED
+}
+
+func (x *Task) GetCronExpression() string {
+	if x != nil && x.CronExpression != nil {
+		return *x.CronExpression
 	}
 	return ""
 }
 
-func (x *Task) GetCronSpec() string {
-	if x != nil && x.CronSpec != nil {
-		return *x.CronSpec
+func (x *Task) GetInvokeTarget() string {
+	if x != nil && x.InvokeTarget != nil {
+		return *x.InvokeTarget
 	}
 	return ""
 }
 
-func (x *Task) GetTaskOptions() *TaskOption {
-	if x != nil {
-		return x.TaskOptions
+func (x *Task) GetArgs() string {
+	if x != nil && x.Args != nil {
+		return *x.Args
 	}
-	return nil
+	return ""
 }
 
-func (x *Task) GetEnable() bool {
-	if x != nil && x.Enable != nil {
-		return *x.Enable
+func (x *Task) GetRetry() uint32 {
+	if x != nil && x.Retry != nil {
+		return *x.Retry
+	}
+	return 0
+}
+
+func (x *Task) GetConcurrent() bool {
+	if x != nil && x.Concurrent != nil {
+		return *x.Concurrent
 	}
 	return false
+}
+
+func (x *Task) GetEntryId() uint32 {
+	if x != nil && x.EntryId != nil {
+		return *x.EntryId
+	}
+	return 0
+}
+
+func (x *Task) GetStatus() Task_Status {
+	if x != nil && x.Status != nil {
+		return *x.Status
+	}
+	return Task_STATUS_UNSPECIFIED
 }
 
 func (x *Task) GetRemark() string {
@@ -394,7 +348,7 @@ func (x *Task) GetDeletedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-// 查询调度任务列表 - 回应
+// 任务列表响应
 type ListTaskResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*Task                `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -405,7 +359,7 @@ type ListTaskResponse struct {
 
 func (x *ListTaskResponse) Reset() {
 	*x = ListTaskResponse{}
-	mi := &file_task_v1_task_proto_msgTypes[2]
+	mi := &file_task_v1_task_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -417,7 +371,7 @@ func (x *ListTaskResponse) String() string {
 func (*ListTaskResponse) ProtoMessage() {}
 
 func (x *ListTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_task_v1_task_proto_msgTypes[2]
+	mi := &file_task_v1_task_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -430,7 +384,7 @@ func (x *ListTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTaskResponse.ProtoReflect.Descriptor instead.
 func (*ListTaskResponse) Descriptor() ([]byte, []int) {
-	return file_task_v1_task_proto_rawDescGZIP(), []int{2}
+	return file_task_v1_task_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ListTaskResponse) GetItems() []*Task {
@@ -447,22 +401,23 @@ func (x *ListTaskResponse) GetTotal() uint64 {
 	return 0
 }
 
-// 查询调度任务详情 - 请求
+// 查询任务请求
 type GetTaskRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to QueryBy:
 	//
 	//	*GetTaskRequest_Id
-	//	*GetTaskRequest_TypeName
-	QueryBy       isGetTaskRequest_QueryBy `protobuf_oneof:"query_by"`
-	ViewMask      *fieldmaskpb.FieldMask   `protobuf:"bytes,100,opt,name=view_mask,json=viewMask,proto3,oneof" json:"view_mask,omitempty"` // 视图字段过滤器，用于控制返回的字段
+	//	*GetTaskRequest_TaskName
+	QueryBy isGetTaskRequest_QueryBy `protobuf_oneof:"query_by"`
+	// 返回字段掩码
+	ViewMask      *fieldmaskpb.FieldMask `protobuf:"bytes,100,opt,name=view_mask,json=viewMask,proto3,oneof" json:"view_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetTaskRequest) Reset() {
 	*x = GetTaskRequest{}
-	mi := &file_task_v1_task_proto_msgTypes[3]
+	mi := &file_task_v1_task_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -474,7 +429,7 @@ func (x *GetTaskRequest) String() string {
 func (*GetTaskRequest) ProtoMessage() {}
 
 func (x *GetTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_task_v1_task_proto_msgTypes[3]
+	mi := &file_task_v1_task_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -487,7 +442,7 @@ func (x *GetTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTaskRequest.ProtoReflect.Descriptor instead.
 func (*GetTaskRequest) Descriptor() ([]byte, []int) {
-	return file_task_v1_task_proto_rawDescGZIP(), []int{3}
+	return file_task_v1_task_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetTaskRequest) GetQueryBy() isGetTaskRequest_QueryBy {
@@ -497,7 +452,7 @@ func (x *GetTaskRequest) GetQueryBy() isGetTaskRequest_QueryBy {
 	return nil
 }
 
-func (x *GetTaskRequest) GetId() uint32 {
+func (x *GetTaskRequest) GetId() uint64 {
 	if x != nil {
 		if x, ok := x.QueryBy.(*GetTaskRequest_Id); ok {
 			return x.Id
@@ -506,10 +461,10 @@ func (x *GetTaskRequest) GetId() uint32 {
 	return 0
 }
 
-func (x *GetTaskRequest) GetTypeName() string {
+func (x *GetTaskRequest) GetTaskName() string {
 	if x != nil {
-		if x, ok := x.QueryBy.(*GetTaskRequest_TypeName); ok {
-			return x.TypeName
+		if x, ok := x.QueryBy.(*GetTaskRequest_TaskName); ok {
+			return x.TaskName
 		}
 	}
 	return ""
@@ -527,18 +482,20 @@ type isGetTaskRequest_QueryBy interface {
 }
 
 type GetTaskRequest_Id struct {
-	Id uint32 `protobuf:"varint,1,opt,name=id,proto3,oneof"` // ID
+	// 按ID查询
+	Id uint64 `protobuf:"varint,1,opt,name=id,proto3,oneof"`
 }
 
-type GetTaskRequest_TypeName struct {
-	TypeName string `protobuf:"bytes,2,opt,name=type_name,json=typeName,proto3,oneof"` // 任务执行类型名
+type GetTaskRequest_TaskName struct {
+	// 按任务名称查询
+	TaskName string `protobuf:"bytes,2,opt,name=task_name,json=taskName,proto3,oneof"`
 }
 
 func (*GetTaskRequest_Id) isGetTaskRequest_QueryBy() {}
 
-func (*GetTaskRequest_TypeName) isGetTaskRequest_QueryBy() {}
+func (*GetTaskRequest_TaskName) isGetTaskRequest_QueryBy() {}
 
-// 创建调度任务 - 请求
+// 创建任务请求
 type CreateTaskRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Data          *Task                  `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
@@ -548,7 +505,7 @@ type CreateTaskRequest struct {
 
 func (x *CreateTaskRequest) Reset() {
 	*x = CreateTaskRequest{}
-	mi := &file_task_v1_task_proto_msgTypes[4]
+	mi := &file_task_v1_task_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -560,7 +517,7 @@ func (x *CreateTaskRequest) String() string {
 func (*CreateTaskRequest) ProtoMessage() {}
 
 func (x *CreateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_task_v1_task_proto_msgTypes[4]
+	mi := &file_task_v1_task_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -573,7 +530,7 @@ func (x *CreateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTaskRequest.ProtoReflect.Descriptor instead.
 func (*CreateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_task_v1_task_proto_rawDescGZIP(), []int{4}
+	return file_task_v1_task_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *CreateTaskRequest) GetData() *Task {
@@ -583,20 +540,20 @@ func (x *CreateTaskRequest) GetData() *Task {
 	return nil
 }
 
-// 更新调度任务 - 请求
+// 更新任务请求
 type UpdateTaskRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	Data          *Task                  `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`              // 要更新的字段列表
-	AllowMissing  *bool                  `protobuf:"varint,4,opt,name=allow_missing,json=allowMissing,proto3,oneof" json:"allow_missing,omitempty"` // 如果设置为true的时候，资源不存在则会新增(插入)，并且在这种情况下`updateMask`字段将会被忽略。
+	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
+	AllowMissing  *bool                  `protobuf:"varint,4,opt,name=allow_missing,json=allowMissing,proto3,oneof" json:"allow_missing,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateTaskRequest) Reset() {
 	*x = UpdateTaskRequest{}
-	mi := &file_task_v1_task_proto_msgTypes[5]
+	mi := &file_task_v1_task_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -608,7 +565,7 @@ func (x *UpdateTaskRequest) String() string {
 func (*UpdateTaskRequest) ProtoMessage() {}
 
 func (x *UpdateTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_task_v1_task_proto_msgTypes[5]
+	mi := &file_task_v1_task_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -621,10 +578,10 @@ func (x *UpdateTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateTaskRequest.ProtoReflect.Descriptor instead.
 func (*UpdateTaskRequest) Descriptor() ([]byte, []int) {
-	return file_task_v1_task_proto_rawDescGZIP(), []int{5}
+	return file_task_v1_task_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *UpdateTaskRequest) GetId() uint32 {
+func (x *UpdateTaskRequest) GetId() uint64 {
 	if x != nil {
 		return x.Id
 	}
@@ -652,20 +609,17 @@ func (x *UpdateTaskRequest) GetAllowMissing() bool {
 	return false
 }
 
-// 删除调度任务 - 请求
+// 删除任务请求
 type DeleteTaskRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Types that are valid to be assigned to QueryBy:
-	//
-	//	*DeleteTaskRequest_Id
-	QueryBy       isDeleteTaskRequest_QueryBy `protobuf_oneof:"query_by"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ids           []uint64               `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DeleteTaskRequest) Reset() {
 	*x = DeleteTaskRequest{}
-	mi := &file_task_v1_task_proto_msgTypes[6]
+	mi := &file_task_v1_task_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -677,7 +631,7 @@ func (x *DeleteTaskRequest) String() string {
 func (*DeleteTaskRequest) ProtoMessage() {}
 
 func (x *DeleteTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_task_v1_task_proto_msgTypes[6]
+	mi := &file_task_v1_task_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -690,57 +644,83 @@ func (x *DeleteTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTaskRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTaskRequest) Descriptor() ([]byte, []int) {
-	return file_task_v1_task_proto_rawDescGZIP(), []int{6}
+	return file_task_v1_task_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *DeleteTaskRequest) GetQueryBy() isDeleteTaskRequest_QueryBy {
+func (x *DeleteTaskRequest) GetIds() []uint64 {
 	if x != nil {
-		return x.QueryBy
+		return x.Ids
 	}
 	return nil
 }
 
-func (x *DeleteTaskRequest) GetId() uint32 {
-	if x != nil {
-		if x, ok := x.QueryBy.(*DeleteTaskRequest_Id); ok {
-			return x.Id
-		}
-	}
-	return 0
-}
-
-type isDeleteTaskRequest_QueryBy interface {
-	isDeleteTaskRequest_QueryBy()
-}
-
-type DeleteTaskRequest_Id struct {
-	Id uint32 `protobuf:"varint,1,opt,name=id,proto3,oneof"` // ID
-}
-
-func (*DeleteTaskRequest_Id) isDeleteTaskRequest_QueryBy() {}
-
-// 重启调度任务 - 回应
-type RestartAllTaskResponse struct {
+// 启动任务请求
+type StartTaskRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Count         int32                  `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RestartAllTaskResponse) Reset() {
-	*x = RestartAllTaskResponse{}
+func (x *StartTaskRequest) Reset() {
+	*x = StartTaskRequest{}
+	mi := &file_task_v1_task_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartTaskRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartTaskRequest) ProtoMessage() {}
+
+func (x *StartTaskRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_task_v1_task_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartTaskRequest.ProtoReflect.Descriptor instead.
+func (*StartTaskRequest) Descriptor() ([]byte, []int) {
+	return file_task_v1_task_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *StartTaskRequest) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+// 停止任务请求
+type StopTaskRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StopTaskRequest) Reset() {
+	*x = StopTaskRequest{}
 	mi := &file_task_v1_task_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RestartAllTaskResponse) String() string {
+func (x *StopTaskRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RestartAllTaskResponse) ProtoMessage() {}
+func (*StopTaskRequest) ProtoMessage() {}
 
-func (x *RestartAllTaskResponse) ProtoReflect() protoreflect.Message {
+func (x *StopTaskRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_task_v1_task_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -752,41 +732,41 @@ func (x *RestartAllTaskResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RestartAllTaskResponse.ProtoReflect.Descriptor instead.
-func (*RestartAllTaskResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use StopTaskRequest.ProtoReflect.Descriptor instead.
+func (*StopTaskRequest) Descriptor() ([]byte, []int) {
 	return file_task_v1_task_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *RestartAllTaskResponse) GetCount() int32 {
+func (x *StopTaskRequest) GetId() uint64 {
 	if x != nil {
-		return x.Count
+		return x.Id
 	}
 	return 0
 }
 
-// 控制调度任务 - 请求
-type ControlTaskRequest struct {
-	state         protoimpl.MessageState         `protogen:"open.v1"`
-	ControlType   ControlTaskRequest_ControlType `protobuf:"varint,1,opt,name=control_type,json=controlType,proto3,enum=task.service.v1.ControlTaskRequest_ControlType" json:"control_type,omitempty"` // 控制类型
-	TypeName      string                         `protobuf:"bytes,2,opt,name=type_name,json=typeName,proto3" json:"type_name,omitempty"`                                                               // 任务执行类型名
+// 立即执行任务请求
+type RunTaskOnceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Input         *string                `protobuf:"bytes,2,opt,name=input,proto3,oneof" json:"input,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ControlTaskRequest) Reset() {
-	*x = ControlTaskRequest{}
+func (x *RunTaskOnceRequest) Reset() {
+	*x = RunTaskOnceRequest{}
 	mi := &file_task_v1_task_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ControlTaskRequest) String() string {
+func (x *RunTaskOnceRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ControlTaskRequest) ProtoMessage() {}
+func (*RunTaskOnceRequest) ProtoMessage() {}
 
-func (x *ControlTaskRequest) ProtoReflect() protoreflect.Message {
+func (x *RunTaskOnceRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_task_v1_task_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -798,70 +778,26 @@ func (x *ControlTaskRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ControlTaskRequest.ProtoReflect.Descriptor instead.
-func (*ControlTaskRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use RunTaskOnceRequest.ProtoReflect.Descriptor instead.
+func (*RunTaskOnceRequest) Descriptor() ([]byte, []int) {
 	return file_task_v1_task_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *ControlTaskRequest) GetControlType() ControlTaskRequest_ControlType {
+func (x *RunTaskOnceRequest) GetId() uint64 {
 	if x != nil {
-		return x.ControlType
+		return x.Id
 	}
-	return ControlTaskRequest_Start
+	return 0
 }
 
-func (x *ControlTaskRequest) GetTypeName() string {
-	if x != nil {
-		return x.TypeName
+func (x *RunTaskOnceRequest) GetInput() string {
+	if x != nil && x.Input != nil {
+		return *x.Input
 	}
 	return ""
 }
 
-// 任务类型名称列表 - 回应
-type ListTaskTypeNameResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TypeNames     []string               `protobuf:"bytes,1,rep,name=type_names,json=typeNames,proto3" json:"type_names,omitempty"` // 类型名称列表
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListTaskTypeNameResponse) Reset() {
-	*x = ListTaskTypeNameResponse{}
-	mi := &file_task_v1_task_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListTaskTypeNameResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListTaskTypeNameResponse) ProtoMessage() {}
-
-func (x *ListTaskTypeNameResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_task_v1_task_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListTaskTypeNameResponse.ProtoReflect.Descriptor instead.
-func (*ListTaskTypeNameResponse) Descriptor() ([]byte, []int) {
-	return file_task_v1_task_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *ListTaskTypeNameResponse) GetTypeNames() []string {
-	if x != nil {
-		return x.TypeNames
-	}
-	return nil
-}
-
+// 任务数量响应
 type CountTaskResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Count         uint64                 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
@@ -871,7 +807,7 @@ type CountTaskResponse struct {
 
 func (x *CountTaskResponse) Reset() {
 	*x = CountTaskResponse{}
-	mi := &file_task_v1_task_proto_msgTypes[10]
+	mi := &file_task_v1_task_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -883,7 +819,7 @@ func (x *CountTaskResponse) String() string {
 func (*CountTaskResponse) ProtoMessage() {}
 
 func (x *CountTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_task_v1_task_proto_msgTypes[10]
+	mi := &file_task_v1_task_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -896,7 +832,7 @@ func (x *CountTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CountTaskResponse.ProtoReflect.Descriptor instead.
 func (*CountTaskResponse) Descriptor() ([]byte, []int) {
-	return file_task_v1_task_proto_rawDescGZIP(), []int{10}
+	return file_task_v1_task_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CountTaskResponse) GetCount() uint64 {
@@ -910,71 +846,60 @@ var File_task_v1_task_proto protoreflect.FileDescriptor
 
 const file_task_v1_task_proto_rawDesc = "" +
 	"\n" +
-	"\x12task/v1/task.proto\x12\x0ftask.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\x1a google/protobuf/field_mask.proto\x1a\x1epagination/v1/pagination.proto\"\xf7\x06\n" +
+	"\x12task/v1/task.proto\x12\x0ftask.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1epagination/v1/pagination.proto\"\xb2\t\n" +
+	"\x04Task\x12\x13\n" +
+	"\x02id\x18\x01 \x01(\x04H\x00R\x02id\x88\x01\x01\x12 \n" +
+	"\ttask_name\x18\x02 \x01(\tH\x01R\btaskName\x88\x01\x01\x12\x1e\n" +
+	"\bgroup_id\x18\x03 \x01(\x04H\x02R\agroupId\x88\x01\x01\x12@\n" +
+	"\ttask_type\x18\x04 \x01(\x0e2\x1e.task.service.v1.Task.TaskTypeH\x03R\btaskType\x88\x01\x01\x12,\n" +
+	"\x0fcron_expression\x18\x05 \x01(\tH\x04R\x0ecronExpression\x88\x01\x01\x12(\n" +
+	"\rinvoke_target\x18\x06 \x01(\tH\x05R\finvokeTarget\x88\x01\x01\x12\x17\n" +
+	"\x04args\x18\a \x01(\tH\x06R\x04args\x88\x01\x01\x12\x19\n" +
+	"\x05retry\x18\b \x01(\rH\aR\x05retry\x88\x01\x01\x12#\n" +
 	"\n" +
-	"TaskOption\x12L\n" +
-	"\tmax_retry\x18\x01 \x01(\rB*\xe0A\x01\xbaG$\x92\x02!任务最多可以重试的次数H\x00R\bmaxRetry\x88\x01\x01\x12U\n" +
-	"\atimeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationB\x1b\xe0A\x01\xbaG\x15\x92\x02\x12任务超时时间H\x01R\atimeout\x88\x01\x01\x12X\n" +
-	"\bdeadline\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampB\x1b\xe0A\x01\xbaG\x15\x92\x02\x12任务截止时间H\x02R\bdeadline\x88\x01\x01\x12`\n" +
+	"concurrent\x18\t \x01(\bH\bR\n" +
+	"concurrent\x88\x01\x01\x12\x1e\n" +
+	"\bentry_id\x18\n" +
+	" \x01(\rH\tR\aentryId\x88\x01\x01\x129\n" +
+	"\x06status\x18\v \x01(\x0e2\x1c.task.service.v1.Task.StatusH\n" +
+	"R\x06status\x88\x01\x01\x12\x1b\n" +
+	"\x06remark\x18\f \x01(\tH\vR\x06remark\x88\x01\x01\x12 \n" +
+	"\ttenant_id\x18\r \x01(\rH\fR\btenantId\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"process_in\x18\x04 \x01(\v2\x19.google.protobuf.DurationB!\xe0A\x01\xbaG\x1b\x92\x02\x18任务延迟处理时间H\x03R\tprocessIn\x88\x01\x01\x12^\n" +
+	"created_by\x18d \x01(\rH\rR\tcreatedBy\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"process_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x1e\xe0A\x01\xbaG\x18\x92\x02\x15任务执行时间点H\x04R\tprocessAt\x88\x01\x01\x12`\n" +
+	"updated_by\x18e \x01(\rH\x0eR\tupdatedBy\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"unique_ttl\x18\x06 \x01(\v2\x19.google.protobuf.DurationB!\xe0A\x01\xbaG\x1b\x92\x02\x18任务唯一锁定时间H\x05R\tuniqueTTL\x88\x01\x01\x12_\n" +
-	"\tretention\x18\a \x01(\v2\x19.google.protobuf.DurationB!\xe0A\x01\xbaG\x1b\x92\x02\x18任务结果保留时间H\x06R\tretention\x88\x01\x01\x120\n" +
-	"\x05group\x18\b \x01(\tB\x15\xe0A\x01\xbaG\x0f\x92\x02\f任务分组H\aR\x05group\x88\x01\x01\x12;\n" +
-	"\atask_id\x18\t \x01(\tB\x1d\xe0A\x01\xbaG\x17\x92\x02\x14任务唯一标识IDH\bR\x06taskID\x88\x01\x01B\f\n" +
+	"deleted_by\x18f \x01(\rH\x0fR\tdeletedBy\x88\x01\x01\x12?\n" +
 	"\n" +
-	"_max_retryB\n" +
+	"created_at\x18\xc8\x01 \x01(\v2\x1a.google.protobuf.TimestampH\x10R\tcreatedAt\x88\x01\x01\x12?\n" +
 	"\n" +
-	"\b_timeoutB\v\n" +
-	"\t_deadlineB\r\n" +
-	"\v_process_inB\r\n" +
-	"\v_process_atB\r\n" +
-	"\v_unique_ttlB\f\n" +
+	"updated_at\x18\xc9\x01 \x01(\v2\x1a.google.protobuf.TimestampH\x11R\tupdatedAt\x88\x01\x01\x12?\n" +
 	"\n" +
-	"_retentionB\b\n" +
-	"\x06_groupB\n" +
+	"deleted_at\x18\xca\x01 \x01(\v2\x1a.google.protobuf.TimestampH\x12R\tdeletedAt\x88\x01\x01\"J\n" +
+	"\bTaskType\x12\x19\n" +
+	"\x15TASK_TYPE_UNSPECIFIED\x10\x00\x12\f\n" +
+	"\bFUNCTION\x10\x01\x12\a\n" +
+	"\x03API\x10\x02\x12\f\n" +
+	"\bEXTERNAL\x10\x03\"H\n" +
+	"\x06Status\x12\x16\n" +
+	"\x12STATUS_UNSPECIFIED\x10\x00\x12\v\n" +
+	"\aSTOPPED\x10\x01\x12\v\n" +
+	"\aRUNNING\x10\x02\x12\f\n" +
+	"\bDISABLED\x10\x03B\x05\n" +
+	"\x03_idB\f\n" +
 	"\n" +
-	"\b_task_id\"\xed\v\n" +
-	"\x04Task\x12&\n" +
-	"\x02id\x18\x01 \x01(\rB\x11\xe0A\x01\xbaG\v\x92\x02\b任务IDH\x00R\x02id\x88\x01\x01\x12J\n" +
-	"\x04type\x18\x02 \x01(\x0e2\x1a.task.service.v1.Task.TypeB\x15\xe0A\x01\xbaG\x0f\x92\x02\f任务类型H\x01R\x04type\x88\x01\x01\x12\x92\x01\n" +
-	"\ttype_name\x18\x03 \x01(\tBp\xe0A\x01\xbaGj\x92\x02g任务执行类型名，例如 \"send_email\"、\"generate_report\" 等，用于区分不同类型的任务H\x02R\btypeName\x88\x01\x01\x12\x82\x01\n" +
-	"\ftask_payload\x18\x04 \x01(\tBZ\xe0A\x01\xbaGT\x92\x02Q任务数据，以 JSON 格式存储，方便存储不同类型和数量的参数H\x03R\vtaskPayload\x88\x01\x01\x12\\\n" +
-	"\tcron_spec\x18\x05 \x01(\tB:\xe0A\x01\xbaG4\x92\x021cron表达式，用于定义任务的调度时间H\x04R\bcronSpec\x88\x01\x01\x12\x9f\x01\n" +
-	"\ftask_options\x18\x06 \x01(\v2\x1b.task.service.v1.TaskOptionBZ\xe0A\x01\xbaGT\x92\x02Q任务选项，以 JSON 格式存储，方便存储不同类型和数量的选项H\x05R\vtaskOptions\x88\x01\x01\x126\n" +
-	"\x06enable\x18\n" +
-	" \x01(\bB\x19\xbaG\x16\x92\x02\x13启用/禁用任务H\x06R\x06enable\x88\x01\x01\x12)\n" +
-	"\x06remark\x18\v \x01(\tB\f\xbaG\t\x92\x02\x06备注H\aR\x06remark\x88\x01\x01\x12L\n" +
-	"\ttenant_id\x18\x14 \x01(\rB*\xbaG'\x92\x02$租户ID，0代表系统全局角色H\bR\btenantId\x88\x01\x01\x125\n" +
+	"_task_nameB\v\n" +
+	"\t_group_idB\f\n" +
 	"\n" +
-	"created_by\x18d \x01(\rB\x11\xbaG\x0e\x92\x02\v创建者IDH\tR\tcreatedBy\x88\x01\x01\x125\n" +
-	"\n" +
-	"updated_by\x18e \x01(\rB\x11\xbaG\x0e\x92\x02\v更新者IDH\n" +
-	"R\tupdatedBy\x88\x01\x01\x12;\n" +
-	"\n" +
-	"deleted_by\x18f \x01(\rB\x17\xbaG\x14\x92\x02\x11删除者用户IDH\vR\tdeletedBy\x88\x01\x01\x12S\n" +
-	"\n" +
-	"created_at\x18\xc8\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f创建时间H\fR\tcreatedAt\x88\x01\x01\x12S\n" +
-	"\n" +
-	"updated_at\x18\xc9\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f更新时间H\rR\tupdatedAt\x88\x01\x01\x12S\n" +
-	"\n" +
-	"deleted_at\x18\xca\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f删除时间H\x0eR\tdeletedAt\x88\x01\x01\"0\n" +
-	"\x04Type\x12\f\n" +
-	"\bPERIODIC\x10\x00\x12\t\n" +
-	"\x05DELAY\x10\x01\x12\x0f\n" +
-	"\vWAIT_RESULT\x10\x02B\x05\n" +
-	"\x03_idB\a\n" +
-	"\x05_typeB\f\n" +
-	"\n" +
-	"_type_nameB\x0f\n" +
-	"\r_task_payloadB\f\n" +
-	"\n" +
-	"_cron_specB\x0f\n" +
-	"\r_task_optionsB\t\n" +
-	"\a_enableB\t\n" +
+	"_task_typeB\x12\n" +
+	"\x10_cron_expressionB\x10\n" +
+	"\x0e_invoke_targetB\a\n" +
+	"\x05_argsB\b\n" +
+	"\x06_retryB\r\n" +
+	"\v_concurrentB\v\n" +
+	"\t_entry_idB\t\n" +
+	"\a_statusB\t\n" +
 	"\a_remarkB\f\n" +
 	"\n" +
 	"_tenant_idB\r\n" +
@@ -986,56 +911,46 @@ const file_task_v1_task_proto_rawDesc = "" +
 	"\v_deleted_at\"U\n" +
 	"\x10ListTaskResponse\x12+\n" +
 	"\x05items\x18\x01 \x03(\v2\x15.task.service.v1.TaskR\x05items\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x04R\x05total\"\xd3\x02\n" +
-	"\x0eGetTaskRequest\x12\x1c\n" +
-	"\x02id\x18\x01 \x01(\rB\n" +
-	"\xbaG\a\x18\x01\x92\x02\x02IDH\x00R\x02id\x12\x8f\x01\n" +
-	"\ttype_name\x18\x02 \x01(\tBp\xe0A\x01\xbaGj\x92\x02g任务执行类型名，例如 \"send_email\"、\"generate_report\" 等，用于区分不同类型的任务H\x00R\btypeName\x12w\n" +
-	"\tview_mask\x18d \x01(\v2\x1a.google.protobuf.FieldMaskB9\xbaG6\x92\x023视图字段过滤器，用于控制返回的字段H\x01R\bviewMask\x88\x01\x01B\n" +
+	"\x05total\x18\x02 \x01(\x04R\x05total\"\x99\x01\n" +
+	"\x0eGetTaskRequest\x12\x10\n" +
+	"\x02id\x18\x01 \x01(\x04H\x00R\x02id\x12\x1d\n" +
+	"\ttask_name\x18\x02 \x01(\tH\x00R\btaskName\x12<\n" +
+	"\tview_mask\x18d \x01(\v2\x1a.google.protobuf.FieldMaskH\x01R\bviewMask\x88\x01\x01B\n" +
 	"\n" +
 	"\bquery_byB\f\n" +
 	"\n" +
 	"_view_mask\">\n" +
 	"\x11CreateTaskRequest\x12)\n" +
-	"\x04data\x18\x01 \x01(\v2\x15.task.service.v1.TaskR\x04data\"\x8c\x03\n" +
+	"\x04data\x18\x01 \x01(\v2\x15.task.service.v1.TaskR\x04data\"\xc7\x01\n" +
 	"\x11UpdateTaskRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\rR\x02id\x12)\n" +
-	"\x04data\x18\x02 \x01(\v2\x15.task.service.v1.TaskR\x04data\x12s\n" +
-	"\vupdate_mask\x18\x03 \x01(\v2\x1a.google.protobuf.FieldMaskB6\xbaG3:\x16\x12\x14id,realname,username\x92\x02\x18要更新的字段列表R\n" +
-	"updateMask\x12\xb4\x01\n" +
-	"\rallow_missing\x18\x04 \x01(\bB\x89\x01\xbaG\x85\x01\x92\x02\x81\x01如果设置为true的时候，资源不存在则会新增(插入)，并且在这种情况下`updateMask`字段将会被忽略。H\x00R\fallowMissing\x88\x01\x01B\x10\n" +
-	"\x0e_allow_missing\"=\n" +
-	"\x11DeleteTaskRequest\x12\x1c\n" +
-	"\x02id\x18\x01 \x01(\rB\n" +
-	"\xbaG\a\x18\x01\x92\x02\x02IDH\x00R\x02idB\n" +
-	"\n" +
-	"\bquery_by\".\n" +
-	"\x16RestartAllTaskResponse\x12\x14\n" +
-	"\x05count\x18\x01 \x01(\x05R\x05count\"\xbd\x02\n" +
-	"\x12ControlTaskRequest\x12f\n" +
-	"\fcontrol_type\x18\x01 \x01(\x0e2/.task.service.v1.ControlTaskRequest.ControlTypeB\x12\xbaG\x0f\x92\x02\f控制类型R\vcontrolType\x12\x8d\x01\n" +
-	"\ttype_name\x18\x02 \x01(\tBp\xe0A\x01\xbaGj\x92\x02g任务执行类型名，例如 \"send_email\"、\"generate_report\" 等，用于区分不同类型的任务R\btypeName\"/\n" +
-	"\vControlType\x12\t\n" +
-	"\x05Start\x10\x00\x12\b\n" +
-	"\x04Stop\x10\x01\x12\v\n" +
-	"\aRestart\x10\x02\"S\n" +
-	"\x18ListTaskTypeNameResponse\x127\n" +
-	"\n" +
-	"type_names\x18\x01 \x03(\tB\x18\xbaG\x15\x92\x02\x12类型名称列表R\ttypeNames\")\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12)\n" +
+	"\x04data\x18\x02 \x01(\v2\x15.task.service.v1.TaskR\x04data\x12;\n" +
+	"\vupdate_mask\x18\x03 \x01(\v2\x1a.google.protobuf.FieldMaskR\n" +
+	"updateMask\x12(\n" +
+	"\rallow_missing\x18\x04 \x01(\bH\x00R\fallowMissing\x88\x01\x01B\x10\n" +
+	"\x0e_allow_missing\"%\n" +
+	"\x11DeleteTaskRequest\x12\x10\n" +
+	"\x03ids\x18\x01 \x03(\x04R\x03ids\"\"\n" +
+	"\x10StartTaskRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\"!\n" +
+	"\x0fStopTaskRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\"u\n" +
+	"\x12RunTaskOnceRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12E\n" +
+	"\x05input\x18\x02 \x01(\tB*\xbaG'\x92\x02$立即执行时的临时输入参数H\x00R\x05input\x88\x01\x01B\b\n" +
+	"\x06_input\")\n" +
 	"\x11CountTaskResponse\x12\x14\n" +
-	"\x05count\x18\x01 \x01(\x04R\x05count2\xb7\x06\n" +
+	"\x05count\x18\x01 \x01(\x04R\x05count2\x8c\x05\n" +
 	"\vTaskService\x12F\n" +
 	"\x04List\x12\x19.pagination.PagingRequest\x1a!.task.service.v1.ListTaskResponse\"\x00\x12H\n" +
 	"\x05Count\x12\x19.pagination.PagingRequest\x1a\".task.service.v1.CountTaskResponse\"\x00\x12?\n" +
 	"\x03Get\x12\x1f.task.service.v1.GetTaskRequest\x1a\x15.task.service.v1.Task\"\x00\x12F\n" +
 	"\x06Create\x12\".task.service.v1.CreateTaskRequest\x1a\x16.google.protobuf.Empty\"\x00\x12F\n" +
 	"\x06Update\x12\".task.service.v1.UpdateTaskRequest\x1a\x16.google.protobuf.Empty\"\x00\x12F\n" +
-	"\x06Delete\x12\".task.service.v1.DeleteTaskRequest\x1a\x16.google.protobuf.Empty\"\x00\x12W\n" +
-	"\x10ListTaskTypeName\x12\x16.google.protobuf.Empty\x1a).task.service.v1.ListTaskTypeNameResponse\"\x00\x12S\n" +
-	"\x0eRestartAllTask\x12\x16.google.protobuf.Empty\x1a'.task.service.v1.RestartAllTaskResponse\"\x00\x12@\n" +
-	"\fStartAllTask\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12?\n" +
-	"\vStopAllTask\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12L\n" +
-	"\vControlTask\x12#.task.service.v1.ControlTaskRequest\x1a\x16.google.protobuf.Empty\"\x00B\x9c\x01\n" +
+	"\x06Delete\x12\".task.service.v1.DeleteTaskRequest\x1a\x16.google.protobuf.Empty\"\x00\x12D\n" +
+	"\x05Start\x12!.task.service.v1.StartTaskRequest\x1a\x16.google.protobuf.Empty\"\x00\x12B\n" +
+	"\x04Stop\x12 .task.service.v1.StopTaskRequest\x1a\x16.google.protobuf.Empty\"\x00\x12H\n" +
+	"\aRunOnce\x12#.task.service.v1.RunTaskOnceRequest\x1a\x16.google.protobuf.Empty\"\x00B\x9c\x01\n" +
 	"\x13com.task.service.v1B\tTaskProtoP\x01Z\x1cadmin/api/gen/task/v1;taskv1\xa2\x02\x03TSX\xaa\x02\x0fTask.Service.V1\xca\x02\x0fTask\\Service\\V1\xe2\x02\x1bTask\\Service\\V1\\GPBMetadata\xea\x02\x11Task::Service::V1b\x06proto3"
 
 var (
@@ -1051,72 +966,59 @@ func file_task_v1_task_proto_rawDescGZIP() []byte {
 }
 
 var file_task_v1_task_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_task_v1_task_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_task_v1_task_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_task_v1_task_proto_goTypes = []any{
-	(Task_Type)(0),                      // 0: task.service.v1.Task.Type
-	(ControlTaskRequest_ControlType)(0), // 1: task.service.v1.ControlTaskRequest.ControlType
-	(*TaskOption)(nil),                  // 2: task.service.v1.TaskOption
-	(*Task)(nil),                        // 3: task.service.v1.Task
-	(*ListTaskResponse)(nil),            // 4: task.service.v1.ListTaskResponse
-	(*GetTaskRequest)(nil),              // 5: task.service.v1.GetTaskRequest
-	(*CreateTaskRequest)(nil),           // 6: task.service.v1.CreateTaskRequest
-	(*UpdateTaskRequest)(nil),           // 7: task.service.v1.UpdateTaskRequest
-	(*DeleteTaskRequest)(nil),           // 8: task.service.v1.DeleteTaskRequest
-	(*RestartAllTaskResponse)(nil),      // 9: task.service.v1.RestartAllTaskResponse
-	(*ControlTaskRequest)(nil),          // 10: task.service.v1.ControlTaskRequest
-	(*ListTaskTypeNameResponse)(nil),    // 11: task.service.v1.ListTaskTypeNameResponse
-	(*CountTaskResponse)(nil),           // 12: task.service.v1.CountTaskResponse
-	(*durationpb.Duration)(nil),         // 13: google.protobuf.Duration
-	(*timestamppb.Timestamp)(nil),       // 14: google.protobuf.Timestamp
-	(*fieldmaskpb.FieldMask)(nil),       // 15: google.protobuf.FieldMask
-	(*v1.PagingRequest)(nil),            // 16: pagination.PagingRequest
-	(*emptypb.Empty)(nil),               // 17: google.protobuf.Empty
+	(Task_TaskType)(0),            // 0: task.service.v1.Task.TaskType
+	(Task_Status)(0),              // 1: task.service.v1.Task.Status
+	(*Task)(nil),                  // 2: task.service.v1.Task
+	(*ListTaskResponse)(nil),      // 3: task.service.v1.ListTaskResponse
+	(*GetTaskRequest)(nil),        // 4: task.service.v1.GetTaskRequest
+	(*CreateTaskRequest)(nil),     // 5: task.service.v1.CreateTaskRequest
+	(*UpdateTaskRequest)(nil),     // 6: task.service.v1.UpdateTaskRequest
+	(*DeleteTaskRequest)(nil),     // 7: task.service.v1.DeleteTaskRequest
+	(*StartTaskRequest)(nil),      // 8: task.service.v1.StartTaskRequest
+	(*StopTaskRequest)(nil),       // 9: task.service.v1.StopTaskRequest
+	(*RunTaskOnceRequest)(nil),    // 10: task.service.v1.RunTaskOnceRequest
+	(*CountTaskResponse)(nil),     // 11: task.service.v1.CountTaskResponse
+	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
+	(*fieldmaskpb.FieldMask)(nil), // 13: google.protobuf.FieldMask
+	(*v1.PagingRequest)(nil),      // 14: pagination.PagingRequest
+	(*emptypb.Empty)(nil),         // 15: google.protobuf.Empty
 }
 var file_task_v1_task_proto_depIdxs = []int32{
-	13, // 0: task.service.v1.TaskOption.timeout:type_name -> google.protobuf.Duration
-	14, // 1: task.service.v1.TaskOption.deadline:type_name -> google.protobuf.Timestamp
-	13, // 2: task.service.v1.TaskOption.process_in:type_name -> google.protobuf.Duration
-	14, // 3: task.service.v1.TaskOption.process_at:type_name -> google.protobuf.Timestamp
-	13, // 4: task.service.v1.TaskOption.unique_ttl:type_name -> google.protobuf.Duration
-	13, // 5: task.service.v1.TaskOption.retention:type_name -> google.protobuf.Duration
-	0,  // 6: task.service.v1.Task.type:type_name -> task.service.v1.Task.Type
-	2,  // 7: task.service.v1.Task.task_options:type_name -> task.service.v1.TaskOption
-	14, // 8: task.service.v1.Task.created_at:type_name -> google.protobuf.Timestamp
-	14, // 9: task.service.v1.Task.updated_at:type_name -> google.protobuf.Timestamp
-	14, // 10: task.service.v1.Task.deleted_at:type_name -> google.protobuf.Timestamp
-	3,  // 11: task.service.v1.ListTaskResponse.items:type_name -> task.service.v1.Task
-	15, // 12: task.service.v1.GetTaskRequest.view_mask:type_name -> google.protobuf.FieldMask
-	3,  // 13: task.service.v1.CreateTaskRequest.data:type_name -> task.service.v1.Task
-	3,  // 14: task.service.v1.UpdateTaskRequest.data:type_name -> task.service.v1.Task
-	15, // 15: task.service.v1.UpdateTaskRequest.update_mask:type_name -> google.protobuf.FieldMask
-	1,  // 16: task.service.v1.ControlTaskRequest.control_type:type_name -> task.service.v1.ControlTaskRequest.ControlType
-	16, // 17: task.service.v1.TaskService.List:input_type -> pagination.PagingRequest
-	16, // 18: task.service.v1.TaskService.Count:input_type -> pagination.PagingRequest
-	5,  // 19: task.service.v1.TaskService.Get:input_type -> task.service.v1.GetTaskRequest
-	6,  // 20: task.service.v1.TaskService.Create:input_type -> task.service.v1.CreateTaskRequest
-	7,  // 21: task.service.v1.TaskService.Update:input_type -> task.service.v1.UpdateTaskRequest
-	8,  // 22: task.service.v1.TaskService.Delete:input_type -> task.service.v1.DeleteTaskRequest
-	17, // 23: task.service.v1.TaskService.ListTaskTypeName:input_type -> google.protobuf.Empty
-	17, // 24: task.service.v1.TaskService.RestartAllTask:input_type -> google.protobuf.Empty
-	17, // 25: task.service.v1.TaskService.StartAllTask:input_type -> google.protobuf.Empty
-	17, // 26: task.service.v1.TaskService.StopAllTask:input_type -> google.protobuf.Empty
-	10, // 27: task.service.v1.TaskService.ControlTask:input_type -> task.service.v1.ControlTaskRequest
-	4,  // 28: task.service.v1.TaskService.List:output_type -> task.service.v1.ListTaskResponse
-	12, // 29: task.service.v1.TaskService.Count:output_type -> task.service.v1.CountTaskResponse
-	3,  // 30: task.service.v1.TaskService.Get:output_type -> task.service.v1.Task
-	17, // 31: task.service.v1.TaskService.Create:output_type -> google.protobuf.Empty
-	17, // 32: task.service.v1.TaskService.Update:output_type -> google.protobuf.Empty
-	17, // 33: task.service.v1.TaskService.Delete:output_type -> google.protobuf.Empty
-	11, // 34: task.service.v1.TaskService.ListTaskTypeName:output_type -> task.service.v1.ListTaskTypeNameResponse
-	9,  // 35: task.service.v1.TaskService.RestartAllTask:output_type -> task.service.v1.RestartAllTaskResponse
-	17, // 36: task.service.v1.TaskService.StartAllTask:output_type -> google.protobuf.Empty
-	17, // 37: task.service.v1.TaskService.StopAllTask:output_type -> google.protobuf.Empty
-	17, // 38: task.service.v1.TaskService.ControlTask:output_type -> google.protobuf.Empty
-	28, // [28:39] is the sub-list for method output_type
-	17, // [17:28] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	0,  // 0: task.service.v1.Task.task_type:type_name -> task.service.v1.Task.TaskType
+	1,  // 1: task.service.v1.Task.status:type_name -> task.service.v1.Task.Status
+	12, // 2: task.service.v1.Task.created_at:type_name -> google.protobuf.Timestamp
+	12, // 3: task.service.v1.Task.updated_at:type_name -> google.protobuf.Timestamp
+	12, // 4: task.service.v1.Task.deleted_at:type_name -> google.protobuf.Timestamp
+	2,  // 5: task.service.v1.ListTaskResponse.items:type_name -> task.service.v1.Task
+	13, // 6: task.service.v1.GetTaskRequest.view_mask:type_name -> google.protobuf.FieldMask
+	2,  // 7: task.service.v1.CreateTaskRequest.data:type_name -> task.service.v1.Task
+	2,  // 8: task.service.v1.UpdateTaskRequest.data:type_name -> task.service.v1.Task
+	13, // 9: task.service.v1.UpdateTaskRequest.update_mask:type_name -> google.protobuf.FieldMask
+	14, // 10: task.service.v1.TaskService.List:input_type -> pagination.PagingRequest
+	14, // 11: task.service.v1.TaskService.Count:input_type -> pagination.PagingRequest
+	4,  // 12: task.service.v1.TaskService.Get:input_type -> task.service.v1.GetTaskRequest
+	5,  // 13: task.service.v1.TaskService.Create:input_type -> task.service.v1.CreateTaskRequest
+	6,  // 14: task.service.v1.TaskService.Update:input_type -> task.service.v1.UpdateTaskRequest
+	7,  // 15: task.service.v1.TaskService.Delete:input_type -> task.service.v1.DeleteTaskRequest
+	8,  // 16: task.service.v1.TaskService.Start:input_type -> task.service.v1.StartTaskRequest
+	9,  // 17: task.service.v1.TaskService.Stop:input_type -> task.service.v1.StopTaskRequest
+	10, // 18: task.service.v1.TaskService.RunOnce:input_type -> task.service.v1.RunTaskOnceRequest
+	3,  // 19: task.service.v1.TaskService.List:output_type -> task.service.v1.ListTaskResponse
+	11, // 20: task.service.v1.TaskService.Count:output_type -> task.service.v1.CountTaskResponse
+	2,  // 21: task.service.v1.TaskService.Get:output_type -> task.service.v1.Task
+	15, // 22: task.service.v1.TaskService.Create:output_type -> google.protobuf.Empty
+	15, // 23: task.service.v1.TaskService.Update:output_type -> google.protobuf.Empty
+	15, // 24: task.service.v1.TaskService.Delete:output_type -> google.protobuf.Empty
+	15, // 25: task.service.v1.TaskService.Start:output_type -> google.protobuf.Empty
+	15, // 26: task.service.v1.TaskService.Stop:output_type -> google.protobuf.Empty
+	15, // 27: task.service.v1.TaskService.RunOnce:output_type -> google.protobuf.Empty
+	19, // [19:28] is the sub-list for method output_type
+	10, // [10:19] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_task_v1_task_proto_init() }
@@ -1125,22 +1027,19 @@ func file_task_v1_task_proto_init() {
 		return
 	}
 	file_task_v1_task_proto_msgTypes[0].OneofWrappers = []any{}
-	file_task_v1_task_proto_msgTypes[1].OneofWrappers = []any{}
-	file_task_v1_task_proto_msgTypes[3].OneofWrappers = []any{
+	file_task_v1_task_proto_msgTypes[2].OneofWrappers = []any{
 		(*GetTaskRequest_Id)(nil),
-		(*GetTaskRequest_TypeName)(nil),
+		(*GetTaskRequest_TaskName)(nil),
 	}
-	file_task_v1_task_proto_msgTypes[5].OneofWrappers = []any{}
-	file_task_v1_task_proto_msgTypes[6].OneofWrappers = []any{
-		(*DeleteTaskRequest_Id)(nil),
-	}
+	file_task_v1_task_proto_msgTypes[4].OneofWrappers = []any{}
+	file_task_v1_task_proto_msgTypes[8].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_task_v1_task_proto_rawDesc), len(file_task_v1_task_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   11,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
