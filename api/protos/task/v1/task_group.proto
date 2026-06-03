@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package task.service.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "pagination/v1/pagination.proto";
+
+// 任务分组管理服务
+service TaskGroupService {
+  // 查询任务分组列表
+  rpc List(pagination.PagingRequest) returns (ListTaskGroupResponse) {}
+
+  // 统计任务分组数量
+  rpc Count(pagination.PagingRequest) returns (CountTaskGroupResponse) {}
+
+  // 查询任务分组详情
+  rpc Get(GetTaskGroupRequest) returns (TaskGroup) {}
+
+  // 创建任务分组
+  rpc Create(CreateTaskGroupRequest) returns (google.protobuf.Empty) {}
+
+  // 更新任务分组
+  rpc Update(UpdateTaskGroupRequest) returns (google.protobuf.Empty) {}
+
+  // 删除任务分组
+  rpc Delete(DeleteTaskGroupRequest) returns (google.protobuf.Empty) {}
+
+  // 启动分组下全部任务
+  rpc Start(StartTaskGroupRequest) returns (google.protobuf.Empty) {}
+
+  // 停止分组下全部任务
+  rpc Stop(StopTaskGroupRequest) returns (google.protobuf.Empty) {}
+
+  // 立即执行分组下全部任务
+  rpc RunOnce(RunTaskGroupOnceRequest) returns (google.protobuf.Empty) {}
+}
+
+// 任务分组
+message TaskGroup {
+  // 分组ID
+  optional uint64 id = 1 [json_name = "id"];
+  // 分组名称
+  optional string group_name = 2 [json_name = "groupName"];
+  // 备注
+  optional string remark = 3 [json_name = "remark"];
+  // 租户ID，0表示全局
+  optional uint32 tenant_id = 4 [json_name = "tenantId"];
+
+  // 创建者ID
+  optional uint32 created_by = 100 [json_name = "createdBy"];
+  // 更新者ID
+  optional uint32 updated_by = 101 [json_name = "updatedBy"];
+  // 删除者ID
+  optional uint32 deleted_by = 102 [json_name = "deletedBy"];
+  // 创建时间
+  optional google.protobuf.Timestamp created_at = 200 [json_name = "createdAt"];
+  // 更新时间
+  optional google.protobuf.Timestamp updated_at = 201 [json_name = "updatedAt"];
+  // 删除时间
+  optional google.protobuf.Timestamp deleted_at = 202 [json_name = "deletedAt"];
+}
+
+// 任务分组列表响应
+message ListTaskGroupResponse {
+  repeated TaskGroup items = 1;
+  uint64 total = 2;
+}
+
+// 查询任务分组请求
+message GetTaskGroupRequest {
+  oneof query_by {
+    // 按ID查询
+    uint64 id = 1 [json_name = "id"];
+    // 按分组名称查询
+    string group_name = 2 [json_name = "groupName"];
+  }
+
+  // 返回字段掩码
+  optional google.protobuf.FieldMask view_mask = 100 [json_name = "viewMask"];
+}
+
+// 创建任务分组请求
+message CreateTaskGroupRequest {
+  TaskGroup data = 1;
+}
+
+// 更新任务分组请求
+message UpdateTaskGroupRequest {
+  uint64 id = 1;
+  TaskGroup data = 2;
+  google.protobuf.FieldMask update_mask = 3 [json_name = "updateMask"];
+  optional bool allow_missing = 4 [json_name = "allowMissing"];
+}
+
+// 删除任务分组请求
+message DeleteTaskGroupRequest {
+  repeated uint64 ids = 1 [json_name = "ids"];
+}
+
+// 启动任务分组请求
+message StartTaskGroupRequest {
+  uint64 id = 1 [json_name = "id"];
+}
+
+// 停止任务分组请求
+message StopTaskGroupRequest {
+  uint64 id = 1 [json_name = "id"];
+}
+
+// 立即执行任务分组请求
+message RunTaskGroupOnceRequest {
+  uint64 id = 1 [json_name = "id"];
+  optional string input = 2 [json_name = "input"];
+}
+
+// 任务分组数量响应
+message CountTaskGroupResponse {
+  uint64 count = 1;
+}

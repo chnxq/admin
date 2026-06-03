@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package task.service.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "pagination/v1/pagination.proto";
+
+// 任务执行日志服务
+service TaskLogService {
+  // 查询任务执行日志列表
+  rpc List(pagination.PagingRequest) returns (ListTaskLogResponse) {}
+
+  // 统计任务执行日志数量
+  rpc Count(pagination.PagingRequest) returns (CountTaskLogResponse) {}
+
+  // 查询任务执行日志详情
+  rpc Get(GetTaskLogRequest) returns (TaskLog) {}
+
+  // 删除任务执行日志
+  rpc Delete(DeleteTaskLogRequest) returns (google.protobuf.Empty) {}
+}
+
+// 任务执行日志
+message TaskLog {
+  // 执行状态
+  enum Status {
+    // 未指定
+    STATUS_UNSPECIFIED = 0;
+    // 失败
+    FAILURE = 1;
+    // 成功
+    SUCCESS = 2;
+  }
+
+  // 日志ID
+  optional uint64 id = 1 [json_name = "id"];
+  // 任务ID
+  optional uint64 task_id = 2 [json_name = "taskId"];
+  // 执行参数
+  optional string input = 3 [json_name = "input"];
+  // 输出结果
+  optional string output = 4 [json_name = "output"];
+  // 错误信息
+  optional string error = 5 [json_name = "error"];
+  // 状态
+  optional Status status = 6 [json_name = "status"];
+  // 耗时(毫秒)
+  optional uint32 process_time = 7 [json_name = "processTime"];
+  // 执行时间
+  optional google.protobuf.Timestamp execute_time = 8 [json_name = "executeTime"];
+  // 租户ID，0表示全局
+  optional uint32 tenant_id = 9 [json_name = "tenantId"];
+}
+
+// 任务执行日志列表响应
+message ListTaskLogResponse {
+  repeated TaskLog items = 1;
+  uint64 total = 2;
+}
+
+// 查询任务执行日志请求
+message GetTaskLogRequest {
+  uint64 id = 1 [json_name = "id"];
+  optional google.protobuf.FieldMask view_mask = 100 [json_name = "viewMask"];
+}
+
+// 删除任务执行日志请求
+message DeleteTaskLogRequest {
+  repeated uint64 ids = 1 [json_name = "ids"];
+}
+
+// 任务执行日志数量响应
+message CountTaskLogResponse {
+  uint64 count = 1;
+}

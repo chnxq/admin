@@ -404,6 +404,30 @@ func (f TaskFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TaskMutation", m)
 }
 
+// The TaskGroupFunc type is an adapter to allow the use of ordinary
+// function as TaskGroup mutator.
+type TaskGroupFunc func(context.Context, *ent.TaskGroupMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f TaskGroupFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.TaskGroupMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TaskGroupMutation", m)
+}
+
+// The TaskLogFunc type is an adapter to allow the use of ordinary
+// function as TaskLog mutator.
+type TaskLogFunc func(context.Context, *ent.TaskLogMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f TaskLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.TaskLogMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TaskLogMutation", m)
+}
+
 // The TenantFunc type is an adapter to allow the use of ordinary
 // function as Tenant mutator.
 type TenantFunc func(context.Context, *ent.TenantMutation) (ent.Value, error)

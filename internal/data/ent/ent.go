@@ -36,6 +36,8 @@ import (
 	"admin/internal/data/ent/rolemetadata"
 	"admin/internal/data/ent/rolepermission"
 	"admin/internal/data/ent/task"
+	"admin/internal/data/ent/taskgroup"
+	"admin/internal/data/ent/tasklog"
 	"admin/internal/data/ent/tenant"
 	"admin/internal/data/ent/user"
 	"admin/internal/data/ent/usercredential"
@@ -144,6 +146,8 @@ func checkColumn(t, c string) error {
 			rolemetadata.Table:             rolemetadata.ValidColumn,
 			rolepermission.Table:           rolepermission.ValidColumn,
 			task.Table:                     task.ValidColumn,
+			taskgroup.Table:                taskgroup.ValidColumn,
+			tasklog.Table:                  tasklog.ValidColumn,
 			tenant.Table:                   tenant.ValidColumn,
 			user.Table:                     user.ValidColumn,
 			usercredential.Table:           usercredential.ValidColumn,

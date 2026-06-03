@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package admin.service.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "pagination/v1/pagination.proto";
+import "task/v1/task_log.proto";
+
+// 任务执行日志服务
+service TaskLogService {
+  // 查询任务执行日志列表
+  rpc List(pagination.PagingRequest) returns (task.service.v1.ListTaskLogResponse) {
+    option (google.api.http) = { get: "/admin/v1/task-logs" };
+  }
+
+  // 查询任务执行日志详情
+  rpc Get(task.service.v1.GetTaskLogRequest) returns (task.service.v1.TaskLog) {
+    option (google.api.http) = { get: "/admin/v1/task-logs/{id}" };
+  }
+
+  // 删除任务执行日志
+  rpc Delete(task.service.v1.DeleteTaskLogRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { delete: "/admin/v1/task-logs" };
+  }
+}

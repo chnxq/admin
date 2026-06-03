@@ -7,11 +7,9 @@ import (
 	context "context"
 	pagination "github.com/chnxq/x-crud/api/gen/pagination/v1"
 	redact "github.com/menta2k/protoc-gen-redact/v3/redact/v3"
-	annotations "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -24,11 +22,9 @@ var (
 	_ redact.Redactor
 	_ codes.Code
 	_ status.Status
-	_ annotations.FieldBehavior
 	_ emptypb.Empty
-	_ timestamppb.Timestamp
-	_ durationpb.Duration
 	_ fieldmaskpb.FieldMask
+	_ timestamppb.Timestamp
 	_ pagination.Sorting
 )
 
@@ -116,10 +112,10 @@ func (s *redactedTaskServiceServer) Delete(ctx context.Context, in *DeleteTaskRe
 	return res, err
 }
 
-// ListTaskTypeName is the redacted wrapper for the actual TaskServiceServer.ListTaskTypeName method
+// Start is the redacted wrapper for the actual TaskServiceServer.Start method
 // Unary RPC
-func (s *redactedTaskServiceServer) ListTaskTypeName(ctx context.Context, in *emptypb.Empty) (*ListTaskTypeNameResponse, error) {
-	res, err := s.srv.ListTaskTypeName(ctx, in)
+func (s *redactedTaskServiceServer) Start(ctx context.Context, in *StartTaskRequest) (*emptypb.Empty, error) {
+	res, err := s.srv.Start(ctx, in)
 	if !s.bypass.CheckInternal(ctx) {
 		// Apply redaction to the response
 		redact.Apply(res)
@@ -127,10 +123,10 @@ func (s *redactedTaskServiceServer) ListTaskTypeName(ctx context.Context, in *em
 	return res, err
 }
 
-// RestartAllTask is the redacted wrapper for the actual TaskServiceServer.RestartAllTask method
+// Stop is the redacted wrapper for the actual TaskServiceServer.Stop method
 // Unary RPC
-func (s *redactedTaskServiceServer) RestartAllTask(ctx context.Context, in *emptypb.Empty) (*RestartAllTaskResponse, error) {
-	res, err := s.srv.RestartAllTask(ctx, in)
+func (s *redactedTaskServiceServer) Stop(ctx context.Context, in *StopTaskRequest) (*emptypb.Empty, error) {
+	res, err := s.srv.Stop(ctx, in)
 	if !s.bypass.CheckInternal(ctx) {
 		// Apply redaction to the response
 		redact.Apply(res)
@@ -138,63 +134,15 @@ func (s *redactedTaskServiceServer) RestartAllTask(ctx context.Context, in *empt
 	return res, err
 }
 
-// StartAllTask is the redacted wrapper for the actual TaskServiceServer.StartAllTask method
+// RunOnce is the redacted wrapper for the actual TaskServiceServer.RunOnce method
 // Unary RPC
-func (s *redactedTaskServiceServer) StartAllTask(ctx context.Context, in *emptypb.Empty) (*emptypb.Empty, error) {
-	res, err := s.srv.StartAllTask(ctx, in)
+func (s *redactedTaskServiceServer) RunOnce(ctx context.Context, in *RunTaskOnceRequest) (*emptypb.Empty, error) {
+	res, err := s.srv.RunOnce(ctx, in)
 	if !s.bypass.CheckInternal(ctx) {
 		// Apply redaction to the response
 		redact.Apply(res)
 	}
 	return res, err
-}
-
-// StopAllTask is the redacted wrapper for the actual TaskServiceServer.StopAllTask method
-// Unary RPC
-func (s *redactedTaskServiceServer) StopAllTask(ctx context.Context, in *emptypb.Empty) (*emptypb.Empty, error) {
-	res, err := s.srv.StopAllTask(ctx, in)
-	if !s.bypass.CheckInternal(ctx) {
-		// Apply redaction to the response
-		redact.Apply(res)
-	}
-	return res, err
-}
-
-// ControlTask is the redacted wrapper for the actual TaskServiceServer.ControlTask method
-// Unary RPC
-func (s *redactedTaskServiceServer) ControlTask(ctx context.Context, in *ControlTaskRequest) (*emptypb.Empty, error) {
-	res, err := s.srv.ControlTask(ctx, in)
-	if !s.bypass.CheckInternal(ctx) {
-		// Apply redaction to the response
-		redact.Apply(res)
-	}
-	return res, err
-}
-
-// Redact method implementation for TaskOption
-func (x *TaskOption) Redact() string {
-	if x == nil {
-		return ""
-	}
-
-	// Safe field: MaxRetry
-
-	// Safe field: Timeout
-
-	// Safe field: Deadline
-
-	// Safe field: ProcessIn
-
-	// Safe field: ProcessAt
-
-	// Safe field: UniqueTtl
-
-	// Safe field: Retention
-
-	// Safe field: Group
-
-	// Safe field: TaskId
-	return x.String()
 }
 
 // Redact method implementation for Task
@@ -205,17 +153,25 @@ func (x *Task) Redact() string {
 
 	// Safe field: Id
 
-	// Safe field: Type
+	// Safe field: TaskName
 
-	// Safe field: TypeName
+	// Safe field: GroupId
 
-	// Safe field: TaskPayload
+	// Safe field: TaskType
 
-	// Safe field: CronSpec
+	// Safe field: CronExpression
 
-	// Safe field: TaskOptions
+	// Safe field: InvokeTarget
 
-	// Safe field: Enable
+	// Safe field: Args
+
+	// Safe field: Retry
+
+	// Safe field: Concurrent
+
+	// Safe field: EntryId
+
+	// Safe field: Status
 
 	// Safe field: Remark
 
@@ -288,38 +244,40 @@ func (x *DeleteTaskRequest) Redact() string {
 	if x == nil {
 		return ""
 	}
+
+	// Safe field: Ids
 	return x.String()
 }
 
-// Redact method implementation for RestartAllTaskResponse
-func (x *RestartAllTaskResponse) Redact() string {
+// Redact method implementation for StartTaskRequest
+func (x *StartTaskRequest) Redact() string {
 	if x == nil {
 		return ""
 	}
 
-	// Safe field: Count
+	// Safe field: Id
 	return x.String()
 }
 
-// Redact method implementation for ControlTaskRequest
-func (x *ControlTaskRequest) Redact() string {
+// Redact method implementation for StopTaskRequest
+func (x *StopTaskRequest) Redact() string {
 	if x == nil {
 		return ""
 	}
 
-	// Safe field: ControlType
-
-	// Safe field: TypeName
+	// Safe field: Id
 	return x.String()
 }
 
-// Redact method implementation for ListTaskTypeNameResponse
-func (x *ListTaskTypeNameResponse) Redact() string {
+// Redact method implementation for RunTaskOnceRequest
+func (x *RunTaskOnceRequest) Redact() string {
 	if x == nil {
 		return ""
 	}
 
-	// Safe field: TypeNames
+	// Safe field: Id
+
+	// Safe field: Input
 	return x.String()
 }
 

@@ -2323,7 +2323,7 @@ var (
 	}
 	// SysTasksColumns holds the columns for the "sys_tasks" table.
 	SysTasksColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUint32, Increment: true, Comment: "id"},
+		{Name: "id", Type: field.TypeUint64, Increment: true, Comment: "id"},
 		{Name: "created_at", Type: field.TypeTime, Nullable: true, Comment: "创建时间"},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true, Comment: "更新时间"},
 		{Name: "deleted_at", Type: field.TypeTime, Nullable: true, Comment: "删除时间"},
@@ -2332,12 +2332,16 @@ var (
 		{Name: "deleted_by", Type: field.TypeUint32, Nullable: true, Comment: "删除者ID"},
 		{Name: "remark", Type: field.TypeString, Nullable: true, Comment: "备注"},
 		{Name: "tenant_id", Type: field.TypeUint32, Nullable: true, Comment: "租户ID", Default: 0},
-		{Name: "type", Type: field.TypeEnum, Nullable: true, Comment: "任务类型", Enums: []string{"PERIODIC", "DELAY", "WAIT_RESULT"}, Default: "PERIODIC"},
-		{Name: "type_name", Type: field.TypeString, Nullable: true, Comment: "任务执行类型名"},
-		{Name: "task_payload", Type: field.TypeString, Nullable: true, Comment: "任务数据", SchemaType: map[string]string{"mysql": "json", "postgres": "jsonb"}},
-		{Name: "cron_spec", Type: field.TypeString, Nullable: true, Comment: "cron表达式"},
-		{Name: "task_options", Type: field.TypeJSON, Nullable: true, Comment: "任务选项"},
-		{Name: "enable", Type: field.TypeBool, Nullable: true, Comment: "启用/禁用任务", Default: false},
+		{Name: "task_name", Type: field.TypeString, Size: 50, Comment: "任务名称"},
+		{Name: "group_id", Type: field.TypeUint64, Comment: "任务分组ID"},
+		{Name: "task_type", Type: field.TypeEnum, Comment: "任务类型：1、函数。2、接口。3、外部执行", Enums: []string{"FUNCTION", "API", "EXTERNAL"}, Default: "FUNCTION"},
+		{Name: "cron_expression", Type: field.TypeString, Nullable: true, Size: 30, Comment: "cron表达式"},
+		{Name: "invoke_target", Type: field.TypeString, Nullable: true, Size: 255, Comment: "调用目标"},
+		{Name: "args", Type: field.TypeString, Nullable: true, Size: 255, Comment: "目标参数"},
+		{Name: "retry", Type: field.TypeUint32, Comment: "重试次数(最大5,0表示不重试)", Default: 0},
+		{Name: "concurrent", Type: field.TypeBool, Comment: "是否并发：1、是。0、否", Default: false},
+		{Name: "entry_id", Type: field.TypeUint32, Nullable: true, Comment: "启动时返回的ID"},
+		{Name: "status", Type: field.TypeEnum, Comment: "任务状态：停止、运行中、禁用", Enums: []string{"STOPPED", "RUNNING", "DISABLED"}, Default: "STOPPED"},
 	}
 	// SysTasksTable holds the schema information for the "sys_tasks" table.
 	SysTasksTable = &schema.Table{
@@ -2347,29 +2351,102 @@ var (
 		PrimaryKey: []*schema.Column{SysTasksColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "idx_sys_task_tenant_type_name",
+				Name:    "idx_sys_task_tenant_name",
+				Unique:  false,
+				Columns: []*schema.Column{SysTasksColumns[8], SysTasksColumns[9]},
+			},
+			{
+				Name:    "uix_sys_task_tenant_group_name",
 				Unique:  true,
+				Columns: []*schema.Column{SysTasksColumns[8], SysTasksColumns[10], SysTasksColumns[9]},
+			},
+			{
+				Name:    "idx_sys_task_tenant_group",
+				Unique:  false,
 				Columns: []*schema.Column{SysTasksColumns[8], SysTasksColumns[10]},
 			},
 			{
 				Name:    "idx_sys_task_tenant_type",
 				Unique:  false,
-				Columns: []*schema.Column{SysTasksColumns[8], SysTasksColumns[9]},
+				Columns: []*schema.Column{SysTasksColumns[8], SysTasksColumns[11]},
 			},
 			{
-				Name:    "idx_sys_task_tenant_enable_created_at",
+				Name:    "idx_sys_task_tenant_cron_expression",
 				Unique:  false,
-				Columns: []*schema.Column{SysTasksColumns[8], SysTasksColumns[14], SysTasksColumns[1]},
+				Columns: []*schema.Column{SysTasksColumns[8], SysTasksColumns[12]},
 			},
 			{
-				Name:    "idx_sys_task_tenant_created_by_created_at",
+				Name:    "idx_sys_task_tenant_status",
 				Unique:  false,
-				Columns: []*schema.Column{SysTasksColumns[8], SysTasksColumns[4], SysTasksColumns[1]},
+				Columns: []*schema.Column{SysTasksColumns[8], SysTasksColumns[18]},
 			},
 			{
 				Name:    "idx_sys_task_tenant_created_at",
 				Unique:  false,
 				Columns: []*schema.Column{SysTasksColumns[8], SysTasksColumns[1]},
+			},
+		},
+	}
+	// SysTaskGroupsColumns holds the columns for the "sys_task_groups" table.
+	SysTaskGroupsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUint64, Increment: true, Comment: "id"},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true, Comment: "创建时间"},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true, Comment: "更新时间"},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true, Comment: "删除时间"},
+		{Name: "created_by", Type: field.TypeUint32, Nullable: true, Comment: "创建者ID"},
+		{Name: "updated_by", Type: field.TypeUint32, Nullable: true, Comment: "更新者ID"},
+		{Name: "deleted_by", Type: field.TypeUint32, Nullable: true, Comment: "删除者ID"},
+		{Name: "remark", Type: field.TypeString, Nullable: true, Comment: "备注"},
+		{Name: "tenant_id", Type: field.TypeUint32, Nullable: true, Comment: "租户ID", Default: 0},
+		{Name: "group_name", Type: field.TypeString, Size: 100, Comment: "分组名称"},
+	}
+	// SysTaskGroupsTable holds the schema information for the "sys_task_groups" table.
+	SysTaskGroupsTable = &schema.Table{
+		Name:       "sys_task_groups",
+		Comment:    "任务分组表",
+		Columns:    SysTaskGroupsColumns,
+		PrimaryKey: []*schema.Column{SysTaskGroupsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "uix_sys_task_group_tenant_name",
+				Unique:  true,
+				Columns: []*schema.Column{SysTaskGroupsColumns[8], SysTaskGroupsColumns[9]},
+			},
+			{
+				Name:    "idx_sys_task_group_tenant_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{SysTaskGroupsColumns[8], SysTaskGroupsColumns[1]},
+			},
+		},
+	}
+	// SysTaskLogsColumns holds the columns for the "sys_task_logs" table.
+	SysTaskLogsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUint64, Increment: true, Comment: "id"},
+		{Name: "tenant_id", Type: field.TypeUint32, Nullable: true, Comment: "租户ID", Default: 0},
+		{Name: "task_id", Type: field.TypeUint64, Nullable: true, Comment: "任务ID"},
+		{Name: "input", Type: field.TypeString, Nullable: true, Size: 255, Comment: "执行参数"},
+		{Name: "output", Type: field.TypeString, Nullable: true, Comment: "输出结果", SchemaType: map[string]string{"mysql": "text", "postgres": "text"}},
+		{Name: "error", Type: field.TypeString, Nullable: true, Comment: "错误信息", SchemaType: map[string]string{"mysql": "text", "postgres": "text"}},
+		{Name: "status", Type: field.TypeEnum, Comment: "状态：1、成功。0、失败", Enums: []string{"FAILURE", "SUCCESS"}, Default: "SUCCESS"},
+		{Name: "process_time", Type: field.TypeUint32, Nullable: true, Comment: "耗时(毫秒)"},
+		{Name: "execute_time", Type: field.TypeTime, Nullable: true, Comment: "执行时间"},
+	}
+	// SysTaskLogsTable holds the schema information for the "sys_task_logs" table.
+	SysTaskLogsTable = &schema.Table{
+		Name:       "sys_task_logs",
+		Comment:    "任务执行日志表",
+		Columns:    SysTaskLogsColumns,
+		PrimaryKey: []*schema.Column{SysTaskLogsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "idx_sys_task_log_tenant_task_execute_time",
+				Unique:  false,
+				Columns: []*schema.Column{SysTaskLogsColumns[1], SysTaskLogsColumns[2], SysTaskLogsColumns[8]},
+			},
+			{
+				Name:    "idx_sys_task_log_tenant_status_execute_time",
+				Unique:  false,
+				Columns: []*schema.Column{SysTaskLogsColumns[1], SysTaskLogsColumns[6], SysTaskLogsColumns[8]},
 			},
 		},
 	}
@@ -2912,6 +2989,8 @@ var (
 		SysRoleMetadataTable,
 		SysRolePermissionsTable,
 		SysTasksTable,
+		SysTaskGroupsTable,
+		SysTaskLogsTable,
 		SysTenantsTable,
 		SysUsersTable,
 		SysUserCredentialsTable,
@@ -3091,6 +3170,16 @@ func init() {
 	}
 	SysTasksTable.Annotation = &entsql.Annotation{
 		Table:     "sys_tasks",
+		Charset:   "utf8mb4",
+		Collation: "utf8mb4_bin",
+	}
+	SysTaskGroupsTable.Annotation = &entsql.Annotation{
+		Table:     "sys_task_groups",
+		Charset:   "utf8mb4",
+		Collation: "utf8mb4_bin",
+	}
+	SysTaskLogsTable.Annotation = &entsql.Annotation{
+		Table:     "sys_task_logs",
 		Charset:   "utf8mb4",
 		Collation: "utf8mb4_bin",
 	}
