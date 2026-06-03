@@ -105,6 +105,12 @@ type RolePermission func(*sql.Selector)
 // Task is the predicate function for task builders.
 type Task func(*sql.Selector)
 
+// TaskGroup is the predicate function for taskgroup builders.
+type TaskGroup func(*sql.Selector)
+
+// TaskLog is the predicate function for tasklog builders.
+type TaskLog func(*sql.Selector)
+
 // Tenant is the predicate function for tenant builders.
 type Tenant func(*sql.Selector)
 

@@ -44,6 +44,8 @@ import (
 	"admin/internal/data/ent/rolemetadata"
 	"admin/internal/data/ent/rolepermission"
 	"admin/internal/data/ent/task"
+	"admin/internal/data/ent/taskgroup"
+	"admin/internal/data/ent/tasklog"
 	"admin/internal/data/ent/tenant"
 	"admin/internal/data/ent/user"
 	"admin/internal/data/ent/usercredential"
@@ -128,6 +130,10 @@ type Client struct {
 	RolePermission *RolePermissionClient
 	// Task is the client for interacting with the Task builders.
 	Task *TaskClient
+	// TaskGroup is the client for interacting with the TaskGroup builders.
+	TaskGroup *TaskGroupClient
+	// TaskLog is the client for interacting with the TaskLog builders.
+	TaskLog *TaskLogClient
 	// Tenant is the client for interacting with the Tenant builders.
 	Tenant *TenantClient
 	// User is the client for interacting with the User builders.
@@ -184,6 +190,8 @@ func (c *Client) init() {
 	c.RoleMetadata = NewRoleMetadataClient(c.config)
 	c.RolePermission = NewRolePermissionClient(c.config)
 	c.Task = NewTaskClient(c.config)
+	c.TaskGroup = NewTaskGroupClient(c.config)
+	c.TaskLog = NewTaskLogClient(c.config)
 	c.Tenant = NewTenantClient(c.config)
 	c.User = NewUserClient(c.config)
 	c.UserCredential = NewUserCredentialClient(c.config)
@@ -315,6 +323,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		RoleMetadata:             NewRoleMetadataClient(cfg),
 		RolePermission:           NewRolePermissionClient(cfg),
 		Task:                     NewTaskClient(cfg),
+		TaskGroup:                NewTaskGroupClient(cfg),
+		TaskLog:                  NewTaskLogClient(cfg),
 		Tenant:                   NewTenantClient(cfg),
 		User:                     NewUserClient(cfg),
 		UserCredential:           NewUserCredentialClient(cfg),
@@ -373,6 +383,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		RoleMetadata:             NewRoleMetadataClient(cfg),
 		RolePermission:           NewRolePermissionClient(cfg),
 		Task:                     NewTaskClient(cfg),
+		TaskGroup:                NewTaskGroupClient(cfg),
+		TaskLog:                  NewTaskLogClient(cfg),
 		Tenant:                   NewTenantClient(cfg),
 		User:                     NewUserClient(cfg),
 		UserCredential:           NewUserCredentialClient(cfg),
@@ -415,8 +427,8 @@ func (c *Client) Use(hooks ...Hook) {
 		c.MembershipPosition, c.MembershipRole, c.Menu, c.OperationAuditLog, c.OrgUnit,
 		c.Permission, c.PermissionApi, c.PermissionAuditLog, c.PermissionGroup,
 		c.PermissionMenu, c.PermissionPolicy, c.PolicyEvaluationLog, c.Position,
-		c.Role, c.RoleMetadata, c.RolePermission, c.Task, c.Tenant, c.User,
-		c.UserCredential, c.UserOrgUnit, c.UserPosition, c.UserRole,
+		c.Role, c.RoleMetadata, c.RolePermission, c.Task, c.TaskGroup, c.TaskLog,
+		c.Tenant, c.User, c.UserCredential, c.UserOrgUnit, c.UserPosition, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -433,8 +445,8 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.MembershipPosition, c.MembershipRole, c.Menu, c.OperationAuditLog, c.OrgUnit,
 		c.Permission, c.PermissionApi, c.PermissionAuditLog, c.PermissionGroup,
 		c.PermissionMenu, c.PermissionPolicy, c.PolicyEvaluationLog, c.Position,
-		c.Role, c.RoleMetadata, c.RolePermission, c.Task, c.Tenant, c.User,
-		c.UserCredential, c.UserOrgUnit, c.UserPosition, c.UserRole,
+		c.Role, c.RoleMetadata, c.RolePermission, c.Task, c.TaskGroup, c.TaskLog,
+		c.Tenant, c.User, c.UserCredential, c.UserOrgUnit, c.UserPosition, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -509,6 +521,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.RolePermission.mutate(ctx, m)
 	case *TaskMutation:
 		return c.Task.mutate(ctx, m)
+	case *TaskGroupMutation:
+		return c.TaskGroup.mutate(ctx, m)
+	case *TaskLogMutation:
+		return c.TaskLog.mutate(ctx, m)
 	case *TenantMutation:
 		return c.Tenant.mutate(ctx, m)
 	case *UserMutation:
@@ -5091,7 +5107,7 @@ func (c *TaskClient) UpdateOne(_m *Task) *TaskUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *TaskClient) UpdateOneID(id uint32) *TaskUpdateOne {
+func (c *TaskClient) UpdateOneID(id uint64) *TaskUpdateOne {
 	mutation := newTaskMutation(c.config, OpUpdateOne, withTaskID(id))
 	return &TaskUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -5108,7 +5124,7 @@ func (c *TaskClient) DeleteOne(_m *Task) *TaskDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *TaskClient) DeleteOneID(id uint32) *TaskDeleteOne {
+func (c *TaskClient) DeleteOneID(id uint64) *TaskDeleteOne {
 	builder := c.Delete().Where(task.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -5125,12 +5141,12 @@ func (c *TaskClient) Query() *TaskQuery {
 }
 
 // Get returns a Task entity by its id.
-func (c *TaskClient) Get(ctx context.Context, id uint32) (*Task, error) {
+func (c *TaskClient) Get(ctx context.Context, id uint64) (*Task, error) {
 	return c.Query().Where(task.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *TaskClient) GetX(ctx context.Context, id uint32) *Task {
+func (c *TaskClient) GetX(ctx context.Context, id uint64) *Task {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -5161,6 +5177,274 @@ func (c *TaskClient) mutate(ctx context.Context, m *TaskMutation) (Value, error)
 		return (&TaskDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Task mutation op: %q", m.Op())
+	}
+}
+
+// TaskGroupClient is a client for the TaskGroup schema.
+type TaskGroupClient struct {
+	config
+}
+
+// NewTaskGroupClient returns a client for the TaskGroup from the given config.
+func NewTaskGroupClient(c config) *TaskGroupClient {
+	return &TaskGroupClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `taskgroup.Hooks(f(g(h())))`.
+func (c *TaskGroupClient) Use(hooks ...Hook) {
+	c.hooks.TaskGroup = append(c.hooks.TaskGroup, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `taskgroup.Intercept(f(g(h())))`.
+func (c *TaskGroupClient) Intercept(interceptors ...Interceptor) {
+	c.inters.TaskGroup = append(c.inters.TaskGroup, interceptors...)
+}
+
+// Create returns a builder for creating a TaskGroup entity.
+func (c *TaskGroupClient) Create() *TaskGroupCreate {
+	mutation := newTaskGroupMutation(c.config, OpCreate)
+	return &TaskGroupCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of TaskGroup entities.
+func (c *TaskGroupClient) CreateBulk(builders ...*TaskGroupCreate) *TaskGroupCreateBulk {
+	return &TaskGroupCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *TaskGroupClient) MapCreateBulk(slice any, setFunc func(*TaskGroupCreate, int)) *TaskGroupCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &TaskGroupCreateBulk{err: fmt.Errorf("calling to TaskGroupClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*TaskGroupCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &TaskGroupCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for TaskGroup.
+func (c *TaskGroupClient) Update() *TaskGroupUpdate {
+	mutation := newTaskGroupMutation(c.config, OpUpdate)
+	return &TaskGroupUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TaskGroupClient) UpdateOne(_m *TaskGroup) *TaskGroupUpdateOne {
+	mutation := newTaskGroupMutation(c.config, OpUpdateOne, withTaskGroup(_m))
+	return &TaskGroupUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *TaskGroupClient) UpdateOneID(id uint64) *TaskGroupUpdateOne {
+	mutation := newTaskGroupMutation(c.config, OpUpdateOne, withTaskGroupID(id))
+	return &TaskGroupUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for TaskGroup.
+func (c *TaskGroupClient) Delete() *TaskGroupDelete {
+	mutation := newTaskGroupMutation(c.config, OpDelete)
+	return &TaskGroupDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *TaskGroupClient) DeleteOne(_m *TaskGroup) *TaskGroupDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *TaskGroupClient) DeleteOneID(id uint64) *TaskGroupDeleteOne {
+	builder := c.Delete().Where(taskgroup.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &TaskGroupDeleteOne{builder}
+}
+
+// Query returns a query builder for TaskGroup.
+func (c *TaskGroupClient) Query() *TaskGroupQuery {
+	return &TaskGroupQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeTaskGroup},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a TaskGroup entity by its id.
+func (c *TaskGroupClient) Get(ctx context.Context, id uint64) (*TaskGroup, error) {
+	return c.Query().Where(taskgroup.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TaskGroupClient) GetX(ctx context.Context, id uint64) *TaskGroup {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *TaskGroupClient) Hooks() []Hook {
+	hooks := c.hooks.TaskGroup
+	return append(hooks[:len(hooks):len(hooks)], taskgroup.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *TaskGroupClient) Interceptors() []Interceptor {
+	return c.inters.TaskGroup
+}
+
+func (c *TaskGroupClient) mutate(ctx context.Context, m *TaskGroupMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&TaskGroupCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&TaskGroupUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&TaskGroupUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&TaskGroupDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown TaskGroup mutation op: %q", m.Op())
+	}
+}
+
+// TaskLogClient is a client for the TaskLog schema.
+type TaskLogClient struct {
+	config
+}
+
+// NewTaskLogClient returns a client for the TaskLog from the given config.
+func NewTaskLogClient(c config) *TaskLogClient {
+	return &TaskLogClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `tasklog.Hooks(f(g(h())))`.
+func (c *TaskLogClient) Use(hooks ...Hook) {
+	c.hooks.TaskLog = append(c.hooks.TaskLog, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `tasklog.Intercept(f(g(h())))`.
+func (c *TaskLogClient) Intercept(interceptors ...Interceptor) {
+	c.inters.TaskLog = append(c.inters.TaskLog, interceptors...)
+}
+
+// Create returns a builder for creating a TaskLog entity.
+func (c *TaskLogClient) Create() *TaskLogCreate {
+	mutation := newTaskLogMutation(c.config, OpCreate)
+	return &TaskLogCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of TaskLog entities.
+func (c *TaskLogClient) CreateBulk(builders ...*TaskLogCreate) *TaskLogCreateBulk {
+	return &TaskLogCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *TaskLogClient) MapCreateBulk(slice any, setFunc func(*TaskLogCreate, int)) *TaskLogCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &TaskLogCreateBulk{err: fmt.Errorf("calling to TaskLogClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*TaskLogCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &TaskLogCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for TaskLog.
+func (c *TaskLogClient) Update() *TaskLogUpdate {
+	mutation := newTaskLogMutation(c.config, OpUpdate)
+	return &TaskLogUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TaskLogClient) UpdateOne(_m *TaskLog) *TaskLogUpdateOne {
+	mutation := newTaskLogMutation(c.config, OpUpdateOne, withTaskLog(_m))
+	return &TaskLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *TaskLogClient) UpdateOneID(id uint64) *TaskLogUpdateOne {
+	mutation := newTaskLogMutation(c.config, OpUpdateOne, withTaskLogID(id))
+	return &TaskLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for TaskLog.
+func (c *TaskLogClient) Delete() *TaskLogDelete {
+	mutation := newTaskLogMutation(c.config, OpDelete)
+	return &TaskLogDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *TaskLogClient) DeleteOne(_m *TaskLog) *TaskLogDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *TaskLogClient) DeleteOneID(id uint64) *TaskLogDeleteOne {
+	builder := c.Delete().Where(tasklog.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &TaskLogDeleteOne{builder}
+}
+
+// Query returns a query builder for TaskLog.
+func (c *TaskLogClient) Query() *TaskLogQuery {
+	return &TaskLogQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeTaskLog},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a TaskLog entity by its id.
+func (c *TaskLogClient) Get(ctx context.Context, id uint64) (*TaskLog, error) {
+	return c.Query().Where(tasklog.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TaskLogClient) GetX(ctx context.Context, id uint64) *TaskLog {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *TaskLogClient) Hooks() []Hook {
+	hooks := c.hooks.TaskLog
+	return append(hooks[:len(hooks):len(hooks)], tasklog.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *TaskLogClient) Interceptors() []Interceptor {
+	return c.inters.TaskLog
+}
+
+func (c *TaskLogClient) mutate(ctx context.Context, m *TaskLogMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&TaskLogCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&TaskLogUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&TaskLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&TaskLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown TaskLog mutation op: %q", m.Op())
 	}
 }
 
@@ -5976,8 +6260,8 @@ type (
 		MembershipOrgUnit, MembershipPosition, MembershipRole, Menu, OperationAuditLog,
 		OrgUnit, Permission, PermissionApi, PermissionAuditLog, PermissionGroup,
 		PermissionMenu, PermissionPolicy, PolicyEvaluationLog, Position, Role,
-		RoleMetadata, RolePermission, Task, Tenant, User, UserCredential, UserOrgUnit,
-		UserPosition, UserRole []ent.Hook
+		RoleMetadata, RolePermission, Task, TaskGroup, TaskLog, Tenant, User,
+		UserCredential, UserOrgUnit, UserPosition, UserRole []ent.Hook
 	}
 	inters struct {
 		Api, ApiAuditLog, DataAccessAuditLog, DictCategory, DictCategoryI18n, DictLabel,
@@ -5986,7 +6270,7 @@ type (
 		MembershipOrgUnit, MembershipPosition, MembershipRole, Menu, OperationAuditLog,
 		OrgUnit, Permission, PermissionApi, PermissionAuditLog, PermissionGroup,
 		PermissionMenu, PermissionPolicy, PolicyEvaluationLog, Position, Role,
-		RoleMetadata, RolePermission, Task, Tenant, User, UserCredential, UserOrgUnit,
-		UserPosition, UserRole []ent.Interceptor
+		RoleMetadata, RolePermission, Task, TaskGroup, TaskLog, Tenant, User,
+		UserCredential, UserOrgUnit, UserPosition, UserRole []ent.Interceptor
 	}
 )

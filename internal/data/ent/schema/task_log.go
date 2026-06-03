@@ -82,7 +82,7 @@ func (TaskLog) Fields() []ent.Field {
 func (TaskLog) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		mixin.AutoIncrementId64{},
-		mixin.TenantID[uint64]{},
+		mixin.TenantID[uint32]{},
 	}
 }
 

@@ -3,7 +3,6 @@
 package ent
 
 import (
-	taskv1 "admin/api/gen/task/v1"
 	"admin/internal/data/ent/predicate"
 	"admin/internal/data/ent/task"
 	"context"
@@ -171,115 +170,188 @@ func (_u *TaskUpdate) ClearRemark() *TaskUpdate {
 	return _u
 }
 
-// SetType sets the "type" field.
-func (_u *TaskUpdate) SetType(v task.Type) *TaskUpdate {
-	_u.mutation.SetType(v)
+// SetTaskName sets the "task_name" field.
+func (_u *TaskUpdate) SetTaskName(v string) *TaskUpdate {
+	_u.mutation.SetTaskName(v)
 	return _u
 }
 
-// SetNillableType sets the "type" field if the given value is not nil.
-func (_u *TaskUpdate) SetNillableType(v *task.Type) *TaskUpdate {
+// SetNillableTaskName sets the "task_name" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillableTaskName(v *string) *TaskUpdate {
 	if v != nil {
-		_u.SetType(*v)
+		_u.SetTaskName(*v)
 	}
 	return _u
 }
 
-// ClearType clears the value of the "type" field.
-func (_u *TaskUpdate) ClearType() *TaskUpdate {
-	_u.mutation.ClearType()
+// SetGroupID sets the "group_id" field.
+func (_u *TaskUpdate) SetGroupID(v uint64) *TaskUpdate {
+	_u.mutation.ResetGroupID()
+	_u.mutation.SetGroupID(v)
 	return _u
 }
 
-// SetTypeName sets the "type_name" field.
-func (_u *TaskUpdate) SetTypeName(v string) *TaskUpdate {
-	_u.mutation.SetTypeName(v)
-	return _u
-}
-
-// SetNillableTypeName sets the "type_name" field if the given value is not nil.
-func (_u *TaskUpdate) SetNillableTypeName(v *string) *TaskUpdate {
+// SetNillableGroupID sets the "group_id" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillableGroupID(v *uint64) *TaskUpdate {
 	if v != nil {
-		_u.SetTypeName(*v)
+		_u.SetGroupID(*v)
 	}
 	return _u
 }
 
-// ClearTypeName clears the value of the "type_name" field.
-func (_u *TaskUpdate) ClearTypeName() *TaskUpdate {
-	_u.mutation.ClearTypeName()
+// AddGroupID adds value to the "group_id" field.
+func (_u *TaskUpdate) AddGroupID(v int64) *TaskUpdate {
+	_u.mutation.AddGroupID(v)
 	return _u
 }
 
-// SetTaskPayload sets the "task_payload" field.
-func (_u *TaskUpdate) SetTaskPayload(v string) *TaskUpdate {
-	_u.mutation.SetTaskPayload(v)
+// SetTaskType sets the "task_type" field.
+func (_u *TaskUpdate) SetTaskType(v task.TaskType) *TaskUpdate {
+	_u.mutation.SetTaskType(v)
 	return _u
 }
 
-// SetNillableTaskPayload sets the "task_payload" field if the given value is not nil.
-func (_u *TaskUpdate) SetNillableTaskPayload(v *string) *TaskUpdate {
+// SetNillableTaskType sets the "task_type" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillableTaskType(v *task.TaskType) *TaskUpdate {
 	if v != nil {
-		_u.SetTaskPayload(*v)
+		_u.SetTaskType(*v)
 	}
 	return _u
 }
 
-// ClearTaskPayload clears the value of the "task_payload" field.
-func (_u *TaskUpdate) ClearTaskPayload() *TaskUpdate {
-	_u.mutation.ClearTaskPayload()
+// SetCronExpression sets the "cron_expression" field.
+func (_u *TaskUpdate) SetCronExpression(v string) *TaskUpdate {
+	_u.mutation.SetCronExpression(v)
 	return _u
 }
 
-// SetCronSpec sets the "cron_spec" field.
-func (_u *TaskUpdate) SetCronSpec(v string) *TaskUpdate {
-	_u.mutation.SetCronSpec(v)
-	return _u
-}
-
-// SetNillableCronSpec sets the "cron_spec" field if the given value is not nil.
-func (_u *TaskUpdate) SetNillableCronSpec(v *string) *TaskUpdate {
+// SetNillableCronExpression sets the "cron_expression" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillableCronExpression(v *string) *TaskUpdate {
 	if v != nil {
-		_u.SetCronSpec(*v)
+		_u.SetCronExpression(*v)
 	}
 	return _u
 }
 
-// ClearCronSpec clears the value of the "cron_spec" field.
-func (_u *TaskUpdate) ClearCronSpec() *TaskUpdate {
-	_u.mutation.ClearCronSpec()
+// ClearCronExpression clears the value of the "cron_expression" field.
+func (_u *TaskUpdate) ClearCronExpression() *TaskUpdate {
+	_u.mutation.ClearCronExpression()
 	return _u
 }
 
-// SetTaskOptions sets the "task_options" field.
-func (_u *TaskUpdate) SetTaskOptions(v *taskv1.TaskOption) *TaskUpdate {
-	_u.mutation.SetTaskOptions(v)
+// SetInvokeTarget sets the "invoke_target" field.
+func (_u *TaskUpdate) SetInvokeTarget(v string) *TaskUpdate {
+	_u.mutation.SetInvokeTarget(v)
 	return _u
 }
 
-// ClearTaskOptions clears the value of the "task_options" field.
-func (_u *TaskUpdate) ClearTaskOptions() *TaskUpdate {
-	_u.mutation.ClearTaskOptions()
-	return _u
-}
-
-// SetEnable sets the "enable" field.
-func (_u *TaskUpdate) SetEnable(v bool) *TaskUpdate {
-	_u.mutation.SetEnable(v)
-	return _u
-}
-
-// SetNillableEnable sets the "enable" field if the given value is not nil.
-func (_u *TaskUpdate) SetNillableEnable(v *bool) *TaskUpdate {
+// SetNillableInvokeTarget sets the "invoke_target" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillableInvokeTarget(v *string) *TaskUpdate {
 	if v != nil {
-		_u.SetEnable(*v)
+		_u.SetInvokeTarget(*v)
 	}
 	return _u
 }
 
-// ClearEnable clears the value of the "enable" field.
-func (_u *TaskUpdate) ClearEnable() *TaskUpdate {
-	_u.mutation.ClearEnable()
+// ClearInvokeTarget clears the value of the "invoke_target" field.
+func (_u *TaskUpdate) ClearInvokeTarget() *TaskUpdate {
+	_u.mutation.ClearInvokeTarget()
+	return _u
+}
+
+// SetArgs sets the "args" field.
+func (_u *TaskUpdate) SetArgs(v string) *TaskUpdate {
+	_u.mutation.SetArgs(v)
+	return _u
+}
+
+// SetNillableArgs sets the "args" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillableArgs(v *string) *TaskUpdate {
+	if v != nil {
+		_u.SetArgs(*v)
+	}
+	return _u
+}
+
+// ClearArgs clears the value of the "args" field.
+func (_u *TaskUpdate) ClearArgs() *TaskUpdate {
+	_u.mutation.ClearArgs()
+	return _u
+}
+
+// SetRetry sets the "retry" field.
+func (_u *TaskUpdate) SetRetry(v uint8) *TaskUpdate {
+	_u.mutation.ResetRetry()
+	_u.mutation.SetRetry(v)
+	return _u
+}
+
+// SetNillableRetry sets the "retry" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillableRetry(v *uint8) *TaskUpdate {
+	if v != nil {
+		_u.SetRetry(*v)
+	}
+	return _u
+}
+
+// AddRetry adds value to the "retry" field.
+func (_u *TaskUpdate) AddRetry(v int8) *TaskUpdate {
+	_u.mutation.AddRetry(v)
+	return _u
+}
+
+// SetConcurrent sets the "concurrent" field.
+func (_u *TaskUpdate) SetConcurrent(v bool) *TaskUpdate {
+	_u.mutation.SetConcurrent(v)
+	return _u
+}
+
+// SetNillableConcurrent sets the "concurrent" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillableConcurrent(v *bool) *TaskUpdate {
+	if v != nil {
+		_u.SetConcurrent(*v)
+	}
+	return _u
+}
+
+// SetEntryID sets the "entry_id" field.
+func (_u *TaskUpdate) SetEntryID(v uint32) *TaskUpdate {
+	_u.mutation.ResetEntryID()
+	_u.mutation.SetEntryID(v)
+	return _u
+}
+
+// SetNillableEntryID sets the "entry_id" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillableEntryID(v *uint32) *TaskUpdate {
+	if v != nil {
+		_u.SetEntryID(*v)
+	}
+	return _u
+}
+
+// AddEntryID adds value to the "entry_id" field.
+func (_u *TaskUpdate) AddEntryID(v int32) *TaskUpdate {
+	_u.mutation.AddEntryID(v)
+	return _u
+}
+
+// ClearEntryID clears the value of the "entry_id" field.
+func (_u *TaskUpdate) ClearEntryID() *TaskUpdate {
+	_u.mutation.ClearEntryID()
+	return _u
+}
+
+// SetStatus sets the "status" field.
+func (_u *TaskUpdate) SetStatus(v task.Status) *TaskUpdate {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillableStatus(v *task.Status) *TaskUpdate {
+	if v != nil {
+		_u.SetStatus(*v)
+	}
 	return _u
 }
 
@@ -317,14 +389,39 @@ func (_u *TaskUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *TaskUpdate) check() error {
-	if v, ok := _u.mutation.GetType(); ok {
-		if err := task.TypeValidator(v); err != nil {
-			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Task.type": %w`, err)}
+	if v, ok := _u.mutation.TaskName(); ok {
+		if err := task.TaskNameValidator(v); err != nil {
+			return &ValidationError{Name: "task_name", err: fmt.Errorf(`ent: validator failed for field "Task.task_name": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.TaskOptions(); ok {
-		if err := v.Validate(); err != nil {
-			return &ValidationError{Name: "task_options", err: fmt.Errorf(`ent: validator failed for field "Task.task_options": %w`, err)}
+	if v, ok := _u.mutation.GroupID(); ok {
+		if err := task.GroupIDValidator(v); err != nil {
+			return &ValidationError{Name: "group_id", err: fmt.Errorf(`ent: validator failed for field "Task.group_id": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.TaskType(); ok {
+		if err := task.TaskTypeValidator(v); err != nil {
+			return &ValidationError{Name: "task_type", err: fmt.Errorf(`ent: validator failed for field "Task.task_type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.CronExpression(); ok {
+		if err := task.CronExpressionValidator(v); err != nil {
+			return &ValidationError{Name: "cron_expression", err: fmt.Errorf(`ent: validator failed for field "Task.cron_expression": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.InvokeTarget(); ok {
+		if err := task.InvokeTargetValidator(v); err != nil {
+			return &ValidationError{Name: "invoke_target", err: fmt.Errorf(`ent: validator failed for field "Task.invoke_target": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Args(); ok {
+		if err := task.ArgsValidator(v); err != nil {
+			return &ValidationError{Name: "args", err: fmt.Errorf(`ent: validator failed for field "Task.args": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Status(); ok {
+		if err := task.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Task.status": %w`, err)}
 		}
 	}
 	return nil
@@ -340,7 +437,7 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(task.Table, task.Columns, sqlgraph.NewFieldSpec(task.FieldID, field.TypeUint32))
+	_spec := sqlgraph.NewUpdateSpec(task.Table, task.Columns, sqlgraph.NewFieldSpec(task.FieldID, field.TypeUint64))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -399,41 +496,56 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.TenantIDCleared() {
 		_spec.ClearField(task.FieldTenantID, field.TypeUint32)
 	}
-	if value, ok := _u.mutation.GetType(); ok {
-		_spec.SetField(task.FieldType, field.TypeEnum, value)
+	if value, ok := _u.mutation.TaskName(); ok {
+		_spec.SetField(task.FieldTaskName, field.TypeString, value)
 	}
-	if _u.mutation.TypeCleared() {
-		_spec.ClearField(task.FieldType, field.TypeEnum)
+	if value, ok := _u.mutation.GroupID(); ok {
+		_spec.SetField(task.FieldGroupID, field.TypeUint64, value)
 	}
-	if value, ok := _u.mutation.TypeName(); ok {
-		_spec.SetField(task.FieldTypeName, field.TypeString, value)
+	if value, ok := _u.mutation.AddedGroupID(); ok {
+		_spec.AddField(task.FieldGroupID, field.TypeUint64, value)
 	}
-	if _u.mutation.TypeNameCleared() {
-		_spec.ClearField(task.FieldTypeName, field.TypeString)
+	if value, ok := _u.mutation.TaskType(); ok {
+		_spec.SetField(task.FieldTaskType, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.TaskPayload(); ok {
-		_spec.SetField(task.FieldTaskPayload, field.TypeString, value)
+	if value, ok := _u.mutation.CronExpression(); ok {
+		_spec.SetField(task.FieldCronExpression, field.TypeString, value)
 	}
-	if _u.mutation.TaskPayloadCleared() {
-		_spec.ClearField(task.FieldTaskPayload, field.TypeString)
+	if _u.mutation.CronExpressionCleared() {
+		_spec.ClearField(task.FieldCronExpression, field.TypeString)
 	}
-	if value, ok := _u.mutation.CronSpec(); ok {
-		_spec.SetField(task.FieldCronSpec, field.TypeString, value)
+	if value, ok := _u.mutation.InvokeTarget(); ok {
+		_spec.SetField(task.FieldInvokeTarget, field.TypeString, value)
 	}
-	if _u.mutation.CronSpecCleared() {
-		_spec.ClearField(task.FieldCronSpec, field.TypeString)
+	if _u.mutation.InvokeTargetCleared() {
+		_spec.ClearField(task.FieldInvokeTarget, field.TypeString)
 	}
-	if value, ok := _u.mutation.TaskOptions(); ok {
-		_spec.SetField(task.FieldTaskOptions, field.TypeJSON, value)
+	if value, ok := _u.mutation.Args(); ok {
+		_spec.SetField(task.FieldArgs, field.TypeString, value)
 	}
-	if _u.mutation.TaskOptionsCleared() {
-		_spec.ClearField(task.FieldTaskOptions, field.TypeJSON)
+	if _u.mutation.ArgsCleared() {
+		_spec.ClearField(task.FieldArgs, field.TypeString)
 	}
-	if value, ok := _u.mutation.Enable(); ok {
-		_spec.SetField(task.FieldEnable, field.TypeBool, value)
+	if value, ok := _u.mutation.Retry(); ok {
+		_spec.SetField(task.FieldRetry, field.TypeUint8, value)
 	}
-	if _u.mutation.EnableCleared() {
-		_spec.ClearField(task.FieldEnable, field.TypeBool)
+	if value, ok := _u.mutation.AddedRetry(); ok {
+		_spec.AddField(task.FieldRetry, field.TypeUint8, value)
+	}
+	if value, ok := _u.mutation.Concurrent(); ok {
+		_spec.SetField(task.FieldConcurrent, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.EntryID(); ok {
+		_spec.SetField(task.FieldEntryID, field.TypeUint32, value)
+	}
+	if value, ok := _u.mutation.AddedEntryID(); ok {
+		_spec.AddField(task.FieldEntryID, field.TypeUint32, value)
+	}
+	if _u.mutation.EntryIDCleared() {
+		_spec.ClearField(task.FieldEntryID, field.TypeUint32)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(task.FieldStatus, field.TypeEnum, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -598,115 +710,188 @@ func (_u *TaskUpdateOne) ClearRemark() *TaskUpdateOne {
 	return _u
 }
 
-// SetType sets the "type" field.
-func (_u *TaskUpdateOne) SetType(v task.Type) *TaskUpdateOne {
-	_u.mutation.SetType(v)
+// SetTaskName sets the "task_name" field.
+func (_u *TaskUpdateOne) SetTaskName(v string) *TaskUpdateOne {
+	_u.mutation.SetTaskName(v)
 	return _u
 }
 
-// SetNillableType sets the "type" field if the given value is not nil.
-func (_u *TaskUpdateOne) SetNillableType(v *task.Type) *TaskUpdateOne {
+// SetNillableTaskName sets the "task_name" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableTaskName(v *string) *TaskUpdateOne {
 	if v != nil {
-		_u.SetType(*v)
+		_u.SetTaskName(*v)
 	}
 	return _u
 }
 
-// ClearType clears the value of the "type" field.
-func (_u *TaskUpdateOne) ClearType() *TaskUpdateOne {
-	_u.mutation.ClearType()
+// SetGroupID sets the "group_id" field.
+func (_u *TaskUpdateOne) SetGroupID(v uint64) *TaskUpdateOne {
+	_u.mutation.ResetGroupID()
+	_u.mutation.SetGroupID(v)
 	return _u
 }
 
-// SetTypeName sets the "type_name" field.
-func (_u *TaskUpdateOne) SetTypeName(v string) *TaskUpdateOne {
-	_u.mutation.SetTypeName(v)
-	return _u
-}
-
-// SetNillableTypeName sets the "type_name" field if the given value is not nil.
-func (_u *TaskUpdateOne) SetNillableTypeName(v *string) *TaskUpdateOne {
+// SetNillableGroupID sets the "group_id" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableGroupID(v *uint64) *TaskUpdateOne {
 	if v != nil {
-		_u.SetTypeName(*v)
+		_u.SetGroupID(*v)
 	}
 	return _u
 }
 
-// ClearTypeName clears the value of the "type_name" field.
-func (_u *TaskUpdateOne) ClearTypeName() *TaskUpdateOne {
-	_u.mutation.ClearTypeName()
+// AddGroupID adds value to the "group_id" field.
+func (_u *TaskUpdateOne) AddGroupID(v int64) *TaskUpdateOne {
+	_u.mutation.AddGroupID(v)
 	return _u
 }
 
-// SetTaskPayload sets the "task_payload" field.
-func (_u *TaskUpdateOne) SetTaskPayload(v string) *TaskUpdateOne {
-	_u.mutation.SetTaskPayload(v)
+// SetTaskType sets the "task_type" field.
+func (_u *TaskUpdateOne) SetTaskType(v task.TaskType) *TaskUpdateOne {
+	_u.mutation.SetTaskType(v)
 	return _u
 }
 
-// SetNillableTaskPayload sets the "task_payload" field if the given value is not nil.
-func (_u *TaskUpdateOne) SetNillableTaskPayload(v *string) *TaskUpdateOne {
+// SetNillableTaskType sets the "task_type" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableTaskType(v *task.TaskType) *TaskUpdateOne {
 	if v != nil {
-		_u.SetTaskPayload(*v)
+		_u.SetTaskType(*v)
 	}
 	return _u
 }
 
-// ClearTaskPayload clears the value of the "task_payload" field.
-func (_u *TaskUpdateOne) ClearTaskPayload() *TaskUpdateOne {
-	_u.mutation.ClearTaskPayload()
+// SetCronExpression sets the "cron_expression" field.
+func (_u *TaskUpdateOne) SetCronExpression(v string) *TaskUpdateOne {
+	_u.mutation.SetCronExpression(v)
 	return _u
 }
 
-// SetCronSpec sets the "cron_spec" field.
-func (_u *TaskUpdateOne) SetCronSpec(v string) *TaskUpdateOne {
-	_u.mutation.SetCronSpec(v)
-	return _u
-}
-
-// SetNillableCronSpec sets the "cron_spec" field if the given value is not nil.
-func (_u *TaskUpdateOne) SetNillableCronSpec(v *string) *TaskUpdateOne {
+// SetNillableCronExpression sets the "cron_expression" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableCronExpression(v *string) *TaskUpdateOne {
 	if v != nil {
-		_u.SetCronSpec(*v)
+		_u.SetCronExpression(*v)
 	}
 	return _u
 }
 
-// ClearCronSpec clears the value of the "cron_spec" field.
-func (_u *TaskUpdateOne) ClearCronSpec() *TaskUpdateOne {
-	_u.mutation.ClearCronSpec()
+// ClearCronExpression clears the value of the "cron_expression" field.
+func (_u *TaskUpdateOne) ClearCronExpression() *TaskUpdateOne {
+	_u.mutation.ClearCronExpression()
 	return _u
 }
 
-// SetTaskOptions sets the "task_options" field.
-func (_u *TaskUpdateOne) SetTaskOptions(v *taskv1.TaskOption) *TaskUpdateOne {
-	_u.mutation.SetTaskOptions(v)
+// SetInvokeTarget sets the "invoke_target" field.
+func (_u *TaskUpdateOne) SetInvokeTarget(v string) *TaskUpdateOne {
+	_u.mutation.SetInvokeTarget(v)
 	return _u
 }
 
-// ClearTaskOptions clears the value of the "task_options" field.
-func (_u *TaskUpdateOne) ClearTaskOptions() *TaskUpdateOne {
-	_u.mutation.ClearTaskOptions()
-	return _u
-}
-
-// SetEnable sets the "enable" field.
-func (_u *TaskUpdateOne) SetEnable(v bool) *TaskUpdateOne {
-	_u.mutation.SetEnable(v)
-	return _u
-}
-
-// SetNillableEnable sets the "enable" field if the given value is not nil.
-func (_u *TaskUpdateOne) SetNillableEnable(v *bool) *TaskUpdateOne {
+// SetNillableInvokeTarget sets the "invoke_target" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableInvokeTarget(v *string) *TaskUpdateOne {
 	if v != nil {
-		_u.SetEnable(*v)
+		_u.SetInvokeTarget(*v)
 	}
 	return _u
 }
 
-// ClearEnable clears the value of the "enable" field.
-func (_u *TaskUpdateOne) ClearEnable() *TaskUpdateOne {
-	_u.mutation.ClearEnable()
+// ClearInvokeTarget clears the value of the "invoke_target" field.
+func (_u *TaskUpdateOne) ClearInvokeTarget() *TaskUpdateOne {
+	_u.mutation.ClearInvokeTarget()
+	return _u
+}
+
+// SetArgs sets the "args" field.
+func (_u *TaskUpdateOne) SetArgs(v string) *TaskUpdateOne {
+	_u.mutation.SetArgs(v)
+	return _u
+}
+
+// SetNillableArgs sets the "args" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableArgs(v *string) *TaskUpdateOne {
+	if v != nil {
+		_u.SetArgs(*v)
+	}
+	return _u
+}
+
+// ClearArgs clears the value of the "args" field.
+func (_u *TaskUpdateOne) ClearArgs() *TaskUpdateOne {
+	_u.mutation.ClearArgs()
+	return _u
+}
+
+// SetRetry sets the "retry" field.
+func (_u *TaskUpdateOne) SetRetry(v uint8) *TaskUpdateOne {
+	_u.mutation.ResetRetry()
+	_u.mutation.SetRetry(v)
+	return _u
+}
+
+// SetNillableRetry sets the "retry" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableRetry(v *uint8) *TaskUpdateOne {
+	if v != nil {
+		_u.SetRetry(*v)
+	}
+	return _u
+}
+
+// AddRetry adds value to the "retry" field.
+func (_u *TaskUpdateOne) AddRetry(v int8) *TaskUpdateOne {
+	_u.mutation.AddRetry(v)
+	return _u
+}
+
+// SetConcurrent sets the "concurrent" field.
+func (_u *TaskUpdateOne) SetConcurrent(v bool) *TaskUpdateOne {
+	_u.mutation.SetConcurrent(v)
+	return _u
+}
+
+// SetNillableConcurrent sets the "concurrent" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableConcurrent(v *bool) *TaskUpdateOne {
+	if v != nil {
+		_u.SetConcurrent(*v)
+	}
+	return _u
+}
+
+// SetEntryID sets the "entry_id" field.
+func (_u *TaskUpdateOne) SetEntryID(v uint32) *TaskUpdateOne {
+	_u.mutation.ResetEntryID()
+	_u.mutation.SetEntryID(v)
+	return _u
+}
+
+// SetNillableEntryID sets the "entry_id" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableEntryID(v *uint32) *TaskUpdateOne {
+	if v != nil {
+		_u.SetEntryID(*v)
+	}
+	return _u
+}
+
+// AddEntryID adds value to the "entry_id" field.
+func (_u *TaskUpdateOne) AddEntryID(v int32) *TaskUpdateOne {
+	_u.mutation.AddEntryID(v)
+	return _u
+}
+
+// ClearEntryID clears the value of the "entry_id" field.
+func (_u *TaskUpdateOne) ClearEntryID() *TaskUpdateOne {
+	_u.mutation.ClearEntryID()
+	return _u
+}
+
+// SetStatus sets the "status" field.
+func (_u *TaskUpdateOne) SetStatus(v task.Status) *TaskUpdateOne {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableStatus(v *task.Status) *TaskUpdateOne {
+	if v != nil {
+		_u.SetStatus(*v)
+	}
 	return _u
 }
 
@@ -757,14 +942,39 @@ func (_u *TaskUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *TaskUpdateOne) check() error {
-	if v, ok := _u.mutation.GetType(); ok {
-		if err := task.TypeValidator(v); err != nil {
-			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Task.type": %w`, err)}
+	if v, ok := _u.mutation.TaskName(); ok {
+		if err := task.TaskNameValidator(v); err != nil {
+			return &ValidationError{Name: "task_name", err: fmt.Errorf(`ent: validator failed for field "Task.task_name": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.TaskOptions(); ok {
-		if err := v.Validate(); err != nil {
-			return &ValidationError{Name: "task_options", err: fmt.Errorf(`ent: validator failed for field "Task.task_options": %w`, err)}
+	if v, ok := _u.mutation.GroupID(); ok {
+		if err := task.GroupIDValidator(v); err != nil {
+			return &ValidationError{Name: "group_id", err: fmt.Errorf(`ent: validator failed for field "Task.group_id": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.TaskType(); ok {
+		if err := task.TaskTypeValidator(v); err != nil {
+			return &ValidationError{Name: "task_type", err: fmt.Errorf(`ent: validator failed for field "Task.task_type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.CronExpression(); ok {
+		if err := task.CronExpressionValidator(v); err != nil {
+			return &ValidationError{Name: "cron_expression", err: fmt.Errorf(`ent: validator failed for field "Task.cron_expression": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.InvokeTarget(); ok {
+		if err := task.InvokeTargetValidator(v); err != nil {
+			return &ValidationError{Name: "invoke_target", err: fmt.Errorf(`ent: validator failed for field "Task.invoke_target": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Args(); ok {
+		if err := task.ArgsValidator(v); err != nil {
+			return &ValidationError{Name: "args", err: fmt.Errorf(`ent: validator failed for field "Task.args": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Status(); ok {
+		if err := task.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Task.status": %w`, err)}
 		}
 	}
 	return nil
@@ -780,7 +990,7 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 	if err := _u.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(task.Table, task.Columns, sqlgraph.NewFieldSpec(task.FieldID, field.TypeUint32))
+	_spec := sqlgraph.NewUpdateSpec(task.Table, task.Columns, sqlgraph.NewFieldSpec(task.FieldID, field.TypeUint64))
 	id, ok := _u.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Task.id" for update`)}
@@ -856,41 +1066,56 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 	if _u.mutation.TenantIDCleared() {
 		_spec.ClearField(task.FieldTenantID, field.TypeUint32)
 	}
-	if value, ok := _u.mutation.GetType(); ok {
-		_spec.SetField(task.FieldType, field.TypeEnum, value)
+	if value, ok := _u.mutation.TaskName(); ok {
+		_spec.SetField(task.FieldTaskName, field.TypeString, value)
 	}
-	if _u.mutation.TypeCleared() {
-		_spec.ClearField(task.FieldType, field.TypeEnum)
+	if value, ok := _u.mutation.GroupID(); ok {
+		_spec.SetField(task.FieldGroupID, field.TypeUint64, value)
 	}
-	if value, ok := _u.mutation.TypeName(); ok {
-		_spec.SetField(task.FieldTypeName, field.TypeString, value)
+	if value, ok := _u.mutation.AddedGroupID(); ok {
+		_spec.AddField(task.FieldGroupID, field.TypeUint64, value)
 	}
-	if _u.mutation.TypeNameCleared() {
-		_spec.ClearField(task.FieldTypeName, field.TypeString)
+	if value, ok := _u.mutation.TaskType(); ok {
+		_spec.SetField(task.FieldTaskType, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.TaskPayload(); ok {
-		_spec.SetField(task.FieldTaskPayload, field.TypeString, value)
+	if value, ok := _u.mutation.CronExpression(); ok {
+		_spec.SetField(task.FieldCronExpression, field.TypeString, value)
 	}
-	if _u.mutation.TaskPayloadCleared() {
-		_spec.ClearField(task.FieldTaskPayload, field.TypeString)
+	if _u.mutation.CronExpressionCleared() {
+		_spec.ClearField(task.FieldCronExpression, field.TypeString)
 	}
-	if value, ok := _u.mutation.CronSpec(); ok {
-		_spec.SetField(task.FieldCronSpec, field.TypeString, value)
+	if value, ok := _u.mutation.InvokeTarget(); ok {
+		_spec.SetField(task.FieldInvokeTarget, field.TypeString, value)
 	}
-	if _u.mutation.CronSpecCleared() {
-		_spec.ClearField(task.FieldCronSpec, field.TypeString)
+	if _u.mutation.InvokeTargetCleared() {
+		_spec.ClearField(task.FieldInvokeTarget, field.TypeString)
 	}
-	if value, ok := _u.mutation.TaskOptions(); ok {
-		_spec.SetField(task.FieldTaskOptions, field.TypeJSON, value)
+	if value, ok := _u.mutation.Args(); ok {
+		_spec.SetField(task.FieldArgs, field.TypeString, value)
 	}
-	if _u.mutation.TaskOptionsCleared() {
-		_spec.ClearField(task.FieldTaskOptions, field.TypeJSON)
+	if _u.mutation.ArgsCleared() {
+		_spec.ClearField(task.FieldArgs, field.TypeString)
 	}
-	if value, ok := _u.mutation.Enable(); ok {
-		_spec.SetField(task.FieldEnable, field.TypeBool, value)
+	if value, ok := _u.mutation.Retry(); ok {
+		_spec.SetField(task.FieldRetry, field.TypeUint8, value)
 	}
-	if _u.mutation.EnableCleared() {
-		_spec.ClearField(task.FieldEnable, field.TypeBool)
+	if value, ok := _u.mutation.AddedRetry(); ok {
+		_spec.AddField(task.FieldRetry, field.TypeUint8, value)
+	}
+	if value, ok := _u.mutation.Concurrent(); ok {
+		_spec.SetField(task.FieldConcurrent, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.EntryID(); ok {
+		_spec.SetField(task.FieldEntryID, field.TypeUint32, value)
+	}
+	if value, ok := _u.mutation.AddedEntryID(); ok {
+		_spec.AddField(task.FieldEntryID, field.TypeUint32, value)
+	}
+	if _u.mutation.EntryIDCleared() {
+		_spec.ClearField(task.FieldEntryID, field.TypeUint32)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(task.FieldStatus, field.TypeEnum, value)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &Task{config: _u.config}

@@ -38,6 +38,8 @@ import (
 	"admin/internal/data/ent/rolepermission"
 	"admin/internal/data/ent/schema"
 	"admin/internal/data/ent/task"
+	"admin/internal/data/ent/taskgroup"
+	"admin/internal/data/ent/tasklog"
 	"admin/internal/data/ent/tenant"
 	"admin/internal/data/ent/user"
 	"admin/internal/data/ent/usercredential"
@@ -990,14 +992,122 @@ func init() {
 	taskDescTenantID := taskMixinFields4[0].Descriptor()
 	// task.DefaultTenantID holds the default value on creation for the tenant_id field.
 	task.DefaultTenantID = taskDescTenantID.Default.(uint32)
-	// taskDescEnable is the schema descriptor for enable field.
-	taskDescEnable := taskFields[5].Descriptor()
-	// task.DefaultEnable holds the default value on creation for the enable field.
-	task.DefaultEnable = taskDescEnable.Default.(bool)
+	// taskDescTaskName is the schema descriptor for task_name field.
+	taskDescTaskName := taskFields[0].Descriptor()
+	// task.TaskNameValidator is a validator for the "task_name" field. It is called by the builders before save.
+	task.TaskNameValidator = func() func(string) error {
+		validators := taskDescTaskName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(task_name string) error {
+			for _, fn := range fns {
+				if err := fn(task_name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// taskDescGroupID is the schema descriptor for group_id field.
+	taskDescGroupID := taskFields[1].Descriptor()
+	// task.GroupIDValidator is a validator for the "group_id" field. It is called by the builders before save.
+	task.GroupIDValidator = taskDescGroupID.Validators[0].(func(uint64) error)
+	// taskDescCronExpression is the schema descriptor for cron_expression field.
+	taskDescCronExpression := taskFields[3].Descriptor()
+	// task.CronExpressionValidator is a validator for the "cron_expression" field. It is called by the builders before save.
+	task.CronExpressionValidator = taskDescCronExpression.Validators[0].(func(string) error)
+	// taskDescInvokeTarget is the schema descriptor for invoke_target field.
+	taskDescInvokeTarget := taskFields[4].Descriptor()
+	// task.InvokeTargetValidator is a validator for the "invoke_target" field. It is called by the builders before save.
+	task.InvokeTargetValidator = taskDescInvokeTarget.Validators[0].(func(string) error)
+	// taskDescArgs is the schema descriptor for args field.
+	taskDescArgs := taskFields[5].Descriptor()
+	// task.ArgsValidator is a validator for the "args" field. It is called by the builders before save.
+	task.ArgsValidator = taskDescArgs.Validators[0].(func(string) error)
+	// taskDescRetry is the schema descriptor for retry field.
+	taskDescRetry := taskFields[6].Descriptor()
+	// task.DefaultRetry holds the default value on creation for the retry field.
+	task.DefaultRetry = taskDescRetry.Default.(uint8)
+	// taskDescConcurrent is the schema descriptor for concurrent field.
+	taskDescConcurrent := taskFields[7].Descriptor()
+	// task.DefaultConcurrent holds the default value on creation for the concurrent field.
+	task.DefaultConcurrent = taskDescConcurrent.Default.(bool)
 	// taskDescID is the schema descriptor for id field.
 	taskDescID := taskMixinFields0[0].Descriptor()
 	// task.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	task.IDValidator = taskDescID.Validators[0].(func(uint32) error)
+	task.IDValidator = taskDescID.Validators[0].(func(uint64) error)
+	taskgroupMixin := schema.TaskGroup{}.Mixin()
+	taskgroup.Policy = privacy.NewPolicies(taskgroupMixin[4], schema.TaskGroup{})
+	taskgroup.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := taskgroup.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	taskgroupMixinFields0 := taskgroupMixin[0].Fields()
+	_ = taskgroupMixinFields0
+	taskgroupMixinFields4 := taskgroupMixin[4].Fields()
+	_ = taskgroupMixinFields4
+	taskgroupFields := schema.TaskGroup{}.Fields()
+	_ = taskgroupFields
+	// taskgroupDescTenantID is the schema descriptor for tenant_id field.
+	taskgroupDescTenantID := taskgroupMixinFields4[0].Descriptor()
+	// taskgroup.DefaultTenantID holds the default value on creation for the tenant_id field.
+	taskgroup.DefaultTenantID = taskgroupDescTenantID.Default.(uint32)
+	// taskgroupDescGroupName is the schema descriptor for group_name field.
+	taskgroupDescGroupName := taskgroupFields[0].Descriptor()
+	// taskgroup.GroupNameValidator is a validator for the "group_name" field. It is called by the builders before save.
+	taskgroup.GroupNameValidator = func() func(string) error {
+		validators := taskgroupDescGroupName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(group_name string) error {
+			for _, fn := range fns {
+				if err := fn(group_name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// taskgroupDescID is the schema descriptor for id field.
+	taskgroupDescID := taskgroupMixinFields0[0].Descriptor()
+	// taskgroup.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	taskgroup.IDValidator = taskgroupDescID.Validators[0].(func(uint64) error)
+	tasklogMixin := schema.TaskLog{}.Mixin()
+	tasklog.Policy = privacy.NewPolicies(tasklogMixin[1], schema.TaskLog{})
+	tasklog.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := tasklog.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	tasklogMixinFields0 := tasklogMixin[0].Fields()
+	_ = tasklogMixinFields0
+	tasklogMixinFields1 := tasklogMixin[1].Fields()
+	_ = tasklogMixinFields1
+	tasklogFields := schema.TaskLog{}.Fields()
+	_ = tasklogFields
+	// tasklogDescTenantID is the schema descriptor for tenant_id field.
+	tasklogDescTenantID := tasklogMixinFields1[0].Descriptor()
+	// tasklog.DefaultTenantID holds the default value on creation for the tenant_id field.
+	tasklog.DefaultTenantID = tasklogDescTenantID.Default.(uint32)
+	// tasklogDescInput is the schema descriptor for input field.
+	tasklogDescInput := tasklogFields[1].Descriptor()
+	// tasklog.InputValidator is a validator for the "input" field. It is called by the builders before save.
+	tasklog.InputValidator = tasklogDescInput.Validators[0].(func(string) error)
+	// tasklogDescID is the schema descriptor for id field.
+	tasklogDescID := tasklogMixinFields0[0].Descriptor()
+	// tasklog.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	tasklog.IDValidator = tasklogDescID.Validators[0].(func(uint64) error)
 	tenantMixin := schema.Tenant{}.Mixin()
 	tenantMixinFields0 := tenantMixin[0].Fields()
 	_ = tenantMixinFields0

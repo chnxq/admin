@@ -78,6 +78,10 @@ type Tx struct {
 	RolePermission *RolePermissionClient
 	// Task is the client for interacting with the Task builders.
 	Task *TaskClient
+	// TaskGroup is the client for interacting with the TaskGroup builders.
+	TaskGroup *TaskGroupClient
+	// TaskLog is the client for interacting with the TaskLog builders.
+	TaskLog *TaskLogClient
 	// Tenant is the client for interacting with the Tenant builders.
 	Tenant *TenantClient
 	// User is the client for interacting with the User builders.
@@ -254,6 +258,8 @@ func (tx *Tx) init() {
 	tx.RoleMetadata = NewRoleMetadataClient(tx.config)
 	tx.RolePermission = NewRolePermissionClient(tx.config)
 	tx.Task = NewTaskClient(tx.config)
+	tx.TaskGroup = NewTaskGroupClient(tx.config)
+	tx.TaskLog = NewTaskLogClient(tx.config)
 	tx.Tenant = NewTenantClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 	tx.UserCredential = NewUserCredentialClient(tx.config)

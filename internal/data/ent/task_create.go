@@ -3,7 +3,6 @@
 package ent
 
 import (
-	taskv1 "admin/api/gen/task/v1"
 	"admin/internal/data/ent/task"
 	"context"
 	"errors"
@@ -135,84 +134,132 @@ func (_c *TaskCreate) SetNillableTenantID(v *uint32) *TaskCreate {
 	return _c
 }
 
-// SetType sets the "type" field.
-func (_c *TaskCreate) SetType(v task.Type) *TaskCreate {
-	_c.mutation.SetType(v)
+// SetTaskName sets the "task_name" field.
+func (_c *TaskCreate) SetTaskName(v string) *TaskCreate {
+	_c.mutation.SetTaskName(v)
 	return _c
 }
 
-// SetNillableType sets the "type" field if the given value is not nil.
-func (_c *TaskCreate) SetNillableType(v *task.Type) *TaskCreate {
+// SetGroupID sets the "group_id" field.
+func (_c *TaskCreate) SetGroupID(v uint64) *TaskCreate {
+	_c.mutation.SetGroupID(v)
+	return _c
+}
+
+// SetTaskType sets the "task_type" field.
+func (_c *TaskCreate) SetTaskType(v task.TaskType) *TaskCreate {
+	_c.mutation.SetTaskType(v)
+	return _c
+}
+
+// SetNillableTaskType sets the "task_type" field if the given value is not nil.
+func (_c *TaskCreate) SetNillableTaskType(v *task.TaskType) *TaskCreate {
 	if v != nil {
-		_c.SetType(*v)
+		_c.SetTaskType(*v)
 	}
 	return _c
 }
 
-// SetTypeName sets the "type_name" field.
-func (_c *TaskCreate) SetTypeName(v string) *TaskCreate {
-	_c.mutation.SetTypeName(v)
+// SetCronExpression sets the "cron_expression" field.
+func (_c *TaskCreate) SetCronExpression(v string) *TaskCreate {
+	_c.mutation.SetCronExpression(v)
 	return _c
 }
 
-// SetNillableTypeName sets the "type_name" field if the given value is not nil.
-func (_c *TaskCreate) SetNillableTypeName(v *string) *TaskCreate {
+// SetNillableCronExpression sets the "cron_expression" field if the given value is not nil.
+func (_c *TaskCreate) SetNillableCronExpression(v *string) *TaskCreate {
 	if v != nil {
-		_c.SetTypeName(*v)
+		_c.SetCronExpression(*v)
 	}
 	return _c
 }
 
-// SetTaskPayload sets the "task_payload" field.
-func (_c *TaskCreate) SetTaskPayload(v string) *TaskCreate {
-	_c.mutation.SetTaskPayload(v)
+// SetInvokeTarget sets the "invoke_target" field.
+func (_c *TaskCreate) SetInvokeTarget(v string) *TaskCreate {
+	_c.mutation.SetInvokeTarget(v)
 	return _c
 }
 
-// SetNillableTaskPayload sets the "task_payload" field if the given value is not nil.
-func (_c *TaskCreate) SetNillableTaskPayload(v *string) *TaskCreate {
+// SetNillableInvokeTarget sets the "invoke_target" field if the given value is not nil.
+func (_c *TaskCreate) SetNillableInvokeTarget(v *string) *TaskCreate {
 	if v != nil {
-		_c.SetTaskPayload(*v)
+		_c.SetInvokeTarget(*v)
 	}
 	return _c
 }
 
-// SetCronSpec sets the "cron_spec" field.
-func (_c *TaskCreate) SetCronSpec(v string) *TaskCreate {
-	_c.mutation.SetCronSpec(v)
+// SetArgs sets the "args" field.
+func (_c *TaskCreate) SetArgs(v string) *TaskCreate {
+	_c.mutation.SetArgs(v)
 	return _c
 }
 
-// SetNillableCronSpec sets the "cron_spec" field if the given value is not nil.
-func (_c *TaskCreate) SetNillableCronSpec(v *string) *TaskCreate {
+// SetNillableArgs sets the "args" field if the given value is not nil.
+func (_c *TaskCreate) SetNillableArgs(v *string) *TaskCreate {
 	if v != nil {
-		_c.SetCronSpec(*v)
+		_c.SetArgs(*v)
 	}
 	return _c
 }
 
-// SetTaskOptions sets the "task_options" field.
-func (_c *TaskCreate) SetTaskOptions(v *taskv1.TaskOption) *TaskCreate {
-	_c.mutation.SetTaskOptions(v)
+// SetRetry sets the "retry" field.
+func (_c *TaskCreate) SetRetry(v uint8) *TaskCreate {
+	_c.mutation.SetRetry(v)
 	return _c
 }
 
-// SetEnable sets the "enable" field.
-func (_c *TaskCreate) SetEnable(v bool) *TaskCreate {
-	_c.mutation.SetEnable(v)
-	return _c
-}
-
-// SetNillableEnable sets the "enable" field if the given value is not nil.
-func (_c *TaskCreate) SetNillableEnable(v *bool) *TaskCreate {
+// SetNillableRetry sets the "retry" field if the given value is not nil.
+func (_c *TaskCreate) SetNillableRetry(v *uint8) *TaskCreate {
 	if v != nil {
-		_c.SetEnable(*v)
+		_c.SetRetry(*v)
+	}
+	return _c
+}
+
+// SetConcurrent sets the "concurrent" field.
+func (_c *TaskCreate) SetConcurrent(v bool) *TaskCreate {
+	_c.mutation.SetConcurrent(v)
+	return _c
+}
+
+// SetNillableConcurrent sets the "concurrent" field if the given value is not nil.
+func (_c *TaskCreate) SetNillableConcurrent(v *bool) *TaskCreate {
+	if v != nil {
+		_c.SetConcurrent(*v)
+	}
+	return _c
+}
+
+// SetEntryID sets the "entry_id" field.
+func (_c *TaskCreate) SetEntryID(v uint32) *TaskCreate {
+	_c.mutation.SetEntryID(v)
+	return _c
+}
+
+// SetNillableEntryID sets the "entry_id" field if the given value is not nil.
+func (_c *TaskCreate) SetNillableEntryID(v *uint32) *TaskCreate {
+	if v != nil {
+		_c.SetEntryID(*v)
+	}
+	return _c
+}
+
+// SetStatus sets the "status" field.
+func (_c *TaskCreate) SetStatus(v task.Status) *TaskCreate {
+	_c.mutation.SetStatus(v)
+	return _c
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_c *TaskCreate) SetNillableStatus(v *task.Status) *TaskCreate {
+	if v != nil {
+		_c.SetStatus(*v)
 	}
 	return _c
 }
 
 // SetID sets the "id" field.
-func (_c *TaskCreate) SetID(v uint32) *TaskCreate {
+func (_c *TaskCreate) SetID(v uint64) *TaskCreate {
 	_c.mutation.SetID(v)
 	return _c
 }
@@ -258,27 +305,78 @@ func (_c *TaskCreate) defaults() error {
 		v := task.DefaultTenantID
 		_c.mutation.SetTenantID(v)
 	}
-	if _, ok := _c.mutation.GetType(); !ok {
-		v := task.DefaultType
-		_c.mutation.SetType(v)
+	if _, ok := _c.mutation.TaskType(); !ok {
+		v := task.DefaultTaskType
+		_c.mutation.SetTaskType(v)
 	}
-	if _, ok := _c.mutation.Enable(); !ok {
-		v := task.DefaultEnable
-		_c.mutation.SetEnable(v)
+	if _, ok := _c.mutation.Retry(); !ok {
+		v := task.DefaultRetry
+		_c.mutation.SetRetry(v)
+	}
+	if _, ok := _c.mutation.Concurrent(); !ok {
+		v := task.DefaultConcurrent
+		_c.mutation.SetConcurrent(v)
+	}
+	if _, ok := _c.mutation.Status(); !ok {
+		v := task.DefaultStatus
+		_c.mutation.SetStatus(v)
 	}
 	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *TaskCreate) check() error {
-	if v, ok := _c.mutation.GetType(); ok {
-		if err := task.TypeValidator(v); err != nil {
-			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Task.type": %w`, err)}
+	if _, ok := _c.mutation.TaskName(); !ok {
+		return &ValidationError{Name: "task_name", err: errors.New(`ent: missing required field "Task.task_name"`)}
+	}
+	if v, ok := _c.mutation.TaskName(); ok {
+		if err := task.TaskNameValidator(v); err != nil {
+			return &ValidationError{Name: "task_name", err: fmt.Errorf(`ent: validator failed for field "Task.task_name": %w`, err)}
 		}
 	}
-	if v, ok := _c.mutation.TaskOptions(); ok {
-		if err := v.Validate(); err != nil {
-			return &ValidationError{Name: "task_options", err: fmt.Errorf(`ent: validator failed for field "Task.task_options": %w`, err)}
+	if _, ok := _c.mutation.GroupID(); !ok {
+		return &ValidationError{Name: "group_id", err: errors.New(`ent: missing required field "Task.group_id"`)}
+	}
+	if v, ok := _c.mutation.GroupID(); ok {
+		if err := task.GroupIDValidator(v); err != nil {
+			return &ValidationError{Name: "group_id", err: fmt.Errorf(`ent: validator failed for field "Task.group_id": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.TaskType(); !ok {
+		return &ValidationError{Name: "task_type", err: errors.New(`ent: missing required field "Task.task_type"`)}
+	}
+	if v, ok := _c.mutation.TaskType(); ok {
+		if err := task.TaskTypeValidator(v); err != nil {
+			return &ValidationError{Name: "task_type", err: fmt.Errorf(`ent: validator failed for field "Task.task_type": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.CronExpression(); ok {
+		if err := task.CronExpressionValidator(v); err != nil {
+			return &ValidationError{Name: "cron_expression", err: fmt.Errorf(`ent: validator failed for field "Task.cron_expression": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.InvokeTarget(); ok {
+		if err := task.InvokeTargetValidator(v); err != nil {
+			return &ValidationError{Name: "invoke_target", err: fmt.Errorf(`ent: validator failed for field "Task.invoke_target": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.Args(); ok {
+		if err := task.ArgsValidator(v); err != nil {
+			return &ValidationError{Name: "args", err: fmt.Errorf(`ent: validator failed for field "Task.args": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.Retry(); !ok {
+		return &ValidationError{Name: "retry", err: errors.New(`ent: missing required field "Task.retry"`)}
+	}
+	if _, ok := _c.mutation.Concurrent(); !ok {
+		return &ValidationError{Name: "concurrent", err: errors.New(`ent: missing required field "Task.concurrent"`)}
+	}
+	if _, ok := _c.mutation.Status(); !ok {
+		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Task.status"`)}
+	}
+	if v, ok := _c.mutation.Status(); ok {
+		if err := task.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Task.status": %w`, err)}
 		}
 	}
 	if v, ok := _c.mutation.ID(); ok {
@@ -302,7 +400,7 @@ func (_c *TaskCreate) sqlSave(ctx context.Context) (*Task, error) {
 	}
 	if _spec.ID.Value != _node.ID {
 		id := _spec.ID.Value.(int64)
-		_node.ID = uint32(id)
+		_node.ID = uint64(id)
 	}
 	_c.mutation.id = &_node.ID
 	_c.mutation.done = true
@@ -312,7 +410,7 @@ func (_c *TaskCreate) sqlSave(ctx context.Context) (*Task, error) {
 func (_c *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Task{config: _c.config}
-		_spec = sqlgraph.NewCreateSpec(task.Table, sqlgraph.NewFieldSpec(task.FieldID, field.TypeUint32))
+		_spec = sqlgraph.NewCreateSpec(task.Table, sqlgraph.NewFieldSpec(task.FieldID, field.TypeUint64))
 	)
 	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
@@ -351,29 +449,45 @@ func (_c *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 		_spec.SetField(task.FieldTenantID, field.TypeUint32, value)
 		_node.TenantID = &value
 	}
-	if value, ok := _c.mutation.GetType(); ok {
-		_spec.SetField(task.FieldType, field.TypeEnum, value)
-		_node.Type = &value
+	if value, ok := _c.mutation.TaskName(); ok {
+		_spec.SetField(task.FieldTaskName, field.TypeString, value)
+		_node.TaskName = value
 	}
-	if value, ok := _c.mutation.TypeName(); ok {
-		_spec.SetField(task.FieldTypeName, field.TypeString, value)
-		_node.TypeName = &value
+	if value, ok := _c.mutation.GroupID(); ok {
+		_spec.SetField(task.FieldGroupID, field.TypeUint64, value)
+		_node.GroupID = value
 	}
-	if value, ok := _c.mutation.TaskPayload(); ok {
-		_spec.SetField(task.FieldTaskPayload, field.TypeString, value)
-		_node.TaskPayload = &value
+	if value, ok := _c.mutation.TaskType(); ok {
+		_spec.SetField(task.FieldTaskType, field.TypeEnum, value)
+		_node.TaskType = value
 	}
-	if value, ok := _c.mutation.CronSpec(); ok {
-		_spec.SetField(task.FieldCronSpec, field.TypeString, value)
-		_node.CronSpec = &value
+	if value, ok := _c.mutation.CronExpression(); ok {
+		_spec.SetField(task.FieldCronExpression, field.TypeString, value)
+		_node.CronExpression = &value
 	}
-	if value, ok := _c.mutation.TaskOptions(); ok {
-		_spec.SetField(task.FieldTaskOptions, field.TypeJSON, value)
-		_node.TaskOptions = value
+	if value, ok := _c.mutation.InvokeTarget(); ok {
+		_spec.SetField(task.FieldInvokeTarget, field.TypeString, value)
+		_node.InvokeTarget = &value
 	}
-	if value, ok := _c.mutation.Enable(); ok {
-		_spec.SetField(task.FieldEnable, field.TypeBool, value)
-		_node.Enable = &value
+	if value, ok := _c.mutation.Args(); ok {
+		_spec.SetField(task.FieldArgs, field.TypeString, value)
+		_node.Args = &value
+	}
+	if value, ok := _c.mutation.Retry(); ok {
+		_spec.SetField(task.FieldRetry, field.TypeUint8, value)
+		_node.Retry = value
+	}
+	if value, ok := _c.mutation.Concurrent(); ok {
+		_spec.SetField(task.FieldConcurrent, field.TypeBool, value)
+		_node.Concurrent = value
+	}
+	if value, ok := _c.mutation.EntryID(); ok {
+		_spec.SetField(task.FieldEntryID, field.TypeUint32, value)
+		_node.EntryID = &value
+	}
+	if value, ok := _c.mutation.Status(); ok {
+		_spec.SetField(task.FieldStatus, field.TypeEnum, value)
+		_node.Status = value
 	}
 	return _node, _spec
 }
@@ -553,111 +667,165 @@ func (u *TaskUpsert) ClearRemark() *TaskUpsert {
 	return u
 }
 
-// SetType sets the "type" field.
-func (u *TaskUpsert) SetType(v task.Type) *TaskUpsert {
-	u.Set(task.FieldType, v)
+// SetTaskName sets the "task_name" field.
+func (u *TaskUpsert) SetTaskName(v string) *TaskUpsert {
+	u.Set(task.FieldTaskName, v)
 	return u
 }
 
-// UpdateType sets the "type" field to the value that was provided on create.
-func (u *TaskUpsert) UpdateType() *TaskUpsert {
-	u.SetExcluded(task.FieldType)
+// UpdateTaskName sets the "task_name" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateTaskName() *TaskUpsert {
+	u.SetExcluded(task.FieldTaskName)
 	return u
 }
 
-// ClearType clears the value of the "type" field.
-func (u *TaskUpsert) ClearType() *TaskUpsert {
-	u.SetNull(task.FieldType)
+// SetGroupID sets the "group_id" field.
+func (u *TaskUpsert) SetGroupID(v uint64) *TaskUpsert {
+	u.Set(task.FieldGroupID, v)
 	return u
 }
 
-// SetTypeName sets the "type_name" field.
-func (u *TaskUpsert) SetTypeName(v string) *TaskUpsert {
-	u.Set(task.FieldTypeName, v)
+// UpdateGroupID sets the "group_id" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateGroupID() *TaskUpsert {
+	u.SetExcluded(task.FieldGroupID)
 	return u
 }
 
-// UpdateTypeName sets the "type_name" field to the value that was provided on create.
-func (u *TaskUpsert) UpdateTypeName() *TaskUpsert {
-	u.SetExcluded(task.FieldTypeName)
+// AddGroupID adds v to the "group_id" field.
+func (u *TaskUpsert) AddGroupID(v uint64) *TaskUpsert {
+	u.Add(task.FieldGroupID, v)
 	return u
 }
 
-// ClearTypeName clears the value of the "type_name" field.
-func (u *TaskUpsert) ClearTypeName() *TaskUpsert {
-	u.SetNull(task.FieldTypeName)
+// SetTaskType sets the "task_type" field.
+func (u *TaskUpsert) SetTaskType(v task.TaskType) *TaskUpsert {
+	u.Set(task.FieldTaskType, v)
 	return u
 }
 
-// SetTaskPayload sets the "task_payload" field.
-func (u *TaskUpsert) SetTaskPayload(v string) *TaskUpsert {
-	u.Set(task.FieldTaskPayload, v)
+// UpdateTaskType sets the "task_type" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateTaskType() *TaskUpsert {
+	u.SetExcluded(task.FieldTaskType)
 	return u
 }
 
-// UpdateTaskPayload sets the "task_payload" field to the value that was provided on create.
-func (u *TaskUpsert) UpdateTaskPayload() *TaskUpsert {
-	u.SetExcluded(task.FieldTaskPayload)
+// SetCronExpression sets the "cron_expression" field.
+func (u *TaskUpsert) SetCronExpression(v string) *TaskUpsert {
+	u.Set(task.FieldCronExpression, v)
 	return u
 }
 
-// ClearTaskPayload clears the value of the "task_payload" field.
-func (u *TaskUpsert) ClearTaskPayload() *TaskUpsert {
-	u.SetNull(task.FieldTaskPayload)
+// UpdateCronExpression sets the "cron_expression" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateCronExpression() *TaskUpsert {
+	u.SetExcluded(task.FieldCronExpression)
 	return u
 }
 
-// SetCronSpec sets the "cron_spec" field.
-func (u *TaskUpsert) SetCronSpec(v string) *TaskUpsert {
-	u.Set(task.FieldCronSpec, v)
+// ClearCronExpression clears the value of the "cron_expression" field.
+func (u *TaskUpsert) ClearCronExpression() *TaskUpsert {
+	u.SetNull(task.FieldCronExpression)
 	return u
 }
 
-// UpdateCronSpec sets the "cron_spec" field to the value that was provided on create.
-func (u *TaskUpsert) UpdateCronSpec() *TaskUpsert {
-	u.SetExcluded(task.FieldCronSpec)
+// SetInvokeTarget sets the "invoke_target" field.
+func (u *TaskUpsert) SetInvokeTarget(v string) *TaskUpsert {
+	u.Set(task.FieldInvokeTarget, v)
 	return u
 }
 
-// ClearCronSpec clears the value of the "cron_spec" field.
-func (u *TaskUpsert) ClearCronSpec() *TaskUpsert {
-	u.SetNull(task.FieldCronSpec)
+// UpdateInvokeTarget sets the "invoke_target" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateInvokeTarget() *TaskUpsert {
+	u.SetExcluded(task.FieldInvokeTarget)
 	return u
 }
 
-// SetTaskOptions sets the "task_options" field.
-func (u *TaskUpsert) SetTaskOptions(v *taskv1.TaskOption) *TaskUpsert {
-	u.Set(task.FieldTaskOptions, v)
+// ClearInvokeTarget clears the value of the "invoke_target" field.
+func (u *TaskUpsert) ClearInvokeTarget() *TaskUpsert {
+	u.SetNull(task.FieldInvokeTarget)
 	return u
 }
 
-// UpdateTaskOptions sets the "task_options" field to the value that was provided on create.
-func (u *TaskUpsert) UpdateTaskOptions() *TaskUpsert {
-	u.SetExcluded(task.FieldTaskOptions)
+// SetArgs sets the "args" field.
+func (u *TaskUpsert) SetArgs(v string) *TaskUpsert {
+	u.Set(task.FieldArgs, v)
 	return u
 }
 
-// ClearTaskOptions clears the value of the "task_options" field.
-func (u *TaskUpsert) ClearTaskOptions() *TaskUpsert {
-	u.SetNull(task.FieldTaskOptions)
+// UpdateArgs sets the "args" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateArgs() *TaskUpsert {
+	u.SetExcluded(task.FieldArgs)
 	return u
 }
 
-// SetEnable sets the "enable" field.
-func (u *TaskUpsert) SetEnable(v bool) *TaskUpsert {
-	u.Set(task.FieldEnable, v)
+// ClearArgs clears the value of the "args" field.
+func (u *TaskUpsert) ClearArgs() *TaskUpsert {
+	u.SetNull(task.FieldArgs)
 	return u
 }
 
-// UpdateEnable sets the "enable" field to the value that was provided on create.
-func (u *TaskUpsert) UpdateEnable() *TaskUpsert {
-	u.SetExcluded(task.FieldEnable)
+// SetRetry sets the "retry" field.
+func (u *TaskUpsert) SetRetry(v uint8) *TaskUpsert {
+	u.Set(task.FieldRetry, v)
 	return u
 }
 
-// ClearEnable clears the value of the "enable" field.
-func (u *TaskUpsert) ClearEnable() *TaskUpsert {
-	u.SetNull(task.FieldEnable)
+// UpdateRetry sets the "retry" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateRetry() *TaskUpsert {
+	u.SetExcluded(task.FieldRetry)
+	return u
+}
+
+// AddRetry adds v to the "retry" field.
+func (u *TaskUpsert) AddRetry(v uint8) *TaskUpsert {
+	u.Add(task.FieldRetry, v)
+	return u
+}
+
+// SetConcurrent sets the "concurrent" field.
+func (u *TaskUpsert) SetConcurrent(v bool) *TaskUpsert {
+	u.Set(task.FieldConcurrent, v)
+	return u
+}
+
+// UpdateConcurrent sets the "concurrent" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateConcurrent() *TaskUpsert {
+	u.SetExcluded(task.FieldConcurrent)
+	return u
+}
+
+// SetEntryID sets the "entry_id" field.
+func (u *TaskUpsert) SetEntryID(v uint32) *TaskUpsert {
+	u.Set(task.FieldEntryID, v)
+	return u
+}
+
+// UpdateEntryID sets the "entry_id" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateEntryID() *TaskUpsert {
+	u.SetExcluded(task.FieldEntryID)
+	return u
+}
+
+// AddEntryID adds v to the "entry_id" field.
+func (u *TaskUpsert) AddEntryID(v uint32) *TaskUpsert {
+	u.Add(task.FieldEntryID, v)
+	return u
+}
+
+// ClearEntryID clears the value of the "entry_id" field.
+func (u *TaskUpsert) ClearEntryID() *TaskUpsert {
+	u.SetNull(task.FieldEntryID)
+	return u
+}
+
+// SetStatus sets the "status" field.
+func (u *TaskUpsert) SetStatus(v task.Status) *TaskUpsert {
+	u.Set(task.FieldStatus, v)
+	return u
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateStatus() *TaskUpsert {
+	u.SetExcluded(task.FieldStatus)
 	return u
 }
 
@@ -862,129 +1030,192 @@ func (u *TaskUpsertOne) ClearRemark() *TaskUpsertOne {
 	})
 }
 
-// SetType sets the "type" field.
-func (u *TaskUpsertOne) SetType(v task.Type) *TaskUpsertOne {
+// SetTaskName sets the "task_name" field.
+func (u *TaskUpsertOne) SetTaskName(v string) *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.SetType(v)
+		s.SetTaskName(v)
 	})
 }
 
-// UpdateType sets the "type" field to the value that was provided on create.
-func (u *TaskUpsertOne) UpdateType() *TaskUpsertOne {
+// UpdateTaskName sets the "task_name" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateTaskName() *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.UpdateType()
+		s.UpdateTaskName()
 	})
 }
 
-// ClearType clears the value of the "type" field.
-func (u *TaskUpsertOne) ClearType() *TaskUpsertOne {
+// SetGroupID sets the "group_id" field.
+func (u *TaskUpsertOne) SetGroupID(v uint64) *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.ClearType()
+		s.SetGroupID(v)
 	})
 }
 
-// SetTypeName sets the "type_name" field.
-func (u *TaskUpsertOne) SetTypeName(v string) *TaskUpsertOne {
+// AddGroupID adds v to the "group_id" field.
+func (u *TaskUpsertOne) AddGroupID(v uint64) *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.SetTypeName(v)
+		s.AddGroupID(v)
 	})
 }
 
-// UpdateTypeName sets the "type_name" field to the value that was provided on create.
-func (u *TaskUpsertOne) UpdateTypeName() *TaskUpsertOne {
+// UpdateGroupID sets the "group_id" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateGroupID() *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.UpdateTypeName()
+		s.UpdateGroupID()
 	})
 }
 
-// ClearTypeName clears the value of the "type_name" field.
-func (u *TaskUpsertOne) ClearTypeName() *TaskUpsertOne {
+// SetTaskType sets the "task_type" field.
+func (u *TaskUpsertOne) SetTaskType(v task.TaskType) *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.ClearTypeName()
+		s.SetTaskType(v)
 	})
 }
 
-// SetTaskPayload sets the "task_payload" field.
-func (u *TaskUpsertOne) SetTaskPayload(v string) *TaskUpsertOne {
+// UpdateTaskType sets the "task_type" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateTaskType() *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.SetTaskPayload(v)
+		s.UpdateTaskType()
 	})
 }
 
-// UpdateTaskPayload sets the "task_payload" field to the value that was provided on create.
-func (u *TaskUpsertOne) UpdateTaskPayload() *TaskUpsertOne {
+// SetCronExpression sets the "cron_expression" field.
+func (u *TaskUpsertOne) SetCronExpression(v string) *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.UpdateTaskPayload()
+		s.SetCronExpression(v)
 	})
 }
 
-// ClearTaskPayload clears the value of the "task_payload" field.
-func (u *TaskUpsertOne) ClearTaskPayload() *TaskUpsertOne {
+// UpdateCronExpression sets the "cron_expression" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateCronExpression() *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.ClearTaskPayload()
+		s.UpdateCronExpression()
 	})
 }
 
-// SetCronSpec sets the "cron_spec" field.
-func (u *TaskUpsertOne) SetCronSpec(v string) *TaskUpsertOne {
+// ClearCronExpression clears the value of the "cron_expression" field.
+func (u *TaskUpsertOne) ClearCronExpression() *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.SetCronSpec(v)
+		s.ClearCronExpression()
 	})
 }
 
-// UpdateCronSpec sets the "cron_spec" field to the value that was provided on create.
-func (u *TaskUpsertOne) UpdateCronSpec() *TaskUpsertOne {
+// SetInvokeTarget sets the "invoke_target" field.
+func (u *TaskUpsertOne) SetInvokeTarget(v string) *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.UpdateCronSpec()
+		s.SetInvokeTarget(v)
 	})
 }
 
-// ClearCronSpec clears the value of the "cron_spec" field.
-func (u *TaskUpsertOne) ClearCronSpec() *TaskUpsertOne {
+// UpdateInvokeTarget sets the "invoke_target" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateInvokeTarget() *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.ClearCronSpec()
+		s.UpdateInvokeTarget()
 	})
 }
 
-// SetTaskOptions sets the "task_options" field.
-func (u *TaskUpsertOne) SetTaskOptions(v *taskv1.TaskOption) *TaskUpsertOne {
+// ClearInvokeTarget clears the value of the "invoke_target" field.
+func (u *TaskUpsertOne) ClearInvokeTarget() *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.SetTaskOptions(v)
+		s.ClearInvokeTarget()
 	})
 }
 
-// UpdateTaskOptions sets the "task_options" field to the value that was provided on create.
-func (u *TaskUpsertOne) UpdateTaskOptions() *TaskUpsertOne {
+// SetArgs sets the "args" field.
+func (u *TaskUpsertOne) SetArgs(v string) *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.UpdateTaskOptions()
+		s.SetArgs(v)
 	})
 }
 
-// ClearTaskOptions clears the value of the "task_options" field.
-func (u *TaskUpsertOne) ClearTaskOptions() *TaskUpsertOne {
+// UpdateArgs sets the "args" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateArgs() *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.ClearTaskOptions()
+		s.UpdateArgs()
 	})
 }
 
-// SetEnable sets the "enable" field.
-func (u *TaskUpsertOne) SetEnable(v bool) *TaskUpsertOne {
+// ClearArgs clears the value of the "args" field.
+func (u *TaskUpsertOne) ClearArgs() *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.SetEnable(v)
+		s.ClearArgs()
 	})
 }
 
-// UpdateEnable sets the "enable" field to the value that was provided on create.
-func (u *TaskUpsertOne) UpdateEnable() *TaskUpsertOne {
+// SetRetry sets the "retry" field.
+func (u *TaskUpsertOne) SetRetry(v uint8) *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.UpdateEnable()
+		s.SetRetry(v)
 	})
 }
 
-// ClearEnable clears the value of the "enable" field.
-func (u *TaskUpsertOne) ClearEnable() *TaskUpsertOne {
+// AddRetry adds v to the "retry" field.
+func (u *TaskUpsertOne) AddRetry(v uint8) *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
-		s.ClearEnable()
+		s.AddRetry(v)
+	})
+}
+
+// UpdateRetry sets the "retry" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateRetry() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateRetry()
+	})
+}
+
+// SetConcurrent sets the "concurrent" field.
+func (u *TaskUpsertOne) SetConcurrent(v bool) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetConcurrent(v)
+	})
+}
+
+// UpdateConcurrent sets the "concurrent" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateConcurrent() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateConcurrent()
+	})
+}
+
+// SetEntryID sets the "entry_id" field.
+func (u *TaskUpsertOne) SetEntryID(v uint32) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetEntryID(v)
+	})
+}
+
+// AddEntryID adds v to the "entry_id" field.
+func (u *TaskUpsertOne) AddEntryID(v uint32) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.AddEntryID(v)
+	})
+}
+
+// UpdateEntryID sets the "entry_id" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateEntryID() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateEntryID()
+	})
+}
+
+// ClearEntryID clears the value of the "entry_id" field.
+func (u *TaskUpsertOne) ClearEntryID() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.ClearEntryID()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *TaskUpsertOne) SetStatus(v task.Status) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateStatus() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateStatus()
 	})
 }
 
@@ -1004,7 +1235,7 @@ func (u *TaskUpsertOne) ExecX(ctx context.Context) {
 }
 
 // Exec executes the UPSERT query and returns the inserted/updated ID.
-func (u *TaskUpsertOne) ID(ctx context.Context) (id uint32, err error) {
+func (u *TaskUpsertOne) ID(ctx context.Context) (id uint64, err error) {
 	node, err := u.create.Save(ctx)
 	if err != nil {
 		return id, err
@@ -1013,7 +1244,7 @@ func (u *TaskUpsertOne) ID(ctx context.Context) (id uint32, err error) {
 }
 
 // IDX is like ID, but panics if an error occurs.
-func (u *TaskUpsertOne) IDX(ctx context.Context) uint32 {
+func (u *TaskUpsertOne) IDX(ctx context.Context) uint64 {
 	id, err := u.ID(ctx)
 	if err != nil {
 		panic(err)
@@ -1070,7 +1301,7 @@ func (_c *TaskCreateBulk) Save(ctx context.Context) ([]*Task, error) {
 				mutation.id = &nodes[i].ID
 				if specs[i].ID.Value != nil && nodes[i].ID == 0 {
 					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = uint32(id)
+					nodes[i].ID = uint64(id)
 				}
 				mutation.done = true
 				return nodes[i], nil
@@ -1355,129 +1586,192 @@ func (u *TaskUpsertBulk) ClearRemark() *TaskUpsertBulk {
 	})
 }
 
-// SetType sets the "type" field.
-func (u *TaskUpsertBulk) SetType(v task.Type) *TaskUpsertBulk {
+// SetTaskName sets the "task_name" field.
+func (u *TaskUpsertBulk) SetTaskName(v string) *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.SetType(v)
+		s.SetTaskName(v)
 	})
 }
 
-// UpdateType sets the "type" field to the value that was provided on create.
-func (u *TaskUpsertBulk) UpdateType() *TaskUpsertBulk {
+// UpdateTaskName sets the "task_name" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateTaskName() *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.UpdateType()
+		s.UpdateTaskName()
 	})
 }
 
-// ClearType clears the value of the "type" field.
-func (u *TaskUpsertBulk) ClearType() *TaskUpsertBulk {
+// SetGroupID sets the "group_id" field.
+func (u *TaskUpsertBulk) SetGroupID(v uint64) *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.ClearType()
+		s.SetGroupID(v)
 	})
 }
 
-// SetTypeName sets the "type_name" field.
-func (u *TaskUpsertBulk) SetTypeName(v string) *TaskUpsertBulk {
+// AddGroupID adds v to the "group_id" field.
+func (u *TaskUpsertBulk) AddGroupID(v uint64) *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.SetTypeName(v)
+		s.AddGroupID(v)
 	})
 }
 
-// UpdateTypeName sets the "type_name" field to the value that was provided on create.
-func (u *TaskUpsertBulk) UpdateTypeName() *TaskUpsertBulk {
+// UpdateGroupID sets the "group_id" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateGroupID() *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.UpdateTypeName()
+		s.UpdateGroupID()
 	})
 }
 
-// ClearTypeName clears the value of the "type_name" field.
-func (u *TaskUpsertBulk) ClearTypeName() *TaskUpsertBulk {
+// SetTaskType sets the "task_type" field.
+func (u *TaskUpsertBulk) SetTaskType(v task.TaskType) *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.ClearTypeName()
+		s.SetTaskType(v)
 	})
 }
 
-// SetTaskPayload sets the "task_payload" field.
-func (u *TaskUpsertBulk) SetTaskPayload(v string) *TaskUpsertBulk {
+// UpdateTaskType sets the "task_type" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateTaskType() *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.SetTaskPayload(v)
+		s.UpdateTaskType()
 	})
 }
 
-// UpdateTaskPayload sets the "task_payload" field to the value that was provided on create.
-func (u *TaskUpsertBulk) UpdateTaskPayload() *TaskUpsertBulk {
+// SetCronExpression sets the "cron_expression" field.
+func (u *TaskUpsertBulk) SetCronExpression(v string) *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.UpdateTaskPayload()
+		s.SetCronExpression(v)
 	})
 }
 
-// ClearTaskPayload clears the value of the "task_payload" field.
-func (u *TaskUpsertBulk) ClearTaskPayload() *TaskUpsertBulk {
+// UpdateCronExpression sets the "cron_expression" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateCronExpression() *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.ClearTaskPayload()
+		s.UpdateCronExpression()
 	})
 }
 
-// SetCronSpec sets the "cron_spec" field.
-func (u *TaskUpsertBulk) SetCronSpec(v string) *TaskUpsertBulk {
+// ClearCronExpression clears the value of the "cron_expression" field.
+func (u *TaskUpsertBulk) ClearCronExpression() *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.SetCronSpec(v)
+		s.ClearCronExpression()
 	})
 }
 
-// UpdateCronSpec sets the "cron_spec" field to the value that was provided on create.
-func (u *TaskUpsertBulk) UpdateCronSpec() *TaskUpsertBulk {
+// SetInvokeTarget sets the "invoke_target" field.
+func (u *TaskUpsertBulk) SetInvokeTarget(v string) *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.UpdateCronSpec()
+		s.SetInvokeTarget(v)
 	})
 }
 
-// ClearCronSpec clears the value of the "cron_spec" field.
-func (u *TaskUpsertBulk) ClearCronSpec() *TaskUpsertBulk {
+// UpdateInvokeTarget sets the "invoke_target" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateInvokeTarget() *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.ClearCronSpec()
+		s.UpdateInvokeTarget()
 	})
 }
 
-// SetTaskOptions sets the "task_options" field.
-func (u *TaskUpsertBulk) SetTaskOptions(v *taskv1.TaskOption) *TaskUpsertBulk {
+// ClearInvokeTarget clears the value of the "invoke_target" field.
+func (u *TaskUpsertBulk) ClearInvokeTarget() *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.SetTaskOptions(v)
+		s.ClearInvokeTarget()
 	})
 }
 
-// UpdateTaskOptions sets the "task_options" field to the value that was provided on create.
-func (u *TaskUpsertBulk) UpdateTaskOptions() *TaskUpsertBulk {
+// SetArgs sets the "args" field.
+func (u *TaskUpsertBulk) SetArgs(v string) *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.UpdateTaskOptions()
+		s.SetArgs(v)
 	})
 }
 
-// ClearTaskOptions clears the value of the "task_options" field.
-func (u *TaskUpsertBulk) ClearTaskOptions() *TaskUpsertBulk {
+// UpdateArgs sets the "args" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateArgs() *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.ClearTaskOptions()
+		s.UpdateArgs()
 	})
 }
 
-// SetEnable sets the "enable" field.
-func (u *TaskUpsertBulk) SetEnable(v bool) *TaskUpsertBulk {
+// ClearArgs clears the value of the "args" field.
+func (u *TaskUpsertBulk) ClearArgs() *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.SetEnable(v)
+		s.ClearArgs()
 	})
 }
 
-// UpdateEnable sets the "enable" field to the value that was provided on create.
-func (u *TaskUpsertBulk) UpdateEnable() *TaskUpsertBulk {
+// SetRetry sets the "retry" field.
+func (u *TaskUpsertBulk) SetRetry(v uint8) *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.UpdateEnable()
+		s.SetRetry(v)
 	})
 }
 
-// ClearEnable clears the value of the "enable" field.
-func (u *TaskUpsertBulk) ClearEnable() *TaskUpsertBulk {
+// AddRetry adds v to the "retry" field.
+func (u *TaskUpsertBulk) AddRetry(v uint8) *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
-		s.ClearEnable()
+		s.AddRetry(v)
+	})
+}
+
+// UpdateRetry sets the "retry" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateRetry() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateRetry()
+	})
+}
+
+// SetConcurrent sets the "concurrent" field.
+func (u *TaskUpsertBulk) SetConcurrent(v bool) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetConcurrent(v)
+	})
+}
+
+// UpdateConcurrent sets the "concurrent" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateConcurrent() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateConcurrent()
+	})
+}
+
+// SetEntryID sets the "entry_id" field.
+func (u *TaskUpsertBulk) SetEntryID(v uint32) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetEntryID(v)
+	})
+}
+
+// AddEntryID adds v to the "entry_id" field.
+func (u *TaskUpsertBulk) AddEntryID(v uint32) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.AddEntryID(v)
+	})
+}
+
+// UpdateEntryID sets the "entry_id" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateEntryID() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateEntryID()
+	})
+}
+
+// ClearEntryID clears the value of the "entry_id" field.
+func (u *TaskUpsertBulk) ClearEntryID() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.ClearEntryID()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *TaskUpsertBulk) SetStatus(v task.Status) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateStatus() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateStatus()
 	})
 }
 

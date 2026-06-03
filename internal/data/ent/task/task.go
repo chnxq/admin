@@ -30,18 +30,26 @@ const (
 	FieldRemark = "remark"
 	// FieldTenantID holds the string denoting the tenant_id field in the database.
 	FieldTenantID = "tenant_id"
-	// FieldType holds the string denoting the type field in the database.
-	FieldType = "type"
-	// FieldTypeName holds the string denoting the type_name field in the database.
-	FieldTypeName = "type_name"
-	// FieldTaskPayload holds the string denoting the task_payload field in the database.
-	FieldTaskPayload = "task_payload"
-	// FieldCronSpec holds the string denoting the cron_spec field in the database.
-	FieldCronSpec = "cron_spec"
-	// FieldTaskOptions holds the string denoting the task_options field in the database.
-	FieldTaskOptions = "task_options"
-	// FieldEnable holds the string denoting the enable field in the database.
-	FieldEnable = "enable"
+	// FieldTaskName holds the string denoting the task_name field in the database.
+	FieldTaskName = "task_name"
+	// FieldGroupID holds the string denoting the group_id field in the database.
+	FieldGroupID = "group_id"
+	// FieldTaskType holds the string denoting the task_type field in the database.
+	FieldTaskType = "task_type"
+	// FieldCronExpression holds the string denoting the cron_expression field in the database.
+	FieldCronExpression = "cron_expression"
+	// FieldInvokeTarget holds the string denoting the invoke_target field in the database.
+	FieldInvokeTarget = "invoke_target"
+	// FieldArgs holds the string denoting the args field in the database.
+	FieldArgs = "args"
+	// FieldRetry holds the string denoting the retry field in the database.
+	FieldRetry = "retry"
+	// FieldConcurrent holds the string denoting the concurrent field in the database.
+	FieldConcurrent = "concurrent"
+	// FieldEntryID holds the string denoting the entry_id field in the database.
+	FieldEntryID = "entry_id"
+	// FieldStatus holds the string denoting the status field in the database.
+	FieldStatus = "status"
 	// Table holds the table name of the task in the database.
 	Table = "sys_tasks"
 )
@@ -57,12 +65,16 @@ var Columns = []string{
 	FieldDeletedBy,
 	FieldRemark,
 	FieldTenantID,
-	FieldType,
-	FieldTypeName,
-	FieldTaskPayload,
-	FieldCronSpec,
-	FieldTaskOptions,
-	FieldEnable,
+	FieldTaskName,
+	FieldGroupID,
+	FieldTaskType,
+	FieldCronExpression,
+	FieldInvokeTarget,
+	FieldArgs,
+	FieldRetry,
+	FieldConcurrent,
+	FieldEntryID,
+	FieldStatus,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -85,36 +97,75 @@ var (
 	Policy ent.Policy
 	// DefaultTenantID holds the default value on creation for the "tenant_id" field.
 	DefaultTenantID uint32
-	// DefaultEnable holds the default value on creation for the "enable" field.
-	DefaultEnable bool
+	// TaskNameValidator is a validator for the "task_name" field. It is called by the builders before save.
+	TaskNameValidator func(string) error
+	// GroupIDValidator is a validator for the "group_id" field. It is called by the builders before save.
+	GroupIDValidator func(uint64) error
+	// CronExpressionValidator is a validator for the "cron_expression" field. It is called by the builders before save.
+	CronExpressionValidator func(string) error
+	// InvokeTargetValidator is a validator for the "invoke_target" field. It is called by the builders before save.
+	InvokeTargetValidator func(string) error
+	// ArgsValidator is a validator for the "args" field. It is called by the builders before save.
+	ArgsValidator func(string) error
+	// DefaultRetry holds the default value on creation for the "retry" field.
+	DefaultRetry uint8
+	// DefaultConcurrent holds the default value on creation for the "concurrent" field.
+	DefaultConcurrent bool
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
-	IDValidator func(uint32) error
+	IDValidator func(uint64) error
 )
 
-// Type defines the type for the "type" enum field.
-type Type string
+// TaskType defines the type for the "task_type" enum field.
+type TaskType string
 
-// TypePeriodic is the default value of the Type enum.
-const DefaultType = TypePeriodic
+// TaskTypeFunction is the default value of the TaskType enum.
+const DefaultTaskType = TaskTypeFunction
 
-// Type values.
+// TaskType values.
 const (
-	TypePeriodic   Type = "PERIODIC"
-	TypeDelay      Type = "DELAY"
-	TypeWaitResult Type = "WAIT_RESULT"
+	TaskTypeFunction TaskType = "FUNCTION"
+	TaskTypeAPI      TaskType = "API"
+	TaskTypeExternal TaskType = "EXTERNAL"
 )
 
-func (_type Type) String() string {
-	return string(_type)
+func (tt TaskType) String() string {
+	return string(tt)
 }
 
-// TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
-func TypeValidator(_type Type) error {
-	switch _type {
-	case TypePeriodic, TypeDelay, TypeWaitResult:
+// TaskTypeValidator is a validator for the "task_type" field enum values. It is called by the builders before save.
+func TaskTypeValidator(tt TaskType) error {
+	switch tt {
+	case TaskTypeFunction, TaskTypeAPI, TaskTypeExternal:
 		return nil
 	default:
-		return fmt.Errorf("task: invalid enum value for type field: %q", _type)
+		return fmt.Errorf("task: invalid enum value for task_type field: %q", tt)
+	}
+}
+
+// Status defines the type for the "status" enum field.
+type Status string
+
+// StatusStopped is the default value of the Status enum.
+const DefaultStatus = StatusStopped
+
+// Status values.
+const (
+	StatusStopped  Status = "STOPPED"
+	StatusRunning  Status = "RUNNING"
+	StatusDisabled Status = "DISABLED"
+)
+
+func (s Status) String() string {
+	return string(s)
+}
+
+// StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
+func StatusValidator(s Status) error {
+	switch s {
+	case StatusStopped, StatusRunning, StatusDisabled:
+		return nil
+	default:
+		return fmt.Errorf("task: invalid enum value for status field: %q", s)
 	}
 }
 
@@ -166,27 +217,52 @@ func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
 }
 
-// ByType orders the results by the type field.
-func ByType(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldType, opts...).ToFunc()
+// ByTaskName orders the results by the task_name field.
+func ByTaskName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTaskName, opts...).ToFunc()
 }
 
-// ByTypeName orders the results by the type_name field.
-func ByTypeName(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTypeName, opts...).ToFunc()
+// ByGroupID orders the results by the group_id field.
+func ByGroupID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldGroupID, opts...).ToFunc()
 }
 
-// ByTaskPayload orders the results by the task_payload field.
-func ByTaskPayload(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTaskPayload, opts...).ToFunc()
+// ByTaskType orders the results by the task_type field.
+func ByTaskType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTaskType, opts...).ToFunc()
 }
 
-// ByCronSpec orders the results by the cron_spec field.
-func ByCronSpec(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCronSpec, opts...).ToFunc()
+// ByCronExpression orders the results by the cron_expression field.
+func ByCronExpression(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCronExpression, opts...).ToFunc()
 }
 
-// ByEnable orders the results by the enable field.
-func ByEnable(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldEnable, opts...).ToFunc()
+// ByInvokeTarget orders the results by the invoke_target field.
+func ByInvokeTarget(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldInvokeTarget, opts...).ToFunc()
+}
+
+// ByArgs orders the results by the args field.
+func ByArgs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldArgs, opts...).ToFunc()
+}
+
+// ByRetry orders the results by the retry field.
+func ByRetry(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRetry, opts...).ToFunc()
+}
+
+// ByConcurrent orders the results by the concurrent field.
+func ByConcurrent(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldConcurrent, opts...).ToFunc()
+}
+
+// ByEntryID orders the results by the entry_id field.
+func ByEntryID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEntryID, opts...).ToFunc()
+}
+
+// ByStatus orders the results by the status field.
+func ByStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatus, opts...).ToFunc()
 }

@@ -42,7 +42,7 @@ func (TaskGroup) Mixin() []ent.Mixin {
 		mixin.TimeAt{},
 		mixin.OperatorID{},
 		mixin.Remark{},
-		mixin.TenantID[uint64]{},
+		mixin.TenantID[uint32]{},
 	}
 }
 

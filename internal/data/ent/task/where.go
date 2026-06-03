@@ -10,47 +10,47 @@ import (
 )
 
 // ID filters vertices based on their ID field.
-func ID(id uint32) predicate.Task {
+func ID(id uint64) predicate.Task {
 	return predicate.Task(sql.FieldEQ(FieldID, id))
 }
 
 // IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id uint32) predicate.Task {
+func IDEQ(id uint64) predicate.Task {
 	return predicate.Task(sql.FieldEQ(FieldID, id))
 }
 
 // IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id uint32) predicate.Task {
+func IDNEQ(id uint64) predicate.Task {
 	return predicate.Task(sql.FieldNEQ(FieldID, id))
 }
 
 // IDIn applies the In predicate on the ID field.
-func IDIn(ids ...uint32) predicate.Task {
+func IDIn(ids ...uint64) predicate.Task {
 	return predicate.Task(sql.FieldIn(FieldID, ids...))
 }
 
 // IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...uint32) predicate.Task {
+func IDNotIn(ids ...uint64) predicate.Task {
 	return predicate.Task(sql.FieldNotIn(FieldID, ids...))
 }
 
 // IDGT applies the GT predicate on the ID field.
-func IDGT(id uint32) predicate.Task {
+func IDGT(id uint64) predicate.Task {
 	return predicate.Task(sql.FieldGT(FieldID, id))
 }
 
 // IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id uint32) predicate.Task {
+func IDGTE(id uint64) predicate.Task {
 	return predicate.Task(sql.FieldGTE(FieldID, id))
 }
 
 // IDLT applies the LT predicate on the ID field.
-func IDLT(id uint32) predicate.Task {
+func IDLT(id uint64) predicate.Task {
 	return predicate.Task(sql.FieldLT(FieldID, id))
 }
 
 // IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id uint32) predicate.Task {
+func IDLTE(id uint64) predicate.Task {
 	return predicate.Task(sql.FieldLTE(FieldID, id))
 }
 
@@ -94,24 +94,44 @@ func TenantID(v uint32) predicate.Task {
 	return predicate.Task(sql.FieldEQ(FieldTenantID, v))
 }
 
-// TypeName applies equality check predicate on the "type_name" field. It's identical to TypeNameEQ.
-func TypeName(v string) predicate.Task {
-	return predicate.Task(sql.FieldEQ(FieldTypeName, v))
+// TaskName applies equality check predicate on the "task_name" field. It's identical to TaskNameEQ.
+func TaskName(v string) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldTaskName, v))
 }
 
-// TaskPayload applies equality check predicate on the "task_payload" field. It's identical to TaskPayloadEQ.
-func TaskPayload(v string) predicate.Task {
-	return predicate.Task(sql.FieldEQ(FieldTaskPayload, v))
+// GroupID applies equality check predicate on the "group_id" field. It's identical to GroupIDEQ.
+func GroupID(v uint64) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldGroupID, v))
 }
 
-// CronSpec applies equality check predicate on the "cron_spec" field. It's identical to CronSpecEQ.
-func CronSpec(v string) predicate.Task {
-	return predicate.Task(sql.FieldEQ(FieldCronSpec, v))
+// CronExpression applies equality check predicate on the "cron_expression" field. It's identical to CronExpressionEQ.
+func CronExpression(v string) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldCronExpression, v))
 }
 
-// Enable applies equality check predicate on the "enable" field. It's identical to EnableEQ.
-func Enable(v bool) predicate.Task {
-	return predicate.Task(sql.FieldEQ(FieldEnable, v))
+// InvokeTarget applies equality check predicate on the "invoke_target" field. It's identical to InvokeTargetEQ.
+func InvokeTarget(v string) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldInvokeTarget, v))
+}
+
+// Args applies equality check predicate on the "args" field. It's identical to ArgsEQ.
+func Args(v string) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldArgs, v))
+}
+
+// Retry applies equality check predicate on the "retry" field. It's identical to RetryEQ.
+func Retry(v uint8) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldRetry, v))
+}
+
+// Concurrent applies equality check predicate on the "concurrent" field. It's identical to ConcurrentEQ.
+func Concurrent(v bool) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldConcurrent, v))
+}
+
+// EntryID applies equality check predicate on the "entry_id" field. It's identical to EntryIDEQ.
+func EntryID(v uint32) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldEntryID, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
@@ -539,289 +559,474 @@ func TenantIDNotNil() predicate.Task {
 	return predicate.Task(sql.FieldNotNull(FieldTenantID))
 }
 
-// TypeEQ applies the EQ predicate on the "type" field.
-func TypeEQ(v Type) predicate.Task {
-	return predicate.Task(sql.FieldEQ(FieldType, v))
+// TaskNameEQ applies the EQ predicate on the "task_name" field.
+func TaskNameEQ(v string) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldTaskName, v))
 }
 
-// TypeNEQ applies the NEQ predicate on the "type" field.
-func TypeNEQ(v Type) predicate.Task {
-	return predicate.Task(sql.FieldNEQ(FieldType, v))
+// TaskNameNEQ applies the NEQ predicate on the "task_name" field.
+func TaskNameNEQ(v string) predicate.Task {
+	return predicate.Task(sql.FieldNEQ(FieldTaskName, v))
 }
 
-// TypeIn applies the In predicate on the "type" field.
-func TypeIn(vs ...Type) predicate.Task {
-	return predicate.Task(sql.FieldIn(FieldType, vs...))
+// TaskNameIn applies the In predicate on the "task_name" field.
+func TaskNameIn(vs ...string) predicate.Task {
+	return predicate.Task(sql.FieldIn(FieldTaskName, vs...))
 }
 
-// TypeNotIn applies the NotIn predicate on the "type" field.
-func TypeNotIn(vs ...Type) predicate.Task {
-	return predicate.Task(sql.FieldNotIn(FieldType, vs...))
+// TaskNameNotIn applies the NotIn predicate on the "task_name" field.
+func TaskNameNotIn(vs ...string) predicate.Task {
+	return predicate.Task(sql.FieldNotIn(FieldTaskName, vs...))
 }
 
-// TypeIsNil applies the IsNil predicate on the "type" field.
-func TypeIsNil() predicate.Task {
-	return predicate.Task(sql.FieldIsNull(FieldType))
+// TaskNameGT applies the GT predicate on the "task_name" field.
+func TaskNameGT(v string) predicate.Task {
+	return predicate.Task(sql.FieldGT(FieldTaskName, v))
 }
 
-// TypeNotNil applies the NotNil predicate on the "type" field.
-func TypeNotNil() predicate.Task {
-	return predicate.Task(sql.FieldNotNull(FieldType))
+// TaskNameGTE applies the GTE predicate on the "task_name" field.
+func TaskNameGTE(v string) predicate.Task {
+	return predicate.Task(sql.FieldGTE(FieldTaskName, v))
 }
 
-// TypeNameEQ applies the EQ predicate on the "type_name" field.
-func TypeNameEQ(v string) predicate.Task {
-	return predicate.Task(sql.FieldEQ(FieldTypeName, v))
+// TaskNameLT applies the LT predicate on the "task_name" field.
+func TaskNameLT(v string) predicate.Task {
+	return predicate.Task(sql.FieldLT(FieldTaskName, v))
 }
 
-// TypeNameNEQ applies the NEQ predicate on the "type_name" field.
-func TypeNameNEQ(v string) predicate.Task {
-	return predicate.Task(sql.FieldNEQ(FieldTypeName, v))
+// TaskNameLTE applies the LTE predicate on the "task_name" field.
+func TaskNameLTE(v string) predicate.Task {
+	return predicate.Task(sql.FieldLTE(FieldTaskName, v))
 }
 
-// TypeNameIn applies the In predicate on the "type_name" field.
-func TypeNameIn(vs ...string) predicate.Task {
-	return predicate.Task(sql.FieldIn(FieldTypeName, vs...))
+// TaskNameContains applies the Contains predicate on the "task_name" field.
+func TaskNameContains(v string) predicate.Task {
+	return predicate.Task(sql.FieldContains(FieldTaskName, v))
 }
 
-// TypeNameNotIn applies the NotIn predicate on the "type_name" field.
-func TypeNameNotIn(vs ...string) predicate.Task {
-	return predicate.Task(sql.FieldNotIn(FieldTypeName, vs...))
+// TaskNameHasPrefix applies the HasPrefix predicate on the "task_name" field.
+func TaskNameHasPrefix(v string) predicate.Task {
+	return predicate.Task(sql.FieldHasPrefix(FieldTaskName, v))
 }
 
-// TypeNameGT applies the GT predicate on the "type_name" field.
-func TypeNameGT(v string) predicate.Task {
-	return predicate.Task(sql.FieldGT(FieldTypeName, v))
+// TaskNameHasSuffix applies the HasSuffix predicate on the "task_name" field.
+func TaskNameHasSuffix(v string) predicate.Task {
+	return predicate.Task(sql.FieldHasSuffix(FieldTaskName, v))
 }
 
-// TypeNameGTE applies the GTE predicate on the "type_name" field.
-func TypeNameGTE(v string) predicate.Task {
-	return predicate.Task(sql.FieldGTE(FieldTypeName, v))
+// TaskNameEqualFold applies the EqualFold predicate on the "task_name" field.
+func TaskNameEqualFold(v string) predicate.Task {
+	return predicate.Task(sql.FieldEqualFold(FieldTaskName, v))
 }
 
-// TypeNameLT applies the LT predicate on the "type_name" field.
-func TypeNameLT(v string) predicate.Task {
-	return predicate.Task(sql.FieldLT(FieldTypeName, v))
+// TaskNameContainsFold applies the ContainsFold predicate on the "task_name" field.
+func TaskNameContainsFold(v string) predicate.Task {
+	return predicate.Task(sql.FieldContainsFold(FieldTaskName, v))
 }
 
-// TypeNameLTE applies the LTE predicate on the "type_name" field.
-func TypeNameLTE(v string) predicate.Task {
-	return predicate.Task(sql.FieldLTE(FieldTypeName, v))
+// GroupIDEQ applies the EQ predicate on the "group_id" field.
+func GroupIDEQ(v uint64) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldGroupID, v))
 }
 
-// TypeNameContains applies the Contains predicate on the "type_name" field.
-func TypeNameContains(v string) predicate.Task {
-	return predicate.Task(sql.FieldContains(FieldTypeName, v))
+// GroupIDNEQ applies the NEQ predicate on the "group_id" field.
+func GroupIDNEQ(v uint64) predicate.Task {
+	return predicate.Task(sql.FieldNEQ(FieldGroupID, v))
 }
 
-// TypeNameHasPrefix applies the HasPrefix predicate on the "type_name" field.
-func TypeNameHasPrefix(v string) predicate.Task {
-	return predicate.Task(sql.FieldHasPrefix(FieldTypeName, v))
+// GroupIDIn applies the In predicate on the "group_id" field.
+func GroupIDIn(vs ...uint64) predicate.Task {
+	return predicate.Task(sql.FieldIn(FieldGroupID, vs...))
 }
 
-// TypeNameHasSuffix applies the HasSuffix predicate on the "type_name" field.
-func TypeNameHasSuffix(v string) predicate.Task {
-	return predicate.Task(sql.FieldHasSuffix(FieldTypeName, v))
+// GroupIDNotIn applies the NotIn predicate on the "group_id" field.
+func GroupIDNotIn(vs ...uint64) predicate.Task {
+	return predicate.Task(sql.FieldNotIn(FieldGroupID, vs...))
 }
 
-// TypeNameIsNil applies the IsNil predicate on the "type_name" field.
-func TypeNameIsNil() predicate.Task {
-	return predicate.Task(sql.FieldIsNull(FieldTypeName))
+// GroupIDGT applies the GT predicate on the "group_id" field.
+func GroupIDGT(v uint64) predicate.Task {
+	return predicate.Task(sql.FieldGT(FieldGroupID, v))
 }
 
-// TypeNameNotNil applies the NotNil predicate on the "type_name" field.
-func TypeNameNotNil() predicate.Task {
-	return predicate.Task(sql.FieldNotNull(FieldTypeName))
+// GroupIDGTE applies the GTE predicate on the "group_id" field.
+func GroupIDGTE(v uint64) predicate.Task {
+	return predicate.Task(sql.FieldGTE(FieldGroupID, v))
 }
 
-// TypeNameEqualFold applies the EqualFold predicate on the "type_name" field.
-func TypeNameEqualFold(v string) predicate.Task {
-	return predicate.Task(sql.FieldEqualFold(FieldTypeName, v))
+// GroupIDLT applies the LT predicate on the "group_id" field.
+func GroupIDLT(v uint64) predicate.Task {
+	return predicate.Task(sql.FieldLT(FieldGroupID, v))
 }
 
-// TypeNameContainsFold applies the ContainsFold predicate on the "type_name" field.
-func TypeNameContainsFold(v string) predicate.Task {
-	return predicate.Task(sql.FieldContainsFold(FieldTypeName, v))
+// GroupIDLTE applies the LTE predicate on the "group_id" field.
+func GroupIDLTE(v uint64) predicate.Task {
+	return predicate.Task(sql.FieldLTE(FieldGroupID, v))
 }
 
-// TaskPayloadEQ applies the EQ predicate on the "task_payload" field.
-func TaskPayloadEQ(v string) predicate.Task {
-	return predicate.Task(sql.FieldEQ(FieldTaskPayload, v))
+// TaskTypeEQ applies the EQ predicate on the "task_type" field.
+func TaskTypeEQ(v TaskType) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldTaskType, v))
 }
 
-// TaskPayloadNEQ applies the NEQ predicate on the "task_payload" field.
-func TaskPayloadNEQ(v string) predicate.Task {
-	return predicate.Task(sql.FieldNEQ(FieldTaskPayload, v))
+// TaskTypeNEQ applies the NEQ predicate on the "task_type" field.
+func TaskTypeNEQ(v TaskType) predicate.Task {
+	return predicate.Task(sql.FieldNEQ(FieldTaskType, v))
 }
 
-// TaskPayloadIn applies the In predicate on the "task_payload" field.
-func TaskPayloadIn(vs ...string) predicate.Task {
-	return predicate.Task(sql.FieldIn(FieldTaskPayload, vs...))
+// TaskTypeIn applies the In predicate on the "task_type" field.
+func TaskTypeIn(vs ...TaskType) predicate.Task {
+	return predicate.Task(sql.FieldIn(FieldTaskType, vs...))
 }
 
-// TaskPayloadNotIn applies the NotIn predicate on the "task_payload" field.
-func TaskPayloadNotIn(vs ...string) predicate.Task {
-	return predicate.Task(sql.FieldNotIn(FieldTaskPayload, vs...))
+// TaskTypeNotIn applies the NotIn predicate on the "task_type" field.
+func TaskTypeNotIn(vs ...TaskType) predicate.Task {
+	return predicate.Task(sql.FieldNotIn(FieldTaskType, vs...))
 }
 
-// TaskPayloadGT applies the GT predicate on the "task_payload" field.
-func TaskPayloadGT(v string) predicate.Task {
-	return predicate.Task(sql.FieldGT(FieldTaskPayload, v))
+// CronExpressionEQ applies the EQ predicate on the "cron_expression" field.
+func CronExpressionEQ(v string) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldCronExpression, v))
 }
 
-// TaskPayloadGTE applies the GTE predicate on the "task_payload" field.
-func TaskPayloadGTE(v string) predicate.Task {
-	return predicate.Task(sql.FieldGTE(FieldTaskPayload, v))
+// CronExpressionNEQ applies the NEQ predicate on the "cron_expression" field.
+func CronExpressionNEQ(v string) predicate.Task {
+	return predicate.Task(sql.FieldNEQ(FieldCronExpression, v))
 }
 
-// TaskPayloadLT applies the LT predicate on the "task_payload" field.
-func TaskPayloadLT(v string) predicate.Task {
-	return predicate.Task(sql.FieldLT(FieldTaskPayload, v))
+// CronExpressionIn applies the In predicate on the "cron_expression" field.
+func CronExpressionIn(vs ...string) predicate.Task {
+	return predicate.Task(sql.FieldIn(FieldCronExpression, vs...))
 }
 
-// TaskPayloadLTE applies the LTE predicate on the "task_payload" field.
-func TaskPayloadLTE(v string) predicate.Task {
-	return predicate.Task(sql.FieldLTE(FieldTaskPayload, v))
+// CronExpressionNotIn applies the NotIn predicate on the "cron_expression" field.
+func CronExpressionNotIn(vs ...string) predicate.Task {
+	return predicate.Task(sql.FieldNotIn(FieldCronExpression, vs...))
 }
 
-// TaskPayloadContains applies the Contains predicate on the "task_payload" field.
-func TaskPayloadContains(v string) predicate.Task {
-	return predicate.Task(sql.FieldContains(FieldTaskPayload, v))
+// CronExpressionGT applies the GT predicate on the "cron_expression" field.
+func CronExpressionGT(v string) predicate.Task {
+	return predicate.Task(sql.FieldGT(FieldCronExpression, v))
 }
 
-// TaskPayloadHasPrefix applies the HasPrefix predicate on the "task_payload" field.
-func TaskPayloadHasPrefix(v string) predicate.Task {
-	return predicate.Task(sql.FieldHasPrefix(FieldTaskPayload, v))
+// CronExpressionGTE applies the GTE predicate on the "cron_expression" field.
+func CronExpressionGTE(v string) predicate.Task {
+	return predicate.Task(sql.FieldGTE(FieldCronExpression, v))
 }
 
-// TaskPayloadHasSuffix applies the HasSuffix predicate on the "task_payload" field.
-func TaskPayloadHasSuffix(v string) predicate.Task {
-	return predicate.Task(sql.FieldHasSuffix(FieldTaskPayload, v))
+// CronExpressionLT applies the LT predicate on the "cron_expression" field.
+func CronExpressionLT(v string) predicate.Task {
+	return predicate.Task(sql.FieldLT(FieldCronExpression, v))
 }
 
-// TaskPayloadIsNil applies the IsNil predicate on the "task_payload" field.
-func TaskPayloadIsNil() predicate.Task {
-	return predicate.Task(sql.FieldIsNull(FieldTaskPayload))
+// CronExpressionLTE applies the LTE predicate on the "cron_expression" field.
+func CronExpressionLTE(v string) predicate.Task {
+	return predicate.Task(sql.FieldLTE(FieldCronExpression, v))
 }
 
-// TaskPayloadNotNil applies the NotNil predicate on the "task_payload" field.
-func TaskPayloadNotNil() predicate.Task {
-	return predicate.Task(sql.FieldNotNull(FieldTaskPayload))
+// CronExpressionContains applies the Contains predicate on the "cron_expression" field.
+func CronExpressionContains(v string) predicate.Task {
+	return predicate.Task(sql.FieldContains(FieldCronExpression, v))
 }
 
-// TaskPayloadEqualFold applies the EqualFold predicate on the "task_payload" field.
-func TaskPayloadEqualFold(v string) predicate.Task {
-	return predicate.Task(sql.FieldEqualFold(FieldTaskPayload, v))
+// CronExpressionHasPrefix applies the HasPrefix predicate on the "cron_expression" field.
+func CronExpressionHasPrefix(v string) predicate.Task {
+	return predicate.Task(sql.FieldHasPrefix(FieldCronExpression, v))
 }
 
-// TaskPayloadContainsFold applies the ContainsFold predicate on the "task_payload" field.
-func TaskPayloadContainsFold(v string) predicate.Task {
-	return predicate.Task(sql.FieldContainsFold(FieldTaskPayload, v))
+// CronExpressionHasSuffix applies the HasSuffix predicate on the "cron_expression" field.
+func CronExpressionHasSuffix(v string) predicate.Task {
+	return predicate.Task(sql.FieldHasSuffix(FieldCronExpression, v))
 }
 
-// CronSpecEQ applies the EQ predicate on the "cron_spec" field.
-func CronSpecEQ(v string) predicate.Task {
-	return predicate.Task(sql.FieldEQ(FieldCronSpec, v))
+// CronExpressionIsNil applies the IsNil predicate on the "cron_expression" field.
+func CronExpressionIsNil() predicate.Task {
+	return predicate.Task(sql.FieldIsNull(FieldCronExpression))
 }
 
-// CronSpecNEQ applies the NEQ predicate on the "cron_spec" field.
-func CronSpecNEQ(v string) predicate.Task {
-	return predicate.Task(sql.FieldNEQ(FieldCronSpec, v))
+// CronExpressionNotNil applies the NotNil predicate on the "cron_expression" field.
+func CronExpressionNotNil() predicate.Task {
+	return predicate.Task(sql.FieldNotNull(FieldCronExpression))
 }
 
-// CronSpecIn applies the In predicate on the "cron_spec" field.
-func CronSpecIn(vs ...string) predicate.Task {
-	return predicate.Task(sql.FieldIn(FieldCronSpec, vs...))
+// CronExpressionEqualFold applies the EqualFold predicate on the "cron_expression" field.
+func CronExpressionEqualFold(v string) predicate.Task {
+	return predicate.Task(sql.FieldEqualFold(FieldCronExpression, v))
 }
 
-// CronSpecNotIn applies the NotIn predicate on the "cron_spec" field.
-func CronSpecNotIn(vs ...string) predicate.Task {
-	return predicate.Task(sql.FieldNotIn(FieldCronSpec, vs...))
+// CronExpressionContainsFold applies the ContainsFold predicate on the "cron_expression" field.
+func CronExpressionContainsFold(v string) predicate.Task {
+	return predicate.Task(sql.FieldContainsFold(FieldCronExpression, v))
 }
 
-// CronSpecGT applies the GT predicate on the "cron_spec" field.
-func CronSpecGT(v string) predicate.Task {
-	return predicate.Task(sql.FieldGT(FieldCronSpec, v))
+// InvokeTargetEQ applies the EQ predicate on the "invoke_target" field.
+func InvokeTargetEQ(v string) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldInvokeTarget, v))
 }
 
-// CronSpecGTE applies the GTE predicate on the "cron_spec" field.
-func CronSpecGTE(v string) predicate.Task {
-	return predicate.Task(sql.FieldGTE(FieldCronSpec, v))
+// InvokeTargetNEQ applies the NEQ predicate on the "invoke_target" field.
+func InvokeTargetNEQ(v string) predicate.Task {
+	return predicate.Task(sql.FieldNEQ(FieldInvokeTarget, v))
 }
 
-// CronSpecLT applies the LT predicate on the "cron_spec" field.
-func CronSpecLT(v string) predicate.Task {
-	return predicate.Task(sql.FieldLT(FieldCronSpec, v))
+// InvokeTargetIn applies the In predicate on the "invoke_target" field.
+func InvokeTargetIn(vs ...string) predicate.Task {
+	return predicate.Task(sql.FieldIn(FieldInvokeTarget, vs...))
 }
 
-// CronSpecLTE applies the LTE predicate on the "cron_spec" field.
-func CronSpecLTE(v string) predicate.Task {
-	return predicate.Task(sql.FieldLTE(FieldCronSpec, v))
+// InvokeTargetNotIn applies the NotIn predicate on the "invoke_target" field.
+func InvokeTargetNotIn(vs ...string) predicate.Task {
+	return predicate.Task(sql.FieldNotIn(FieldInvokeTarget, vs...))
 }
 
-// CronSpecContains applies the Contains predicate on the "cron_spec" field.
-func CronSpecContains(v string) predicate.Task {
-	return predicate.Task(sql.FieldContains(FieldCronSpec, v))
+// InvokeTargetGT applies the GT predicate on the "invoke_target" field.
+func InvokeTargetGT(v string) predicate.Task {
+	return predicate.Task(sql.FieldGT(FieldInvokeTarget, v))
 }
 
-// CronSpecHasPrefix applies the HasPrefix predicate on the "cron_spec" field.
-func CronSpecHasPrefix(v string) predicate.Task {
-	return predicate.Task(sql.FieldHasPrefix(FieldCronSpec, v))
+// InvokeTargetGTE applies the GTE predicate on the "invoke_target" field.
+func InvokeTargetGTE(v string) predicate.Task {
+	return predicate.Task(sql.FieldGTE(FieldInvokeTarget, v))
 }
 
-// CronSpecHasSuffix applies the HasSuffix predicate on the "cron_spec" field.
-func CronSpecHasSuffix(v string) predicate.Task {
-	return predicate.Task(sql.FieldHasSuffix(FieldCronSpec, v))
+// InvokeTargetLT applies the LT predicate on the "invoke_target" field.
+func InvokeTargetLT(v string) predicate.Task {
+	return predicate.Task(sql.FieldLT(FieldInvokeTarget, v))
 }
 
-// CronSpecIsNil applies the IsNil predicate on the "cron_spec" field.
-func CronSpecIsNil() predicate.Task {
-	return predicate.Task(sql.FieldIsNull(FieldCronSpec))
+// InvokeTargetLTE applies the LTE predicate on the "invoke_target" field.
+func InvokeTargetLTE(v string) predicate.Task {
+	return predicate.Task(sql.FieldLTE(FieldInvokeTarget, v))
 }
 
-// CronSpecNotNil applies the NotNil predicate on the "cron_spec" field.
-func CronSpecNotNil() predicate.Task {
-	return predicate.Task(sql.FieldNotNull(FieldCronSpec))
+// InvokeTargetContains applies the Contains predicate on the "invoke_target" field.
+func InvokeTargetContains(v string) predicate.Task {
+	return predicate.Task(sql.FieldContains(FieldInvokeTarget, v))
 }
 
-// CronSpecEqualFold applies the EqualFold predicate on the "cron_spec" field.
-func CronSpecEqualFold(v string) predicate.Task {
-	return predicate.Task(sql.FieldEqualFold(FieldCronSpec, v))
+// InvokeTargetHasPrefix applies the HasPrefix predicate on the "invoke_target" field.
+func InvokeTargetHasPrefix(v string) predicate.Task {
+	return predicate.Task(sql.FieldHasPrefix(FieldInvokeTarget, v))
 }
 
-// CronSpecContainsFold applies the ContainsFold predicate on the "cron_spec" field.
-func CronSpecContainsFold(v string) predicate.Task {
-	return predicate.Task(sql.FieldContainsFold(FieldCronSpec, v))
+// InvokeTargetHasSuffix applies the HasSuffix predicate on the "invoke_target" field.
+func InvokeTargetHasSuffix(v string) predicate.Task {
+	return predicate.Task(sql.FieldHasSuffix(FieldInvokeTarget, v))
 }
 
-// TaskOptionsIsNil applies the IsNil predicate on the "task_options" field.
-func TaskOptionsIsNil() predicate.Task {
-	return predicate.Task(sql.FieldIsNull(FieldTaskOptions))
+// InvokeTargetIsNil applies the IsNil predicate on the "invoke_target" field.
+func InvokeTargetIsNil() predicate.Task {
+	return predicate.Task(sql.FieldIsNull(FieldInvokeTarget))
 }
 
-// TaskOptionsNotNil applies the NotNil predicate on the "task_options" field.
-func TaskOptionsNotNil() predicate.Task {
-	return predicate.Task(sql.FieldNotNull(FieldTaskOptions))
+// InvokeTargetNotNil applies the NotNil predicate on the "invoke_target" field.
+func InvokeTargetNotNil() predicate.Task {
+	return predicate.Task(sql.FieldNotNull(FieldInvokeTarget))
 }
 
-// EnableEQ applies the EQ predicate on the "enable" field.
-func EnableEQ(v bool) predicate.Task {
-	return predicate.Task(sql.FieldEQ(FieldEnable, v))
+// InvokeTargetEqualFold applies the EqualFold predicate on the "invoke_target" field.
+func InvokeTargetEqualFold(v string) predicate.Task {
+	return predicate.Task(sql.FieldEqualFold(FieldInvokeTarget, v))
 }
 
-// EnableNEQ applies the NEQ predicate on the "enable" field.
-func EnableNEQ(v bool) predicate.Task {
-	return predicate.Task(sql.FieldNEQ(FieldEnable, v))
+// InvokeTargetContainsFold applies the ContainsFold predicate on the "invoke_target" field.
+func InvokeTargetContainsFold(v string) predicate.Task {
+	return predicate.Task(sql.FieldContainsFold(FieldInvokeTarget, v))
 }
 
-// EnableIsNil applies the IsNil predicate on the "enable" field.
-func EnableIsNil() predicate.Task {
-	return predicate.Task(sql.FieldIsNull(FieldEnable))
+// ArgsEQ applies the EQ predicate on the "args" field.
+func ArgsEQ(v string) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldArgs, v))
 }
 
-// EnableNotNil applies the NotNil predicate on the "enable" field.
-func EnableNotNil() predicate.Task {
-	return predicate.Task(sql.FieldNotNull(FieldEnable))
+// ArgsNEQ applies the NEQ predicate on the "args" field.
+func ArgsNEQ(v string) predicate.Task {
+	return predicate.Task(sql.FieldNEQ(FieldArgs, v))
+}
+
+// ArgsIn applies the In predicate on the "args" field.
+func ArgsIn(vs ...string) predicate.Task {
+	return predicate.Task(sql.FieldIn(FieldArgs, vs...))
+}
+
+// ArgsNotIn applies the NotIn predicate on the "args" field.
+func ArgsNotIn(vs ...string) predicate.Task {
+	return predicate.Task(sql.FieldNotIn(FieldArgs, vs...))
+}
+
+// ArgsGT applies the GT predicate on the "args" field.
+func ArgsGT(v string) predicate.Task {
+	return predicate.Task(sql.FieldGT(FieldArgs, v))
+}
+
+// ArgsGTE applies the GTE predicate on the "args" field.
+func ArgsGTE(v string) predicate.Task {
+	return predicate.Task(sql.FieldGTE(FieldArgs, v))
+}
+
+// ArgsLT applies the LT predicate on the "args" field.
+func ArgsLT(v string) predicate.Task {
+	return predicate.Task(sql.FieldLT(FieldArgs, v))
+}
+
+// ArgsLTE applies the LTE predicate on the "args" field.
+func ArgsLTE(v string) predicate.Task {
+	return predicate.Task(sql.FieldLTE(FieldArgs, v))
+}
+
+// ArgsContains applies the Contains predicate on the "args" field.
+func ArgsContains(v string) predicate.Task {
+	return predicate.Task(sql.FieldContains(FieldArgs, v))
+}
+
+// ArgsHasPrefix applies the HasPrefix predicate on the "args" field.
+func ArgsHasPrefix(v string) predicate.Task {
+	return predicate.Task(sql.FieldHasPrefix(FieldArgs, v))
+}
+
+// ArgsHasSuffix applies the HasSuffix predicate on the "args" field.
+func ArgsHasSuffix(v string) predicate.Task {
+	return predicate.Task(sql.FieldHasSuffix(FieldArgs, v))
+}
+
+// ArgsIsNil applies the IsNil predicate on the "args" field.
+func ArgsIsNil() predicate.Task {
+	return predicate.Task(sql.FieldIsNull(FieldArgs))
+}
+
+// ArgsNotNil applies the NotNil predicate on the "args" field.
+func ArgsNotNil() predicate.Task {
+	return predicate.Task(sql.FieldNotNull(FieldArgs))
+}
+
+// ArgsEqualFold applies the EqualFold predicate on the "args" field.
+func ArgsEqualFold(v string) predicate.Task {
+	return predicate.Task(sql.FieldEqualFold(FieldArgs, v))
+}
+
+// ArgsContainsFold applies the ContainsFold predicate on the "args" field.
+func ArgsContainsFold(v string) predicate.Task {
+	return predicate.Task(sql.FieldContainsFold(FieldArgs, v))
+}
+
+// RetryEQ applies the EQ predicate on the "retry" field.
+func RetryEQ(v uint8) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldRetry, v))
+}
+
+// RetryNEQ applies the NEQ predicate on the "retry" field.
+func RetryNEQ(v uint8) predicate.Task {
+	return predicate.Task(sql.FieldNEQ(FieldRetry, v))
+}
+
+// RetryIn applies the In predicate on the "retry" field.
+func RetryIn(vs ...uint8) predicate.Task {
+	return predicate.Task(sql.FieldIn(FieldRetry, vs...))
+}
+
+// RetryNotIn applies the NotIn predicate on the "retry" field.
+func RetryNotIn(vs ...uint8) predicate.Task {
+	return predicate.Task(sql.FieldNotIn(FieldRetry, vs...))
+}
+
+// RetryGT applies the GT predicate on the "retry" field.
+func RetryGT(v uint8) predicate.Task {
+	return predicate.Task(sql.FieldGT(FieldRetry, v))
+}
+
+// RetryGTE applies the GTE predicate on the "retry" field.
+func RetryGTE(v uint8) predicate.Task {
+	return predicate.Task(sql.FieldGTE(FieldRetry, v))
+}
+
+// RetryLT applies the LT predicate on the "retry" field.
+func RetryLT(v uint8) predicate.Task {
+	return predicate.Task(sql.FieldLT(FieldRetry, v))
+}
+
+// RetryLTE applies the LTE predicate on the "retry" field.
+func RetryLTE(v uint8) predicate.Task {
+	return predicate.Task(sql.FieldLTE(FieldRetry, v))
+}
+
+// ConcurrentEQ applies the EQ predicate on the "concurrent" field.
+func ConcurrentEQ(v bool) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldConcurrent, v))
+}
+
+// ConcurrentNEQ applies the NEQ predicate on the "concurrent" field.
+func ConcurrentNEQ(v bool) predicate.Task {
+	return predicate.Task(sql.FieldNEQ(FieldConcurrent, v))
+}
+
+// EntryIDEQ applies the EQ predicate on the "entry_id" field.
+func EntryIDEQ(v uint32) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldEntryID, v))
+}
+
+// EntryIDNEQ applies the NEQ predicate on the "entry_id" field.
+func EntryIDNEQ(v uint32) predicate.Task {
+	return predicate.Task(sql.FieldNEQ(FieldEntryID, v))
+}
+
+// EntryIDIn applies the In predicate on the "entry_id" field.
+func EntryIDIn(vs ...uint32) predicate.Task {
+	return predicate.Task(sql.FieldIn(FieldEntryID, vs...))
+}
+
+// EntryIDNotIn applies the NotIn predicate on the "entry_id" field.
+func EntryIDNotIn(vs ...uint32) predicate.Task {
+	return predicate.Task(sql.FieldNotIn(FieldEntryID, vs...))
+}
+
+// EntryIDGT applies the GT predicate on the "entry_id" field.
+func EntryIDGT(v uint32) predicate.Task {
+	return predicate.Task(sql.FieldGT(FieldEntryID, v))
+}
+
+// EntryIDGTE applies the GTE predicate on the "entry_id" field.
+func EntryIDGTE(v uint32) predicate.Task {
+	return predicate.Task(sql.FieldGTE(FieldEntryID, v))
+}
+
+// EntryIDLT applies the LT predicate on the "entry_id" field.
+func EntryIDLT(v uint32) predicate.Task {
+	return predicate.Task(sql.FieldLT(FieldEntryID, v))
+}
+
+// EntryIDLTE applies the LTE predicate on the "entry_id" field.
+func EntryIDLTE(v uint32) predicate.Task {
+	return predicate.Task(sql.FieldLTE(FieldEntryID, v))
+}
+
+// EntryIDIsNil applies the IsNil predicate on the "entry_id" field.
+func EntryIDIsNil() predicate.Task {
+	return predicate.Task(sql.FieldIsNull(FieldEntryID))
+}
+
+// EntryIDNotNil applies the NotNil predicate on the "entry_id" field.
+func EntryIDNotNil() predicate.Task {
+	return predicate.Task(sql.FieldNotNull(FieldEntryID))
+}
+
+// StatusEQ applies the EQ predicate on the "status" field.
+func StatusEQ(v Status) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldStatus, v))
+}
+
+// StatusNEQ applies the NEQ predicate on the "status" field.
+func StatusNEQ(v Status) predicate.Task {
+	return predicate.Task(sql.FieldNEQ(FieldStatus, v))
+}
+
+// StatusIn applies the In predicate on the "status" field.
+func StatusIn(vs ...Status) predicate.Task {
+	return predicate.Task(sql.FieldIn(FieldStatus, vs...))
+}
+
+// StatusNotIn applies the NotIn predicate on the "status" field.
+func StatusNotIn(vs ...Status) predicate.Task {
+	return predicate.Task(sql.FieldNotIn(FieldStatus, vs...))
 }
 
 // And groups predicates with the AND operator between them.

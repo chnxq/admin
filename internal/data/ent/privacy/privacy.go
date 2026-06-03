@@ -902,6 +902,54 @@ func (f TaskMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) 
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.TaskMutation", m)
 }
 
+// The TaskGroupQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type TaskGroupQueryRuleFunc func(context.Context, *ent.TaskGroupQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f TaskGroupQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.TaskGroupQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.TaskGroupQuery", q)
+}
+
+// The TaskGroupMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type TaskGroupMutationRuleFunc func(context.Context, *ent.TaskGroupMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f TaskGroupMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.TaskGroupMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.TaskGroupMutation", m)
+}
+
+// The TaskLogQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type TaskLogQueryRuleFunc func(context.Context, *ent.TaskLogQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f TaskLogQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.TaskLogQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.TaskLogQuery", q)
+}
+
+// The TaskLogMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type TaskLogMutationRuleFunc func(context.Context, *ent.TaskLogMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f TaskLogMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.TaskLogMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.TaskLogMutation", m)
+}
+
 // The TenantQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type TenantQueryRuleFunc func(context.Context, *ent.TenantQuery) error
