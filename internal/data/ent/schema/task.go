@@ -2,15 +2,12 @@ package schema
 
 import (
 	"entgo.io/ent"
-	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 
 	"github.com/chnxq/x-crud/entgo/mixin"
-
-	taskV1 "admin/api/gen/task/v1"
 )
 
 // Task holds the schema definition for the Task entity.
@@ -33,53 +30,70 @@ func (Task) Annotations() []schema.Annotation {
 // Fields of the Task.
 func (Task) Fields() []ent.Field {
 	return []ent.Field{
-		field.Enum("type").
-			Comment("任务类型").
+		field.String("task_name").
+			NotEmpty().
+			MaxLen(50).
+			Comment("任务名称"),
+
+		field.Uint64("group_id").
+			Positive().
+			Comment("任务分组ID"),
+
+		field.Enum("task_type").
 			NamedValues(
-				"Periodic", "PERIODIC",
-				"Delay", "DELAY",
-				"WaitResult", "WAIT_RESULT",
+				"Function", "FUNCTION",
+				"API", "API",
+				"External", "EXTERNAL",
 			).
-			Default("PERIODIC").
+			Default("FUNCTION").
+			Comment("任务类型：1、函数。2、接口。3、外部执行"),
+
+		field.String("cron_expression").
 			Optional().
-			Nillable(),
+			Nillable().
+			MaxLen(30).
+			Comment("cron表达式"),
 
-		field.String("type_name").
-			Comment("任务执行类型名").
-			//Unique().
+		field.String("invoke_target").
 			Optional().
-			Nillable(),
+			Nillable().
+			MaxLen(255).
+			Comment("调用目标"),
 
-		field.String("task_payload").
-			Comment("任务数据").
-			SchemaType(map[string]string{
-				dialect.MySQL:    "json",
-				dialect.Postgres: "jsonb",
-			}).
+		field.String("args").
 			Optional().
-			Nillable(),
+			Nillable().
+			MaxLen(255).
+			Comment("目标参数"),
 
-		field.String("cron_spec").
-			Comment("cron表达式").
-			Optional().
-			Nillable(),
+		field.Uint32("retry").
+			Default(0).
+			Comment("重试次数(最大5,0表示不重试)"),
 
-		field.JSON("task_options", &taskV1.TaskOption{}).
-			Comment("任务选项").
-			Optional(),
-
-		field.Bool("enable").
-			Comment("启用/禁用任务").
+		field.Bool("concurrent").
 			Default(false).
+			Comment("是否并发：1、是。0、否"),
+
+		field.Uint32("entry_id").
 			Optional().
-			Nillable(),
+			Nillable().
+			Comment("启动时返回的ID"),
+
+		field.Enum("status").
+			NamedValues(
+				"Stopped", "STOPPED",
+				"Running", "RUNNING",
+				"Disabled", "DISABLED",
+			).
+			Default("STOPPED").
+			Comment("任务状态：停止、运行中、禁用"),
 	}
 }
 
 // Mixin of the Task.
 func (Task) Mixin() []ent.Mixin {
 	return []ent.Mixin{
-		mixin.AutoIncrementId{},
+		mixin.AutoIncrementId64{},
 		mixin.TimeAt{},
 		mixin.OperatorID{},
 		mixin.Remark{},
@@ -90,24 +104,19 @@ func (Task) Mixin() []ent.Mixin {
 // Indexes of the Task.
 func (Task) Indexes() []ent.Index {
 	return []ent.Index{
-		// 在租户范围内保证 type_name 唯一
-		index.Fields("tenant_id", "type_name").
+		index.Fields("tenant_id", "task_name").
+			StorageKey("idx_sys_task_tenant_name"),
+		index.Fields("tenant_id", "group_id", "task_name").
 			Unique().
-			StorageKey("idx_sys_task_tenant_type_name"),
-
-		// 按租户 + type，用于按任务类型检索
-		index.Fields("tenant_id", "type").
+			StorageKey("uix_sys_task_tenant_group_name"),
+		index.Fields("tenant_id", "group_id").
+			StorageKey("idx_sys_task_tenant_group"),
+		index.Fields("tenant_id", "task_type").
 			StorageKey("idx_sys_task_tenant_type"),
-
-		// 按租户 + enable + created_at，用于按启用状态过滤并按时间范围查询/分页（时间列放末尾）
-		index.Fields("tenant_id", "enable", "created_at").
-			StorageKey("idx_sys_task_tenant_enable_created_at"),
-
-		// 按租户 + 操作者 + 创建时间，用于审计回溯（时间列放末尾）
-		index.Fields("tenant_id", "created_by", "created_at").
-			StorageKey("idx_sys_task_tenant_created_by_created_at"),
-
-		// 按租户 + 创建时间，用于租户范围的时间区间查询与分页
+		index.Fields("tenant_id", "cron_expression").
+			StorageKey("idx_sys_task_tenant_cron_expression"),
+		index.Fields("tenant_id", "status").
+			StorageKey("idx_sys_task_tenant_status"),
 		index.Fields("tenant_id", "created_at").
 			StorageKey("idx_sys_task_tenant_created_at"),
 	}

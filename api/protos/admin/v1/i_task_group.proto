@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package admin.service.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "pagination/v1/pagination.proto";
+import "task/v1/task_group.proto";
+
+// 任务分组管理服务
+service TaskGroupService {
+  // 查询任务分组列表
+  rpc List(pagination.PagingRequest) returns (task.service.v1.ListTaskGroupResponse) {
+    option (google.api.http) = { get: "/admin/v1/task-groups" };
+  }
+
+  // 查询任务分组详情
+  rpc Get(task.service.v1.GetTaskGroupRequest) returns (task.service.v1.TaskGroup) {
+    option (google.api.http) = {
+      get: "/admin/v1/task-groups/{id}"
+      additional_bindings { get: "/admin/v1/task-groups/name/{group_name}" }
+    };
+  }
+
+  // 创建任务分组
+  rpc Create(task.service.v1.CreateTaskGroupRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/admin/v1/task-groups"
+      body: "*"
+    };
+  }
+
+  // 更新任务分组
+  rpc Update(task.service.v1.UpdateTaskGroupRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      put: "/admin/v1/task-groups/{id}"
+      body: "*"
+    };
+  }
+
+  // 删除任务分组
+  rpc Delete(task.service.v1.DeleteTaskGroupRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { delete: "/admin/v1/task-groups" };
+  }
+
+  // 启动分组下全部任务
+  rpc Start(task.service.v1.StartTaskGroupRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/admin/v1/task-groups/{id}:start"
+      body: "*"
+    };
+  }
+
+  // 停止分组下全部任务
+  rpc Stop(task.service.v1.StopTaskGroupRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/admin/v1/task-groups/{id}:stop"
+      body: "*"
+    };
+  }
+
+  // 立即执行分组下全部任务
+  rpc RunOnce(task.service.v1.RunTaskGroupOnceRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/admin/v1/task-groups/{id}:run-once"
+      body: "*"
+    };
+  }
+}
