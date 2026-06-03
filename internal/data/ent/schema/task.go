@@ -66,7 +66,7 @@ func (Task) Fields() []ent.Field {
 			MaxLen(255).
 			Comment("目标参数"),
 
-		field.Uint32("retry").
+		field.Uint8("retry").
 			Default(0).
 			Comment("重试次数(最大5,0表示不重试)"),
 
@@ -97,7 +97,7 @@ func (Task) Mixin() []ent.Mixin {
 		mixin.TimeAt{},
 		mixin.OperatorID{},
 		mixin.Remark{},
-		mixin.TenantID[uint32]{},
+		mixin.TenantID[uint64]{},
 	}
 }
 
