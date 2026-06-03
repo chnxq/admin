@@ -16,6 +16,7 @@ import (
 	"admin/internal/data/ent/membershiprole"
 	"admin/internal/data/ent/orgunit"
 	"admin/internal/data/ent/permission"
+	"admin/internal/data/ent/permissiongroup"
 	"admin/internal/data/ent/position"
 	"admin/internal/data/ent/role"
 	"admin/internal/data/ent/rolepermission"
@@ -37,6 +38,8 @@ const (
 	platformUsername   = "platform_admin"
 	normalUsername     = "user"
 	defaultPassword    = "123456"
+	permissionGroupModuleFeature = "permission:view:feature"
+	permissionGroupModuleExport  = "permission:view:service:export"
 )
 
 type defaultDataSeed struct {
@@ -116,7 +119,7 @@ func (s *defaultDataSeed) run() error {
 		return err
 	}
 
-	permissionIDs, err := s.collectPermissionIDs(ctx)
+	permissionIDs, err := s.collectDefaultAdminPermissionIDs(ctx)
 	if err != nil {
 		return err
 	}
@@ -274,7 +277,7 @@ func (s *defaultDataSeed) reconcileExistingSeedData(ctx context.Context) error {
 		return nil
 	}
 
-	permissionIDs, err := s.collectPermissionIDs(ctx)
+	permissionIDs, err := s.collectDefaultAdminPermissionIDs(ctx)
 	if err != nil {
 		return err
 	}
@@ -547,6 +550,73 @@ func (s *defaultDataSeed) collectPermissionIDs(ctx context.Context) ([]uint32, e
 	return ids, nil
 }
 
+func (s *defaultDataSeed) collectDefaultAdminPermissionIDs(ctx context.Context) ([]uint32, error) {
+	groups, err := s.entClient.Client().PermissionGroup.Query().
+		Where(permissiongroup.StatusEQ(permissiongroup.StatusOn)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list permission groups for default admin role: %w", err)
+	}
+
+	groupParentByID := make(map[uint32]uint32, len(groups))
+	var featureRootID uint32
+	var exportGroupID uint32
+	for _, item := range groups {
+		if item == nil {
+			continue
+		}
+		groupParentByID[item.ID] = uint32Value(item.ParentID)
+		switch strings.TrimSpace(stringValue(item.Module)) {
+		case permissionGroupModuleFeature:
+			if featureRootID != 0 && featureRootID != item.ID {
+				return nil, fmt.Errorf("multiple active feature root permission groups detected: %d and %d", featureRootID, item.ID)
+			}
+			featureRootID = item.ID
+		case permissionGroupModuleExport:
+			if exportGroupID != 0 && exportGroupID != item.ID {
+				return nil, fmt.Errorf("multiple active export permission groups detected: %d and %d", exportGroupID, item.ID)
+			}
+			exportGroupID = item.ID
+		}
+	}
+
+	targetGroupIDs := map[uint32]struct{}{}
+	if featureRootID != 0 {
+		targetGroupIDs[featureRootID] = struct{}{}
+		for groupID, parentID := range groupParentByID {
+			if parentID == featureRootID {
+				targetGroupIDs[groupID] = struct{}{}
+			}
+		}
+	}
+	if exportGroupID != 0 {
+		targetGroupIDs[exportGroupID] = struct{}{}
+	}
+	if len(targetGroupIDs) == 0 {
+		return nil, nil
+	}
+
+	items, err := s.entClient.Client().Permission.Query().
+		Where(permission.StatusEQ(permission.StatusOn)).
+		Order(permission.ByID()).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list permissions for default admin role: %w", err)
+	}
+
+	ids := make([]uint32, 0, len(items))
+	for _, item := range items {
+		if item == nil || item.GroupID == nil {
+			continue
+		}
+		if _, ok := targetGroupIDs[*item.GroupID]; !ok {
+			continue
+		}
+		ids = append(ids, item.ID)
+	}
+	return uniqueUint32s(ids), nil
+}
+
 func (s *defaultDataSeed) collectNormalUserPermissionIDs(ctx context.Context) ([]uint32, error) {
 	resp, err := repo.NewPermissionRepo(s.appCtx, s.entClient).List(ctx, &paginationv1.PagingRequest{
 		NoPaging: boolPtr(true),
@@ -592,6 +662,20 @@ func (s *defaultDataSeed) collectNormalUserPermissionIDs(ctx context.Context) ([
 		ids = append(ids, item.ID)
 	}
 	return uniqueUint32s(ids), nil
+}
+
+func uint32Value(value *uint32) uint32 {
+	if value == nil {
+		return 0
+	}
+	return *value
+}
+
+func stringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func (s *defaultDataSeed) ensureRoles(ctx context.Context, tenantID uint32, superPermissionIDs, normalPermissionIDs []uint32) (*ent.Role, *ent.Role, error) {

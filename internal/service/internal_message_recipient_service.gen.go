@@ -34,29 +34,17 @@ func NewInternalMessageRecipientService(ctx *app.AppCtx, internalMessageRecipien
 // ListUserInbox is generated from the source proto contract.
 // Classification: special.
 func (s *InternalMessageRecipientService) ListUserInbox(ctx context.Context, req *v1.PagingRequest) (*v11.ListUserInboxResponse, error) {
-	_ = ctx
-	_ = req
-
-	// TODO: implement InternalMessageRecipientService.ListUserInbox business logic manually or move it to a manual extension.
-	return &v11.ListUserInboxResponse{}, nil
+	return s.listUserInboxImpl(ctx, req)
 }
 
 // DeleteNotificationFromInbox is generated from the source proto contract.
 // Classification: special.
 func (s *InternalMessageRecipientService) DeleteNotificationFromInbox(ctx context.Context, req *v11.DeleteNotificationFromInboxRequest) (*emptypb.Empty, error) {
-	_ = ctx
-	_ = req
-
-	// TODO: implement InternalMessageRecipientService.DeleteNotificationFromInbox business logic manually or move it to a manual extension.
-	return &emptypb.Empty{}, nil
+	return s.deleteNotificationFromInboxImpl(ctx, req)
 }
 
 // MarkNotificationAsRead is generated from the source proto contract.
 // Classification: special.
 func (s *InternalMessageRecipientService) MarkNotificationAsRead(ctx context.Context, req *v11.MarkNotificationAsReadRequest) (*emptypb.Empty, error) {
-	_ = ctx
-	_ = req
-
-	// TODO: implement InternalMessageRecipientService.MarkNotificationAsRead business logic manually or move it to a manual extension.
-	return &emptypb.Empty{}, nil
+	return s.markNotificationAsReadImpl(ctx, req)
 }

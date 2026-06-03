@@ -662,7 +662,12 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 					Type:      menu.TypeMenu,
 				},
 				{
-					Authority: []string{"files:view"},
+					Authority: []string{
+						"files:view",
+						"files:create",
+						"files:delete",
+						"files:export",
+					},
 					Component: "/system/file/index",
 					Icon:      "lucide:folder-open",
 					Name:      "SystemFile",
@@ -746,6 +751,10 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 		{
 			Children: []defaultNavigationMenu{
 				{
+					Authority: []string{
+						"login:audit:logs:view",
+						"login:audit:logs:export",
+					},
 					Component: "/app/log/login-audit-log/index",
 					Icon:      "lucide:user-lock",
 					Name:      "LoginAuditLog",
@@ -754,6 +763,10 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 					Type:      menu.TypeMenu,
 				},
 				{
+					Authority: []string{
+						"api:audit:logs:view",
+						"api:audit:logs:export",
+					},
 					Component: "/app/log/api-audit-log/index",
 					Icon:      "lucide:file-clock",
 					Name:      "ApiAuditLog",
@@ -762,6 +775,10 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 					Type:      menu.TypeMenu,
 				},
 				{
+					Authority: []string{
+						"permission:audit:logs:view",
+						"permission:audit:logs:export",
+					},
 					Component: "/app/log/permission-audit-log/index",
 					Icon:      "lucide:shield-check",
 					Name:      "PermissionAuditLog",
@@ -781,6 +798,13 @@ func defaultNavigationMenus() []defaultNavigationMenu {
 		{
 			Children: []defaultNavigationMenu{
 				{
+					Authority: []string{
+						"internal:message:message:view",
+						"internal:message:export",
+						"internal:message:create",
+						"internal-messages:send",
+						"internal-messages:revoke",
+					},
 					Component: "/app/internal-message/message/index",
 					Icon:      "lucide:mail",
 					Name:      "InternalMessageMessage",

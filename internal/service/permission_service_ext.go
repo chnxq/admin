@@ -174,6 +174,9 @@ func (s *PermissionService) collectDesiredPermissions(ctx context.Context) ([]de
 
 		module, _ := serviceGroupIdentityFromAPI(api)
 		serviceCode := servicePermissionCode(module, code)
+		if serviceCode == "" {
+			continue
+		}
 		current, ok := desired[serviceCode]
 		if !ok {
 			current = &desiredPermission{
@@ -351,6 +354,9 @@ func (s *PermissionService) reconcilePermissions(ctx context.Context, desired []
 	}
 
 	for _, item := range desired {
+		if strings.TrimSpace(item.code) == "" {
+			continue
+		}
 		data := &permissionv1.Permission{
 			Name:    stringPtr(item.name),
 			Code:    stringPtr(item.code),
@@ -1337,22 +1343,26 @@ func (s *PermissionService) reconcileDefaultRolePermissions(ctx context.Context)
 	if err != nil {
 		return err
 	}
-	groupModuleByID := make(map[uint32]string, len(groupResp.GetItems()))
 	groupParentByID := make(map[uint32]uint32, len(groupResp.GetItems()))
 	var featureRootID uint32
 	var exportGroupID uint32
 	for _, item := range groupResp.GetItems() {
-		if item == nil || item.GetId() == 0 {
+		if item == nil || item.GetId() == 0 || item.GetStatus() != permissionv1.PermissionGroup_ON {
 			continue
 		}
 		groupID := item.GetId()
 		groupModule := strings.TrimSpace(item.GetModule())
-		groupModuleByID[groupID] = groupModule
 		groupParentByID[groupID] = item.GetParentId()
 		if groupModule == permissionGroupModuleFeature {
+			if featureRootID != 0 && featureRootID != groupID {
+				return fmt.Errorf("multiple active feature root permission groups detected: %d and %d", featureRootID, groupID)
+			}
 			featureRootID = groupID
 		}
 		if groupModule == permissionGroupModuleExport {
+			if exportGroupID != 0 && exportGroupID != groupID {
+				return fmt.Errorf("multiple active export permission groups detected: %d and %d", exportGroupID, groupID)
+			}
 			exportGroupID = groupID
 		}
 	}
