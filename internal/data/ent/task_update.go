@@ -280,14 +280,14 @@ func (_u *TaskUpdate) ClearArgs() *TaskUpdate {
 }
 
 // SetRetry sets the "retry" field.
-func (_u *TaskUpdate) SetRetry(v uint8) *TaskUpdate {
+func (_u *TaskUpdate) SetRetry(v uint32) *TaskUpdate {
 	_u.mutation.ResetRetry()
 	_u.mutation.SetRetry(v)
 	return _u
 }
 
 // SetNillableRetry sets the "retry" field if the given value is not nil.
-func (_u *TaskUpdate) SetNillableRetry(v *uint8) *TaskUpdate {
+func (_u *TaskUpdate) SetNillableRetry(v *uint32) *TaskUpdate {
 	if v != nil {
 		_u.SetRetry(*v)
 	}
@@ -295,7 +295,7 @@ func (_u *TaskUpdate) SetNillableRetry(v *uint8) *TaskUpdate {
 }
 
 // AddRetry adds value to the "retry" field.
-func (_u *TaskUpdate) AddRetry(v int8) *TaskUpdate {
+func (_u *TaskUpdate) AddRetry(v int32) *TaskUpdate {
 	_u.mutation.AddRetry(v)
 	return _u
 }
@@ -527,10 +527,10 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.ClearField(task.FieldArgs, field.TypeString)
 	}
 	if value, ok := _u.mutation.Retry(); ok {
-		_spec.SetField(task.FieldRetry, field.TypeUint8, value)
+		_spec.SetField(task.FieldRetry, field.TypeUint32, value)
 	}
 	if value, ok := _u.mutation.AddedRetry(); ok {
-		_spec.AddField(task.FieldRetry, field.TypeUint8, value)
+		_spec.AddField(task.FieldRetry, field.TypeUint32, value)
 	}
 	if value, ok := _u.mutation.Concurrent(); ok {
 		_spec.SetField(task.FieldConcurrent, field.TypeBool, value)
@@ -820,14 +820,14 @@ func (_u *TaskUpdateOne) ClearArgs() *TaskUpdateOne {
 }
 
 // SetRetry sets the "retry" field.
-func (_u *TaskUpdateOne) SetRetry(v uint8) *TaskUpdateOne {
+func (_u *TaskUpdateOne) SetRetry(v uint32) *TaskUpdateOne {
 	_u.mutation.ResetRetry()
 	_u.mutation.SetRetry(v)
 	return _u
 }
 
 // SetNillableRetry sets the "retry" field if the given value is not nil.
-func (_u *TaskUpdateOne) SetNillableRetry(v *uint8) *TaskUpdateOne {
+func (_u *TaskUpdateOne) SetNillableRetry(v *uint32) *TaskUpdateOne {
 	if v != nil {
 		_u.SetRetry(*v)
 	}
@@ -835,7 +835,7 @@ func (_u *TaskUpdateOne) SetNillableRetry(v *uint8) *TaskUpdateOne {
 }
 
 // AddRetry adds value to the "retry" field.
-func (_u *TaskUpdateOne) AddRetry(v int8) *TaskUpdateOne {
+func (_u *TaskUpdateOne) AddRetry(v int32) *TaskUpdateOne {
 	_u.mutation.AddRetry(v)
 	return _u
 }
@@ -1097,10 +1097,10 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 		_spec.ClearField(task.FieldArgs, field.TypeString)
 	}
 	if value, ok := _u.mutation.Retry(); ok {
-		_spec.SetField(task.FieldRetry, field.TypeUint8, value)
+		_spec.SetField(task.FieldRetry, field.TypeUint32, value)
 	}
 	if value, ok := _u.mutation.AddedRetry(); ok {
-		_spec.AddField(task.FieldRetry, field.TypeUint8, value)
+		_spec.AddField(task.FieldRetry, field.TypeUint32, value)
 	}
 	if value, ok := _u.mutation.Concurrent(); ok {
 		_spec.SetField(task.FieldConcurrent, field.TypeBool, value)

@@ -108,7 +108,7 @@ var (
 	// ArgsValidator is a validator for the "args" field. It is called by the builders before save.
 	ArgsValidator func(string) error
 	// DefaultRetry holds the default value on creation for the "retry" field.
-	DefaultRetry uint8
+	DefaultRetry uint32
 	// DefaultConcurrent holds the default value on creation for the "concurrent" field.
 	DefaultConcurrent bool
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.

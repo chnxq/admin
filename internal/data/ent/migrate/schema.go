@@ -2338,7 +2338,7 @@ var (
 		{Name: "cron_expression", Type: field.TypeString, Nullable: true, Size: 30, Comment: "cron表达式"},
 		{Name: "invoke_target", Type: field.TypeString, Nullable: true, Size: 255, Comment: "调用目标"},
 		{Name: "args", Type: field.TypeString, Nullable: true, Size: 255, Comment: "目标参数"},
-		{Name: "retry", Type: field.TypeUint8, Comment: "重试次数(最大5,0表示不重试)", Default: 0},
+		{Name: "retry", Type: field.TypeUint32, Comment: "重试次数(最大5,0表示不重试)", Default: 0},
 		{Name: "concurrent", Type: field.TypeBool, Comment: "是否并发：1、是。0、否", Default: false},
 		{Name: "entry_id", Type: field.TypeUint32, Nullable: true, Comment: "启动时返回的ID"},
 		{Name: "status", Type: field.TypeEnum, Comment: "任务状态：停止、运行中、禁用", Enums: []string{"STOPPED", "RUNNING", "DISABLED"}, Default: "STOPPED"},

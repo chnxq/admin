@@ -47,7 +47,7 @@ type Task struct {
 	// 目标参数
 	Args *string `json:"args,omitempty"`
 	// 重试次数(最大5,0表示不重试)
-	Retry uint8 `json:"retry,omitempty"`
+	Retry uint32 `json:"retry,omitempty"`
 	// 是否并发：1、是。0、否
 	Concurrent bool `json:"concurrent,omitempty"`
 	// 启动时返回的ID
@@ -190,7 +190,7 @@ func (_m *Task) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field retry", values[i])
 			} else if value.Valid {
-				_m.Retry = uint8(value.Int64)
+				_m.Retry = uint32(value.Int64)
 			}
 		case task.FieldConcurrent:
 			if value, ok := values[i].(*sql.NullBool); !ok {

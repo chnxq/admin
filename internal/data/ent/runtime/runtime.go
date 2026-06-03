@@ -1029,7 +1029,7 @@ func init() {
 	// taskDescRetry is the schema descriptor for retry field.
 	taskDescRetry := taskFields[6].Descriptor()
 	// task.DefaultRetry holds the default value on creation for the retry field.
-	task.DefaultRetry = taskDescRetry.Default.(uint8)
+	task.DefaultRetry = taskDescRetry.Default.(uint32)
 	// taskDescConcurrent is the schema descriptor for concurrent field.
 	taskDescConcurrent := taskFields[7].Descriptor()
 	// task.DefaultConcurrent holds the default value on creation for the concurrent field.

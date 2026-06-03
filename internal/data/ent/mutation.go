@@ -51798,8 +51798,8 @@ type TaskMutation struct {
 	cron_expression *string
 	invoke_target   *string
 	args            *string
-	retry           *uint8
-	addretry        *int8
+	retry           *uint32
+	addretry        *int32
 	concurrent      *bool
 	entry_id        *uint32
 	addentry_id     *int32
@@ -52666,13 +52666,13 @@ func (m *TaskMutation) ResetArgs() {
 }
 
 // SetRetry sets the "retry" field.
-func (m *TaskMutation) SetRetry(u uint8) {
+func (m *TaskMutation) SetRetry(u uint32) {
 	m.retry = &u
 	m.addretry = nil
 }
 
 // Retry returns the value of the "retry" field in the mutation.
-func (m *TaskMutation) Retry() (r uint8, exists bool) {
+func (m *TaskMutation) Retry() (r uint32, exists bool) {
 	v := m.retry
 	if v == nil {
 		return
@@ -52683,7 +52683,7 @@ func (m *TaskMutation) Retry() (r uint8, exists bool) {
 // OldRetry returns the old "retry" field's value of the Task entity.
 // If the Task object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *TaskMutation) OldRetry(ctx context.Context) (v uint8, err error) {
+func (m *TaskMutation) OldRetry(ctx context.Context) (v uint32, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldRetry is only allowed on UpdateOne operations")
 	}
@@ -52698,7 +52698,7 @@ func (m *TaskMutation) OldRetry(ctx context.Context) (v uint8, err error) {
 }
 
 // AddRetry adds u to the "retry" field.
-func (m *TaskMutation) AddRetry(u int8) {
+func (m *TaskMutation) AddRetry(u int32) {
 	if m.addretry != nil {
 		*m.addretry += u
 	} else {
@@ -52707,7 +52707,7 @@ func (m *TaskMutation) AddRetry(u int8) {
 }
 
 // AddedRetry returns the value that was added to the "retry" field in this mutation.
-func (m *TaskMutation) AddedRetry() (r int8, exists bool) {
+func (m *TaskMutation) AddedRetry() (r int32, exists bool) {
 	v := m.addretry
 	if v == nil {
 		return
@@ -53149,7 +53149,7 @@ func (m *TaskMutation) SetField(name string, value ent.Value) error {
 		m.SetArgs(v)
 		return nil
 	case task.FieldRetry:
-		v, ok := value.(uint8)
+		v, ok := value.(uint32)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -53272,7 +53272,7 @@ func (m *TaskMutation) AddField(name string, value ent.Value) error {
 		m.AddGroupID(v)
 		return nil
 	case task.FieldRetry:
-		v, ok := value.(int8)
+		v, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

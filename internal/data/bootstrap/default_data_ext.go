@@ -31,13 +31,13 @@ import (
 )
 
 const (
-	defaultTenantCode  = "default"
-	platformTenantID   = uint32(0)
-	platformTenantName = "XAdmin平台"
-	adminUsername      = "admin"
-	platformUsername   = "platform_admin"
-	normalUsername     = "user"
-	defaultPassword    = "123456"
+	defaultTenantCode            = "default"
+	platformTenantID             = uint32(0)
+	platformTenantName           = "XAdmin平台"
+	adminUsername                = "admin"
+	platformUsername             = "platform_admin"
+	normalUsername               = "user"
+	defaultPassword              = "123456"
 	permissionGroupModuleFeature = "permission:view:feature"
 	permissionGroupModuleExport  = "permission:view:service:export"
 )
@@ -384,7 +384,7 @@ func (s *defaultDataSeed) syncResources(ctx context.Context) error {
 	permissionRepo := repo.NewPermissionRepo(s.appCtx, s.entClient)
 	permissionGroupRepo := repo.NewPermissionGroupRepo(s.appCtx, s.entClient)
 	roleRepo := repo.NewRoleRepo(s.appCtx, s.entClient)
-	permissionService := service.NewPermissionService(s.appCtx, permissionRepo, permissionGroupRepo, menuRepo, apiRepo, roleRepo)
+	permissionService := service.NewPermissionService(s.appCtx, permissionRepo, roleRepo, permissionGroupRepo, menuRepo, apiRepo)
 	if _, err := permissionService.SyncPermissions(ctx, nil); err != nil {
 		return fmt.Errorf("sync permissions: %w", err)
 	}

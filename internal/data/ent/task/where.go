@@ -120,7 +120,7 @@ func Args(v string) predicate.Task {
 }
 
 // Retry applies equality check predicate on the "retry" field. It's identical to RetryEQ.
-func Retry(v uint8) predicate.Task {
+func Retry(v uint32) predicate.Task {
 	return predicate.Task(sql.FieldEQ(FieldRetry, v))
 }
 
@@ -910,42 +910,42 @@ func ArgsContainsFold(v string) predicate.Task {
 }
 
 // RetryEQ applies the EQ predicate on the "retry" field.
-func RetryEQ(v uint8) predicate.Task {
+func RetryEQ(v uint32) predicate.Task {
 	return predicate.Task(sql.FieldEQ(FieldRetry, v))
 }
 
 // RetryNEQ applies the NEQ predicate on the "retry" field.
-func RetryNEQ(v uint8) predicate.Task {
+func RetryNEQ(v uint32) predicate.Task {
 	return predicate.Task(sql.FieldNEQ(FieldRetry, v))
 }
 
 // RetryIn applies the In predicate on the "retry" field.
-func RetryIn(vs ...uint8) predicate.Task {
+func RetryIn(vs ...uint32) predicate.Task {
 	return predicate.Task(sql.FieldIn(FieldRetry, vs...))
 }
 
 // RetryNotIn applies the NotIn predicate on the "retry" field.
-func RetryNotIn(vs ...uint8) predicate.Task {
+func RetryNotIn(vs ...uint32) predicate.Task {
 	return predicate.Task(sql.FieldNotIn(FieldRetry, vs...))
 }
 
 // RetryGT applies the GT predicate on the "retry" field.
-func RetryGT(v uint8) predicate.Task {
+func RetryGT(v uint32) predicate.Task {
 	return predicate.Task(sql.FieldGT(FieldRetry, v))
 }
 
 // RetryGTE applies the GTE predicate on the "retry" field.
-func RetryGTE(v uint8) predicate.Task {
+func RetryGTE(v uint32) predicate.Task {
 	return predicate.Task(sql.FieldGTE(FieldRetry, v))
 }
 
 // RetryLT applies the LT predicate on the "retry" field.
-func RetryLT(v uint8) predicate.Task {
+func RetryLT(v uint32) predicate.Task {
 	return predicate.Task(sql.FieldLT(FieldRetry, v))
 }
 
 // RetryLTE applies the LTE predicate on the "retry" field.
-func RetryLTE(v uint8) predicate.Task {
+func RetryLTE(v uint32) predicate.Task {
 	return predicate.Task(sql.FieldLTE(FieldRetry, v))
 }
 

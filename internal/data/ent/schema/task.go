@@ -66,7 +66,7 @@ func (Task) Fields() []ent.Field {
 			MaxLen(255).
 			Comment("目标参数"),
 
-		field.Uint8("retry").
+		field.Uint32("retry").
 			Default(0).
 			Comment("重试次数(最大5,0表示不重试)"),
 

@@ -203,13 +203,13 @@ func (_c *TaskCreate) SetNillableArgs(v *string) *TaskCreate {
 }
 
 // SetRetry sets the "retry" field.
-func (_c *TaskCreate) SetRetry(v uint8) *TaskCreate {
+func (_c *TaskCreate) SetRetry(v uint32) *TaskCreate {
 	_c.mutation.SetRetry(v)
 	return _c
 }
 
 // SetNillableRetry sets the "retry" field if the given value is not nil.
-func (_c *TaskCreate) SetNillableRetry(v *uint8) *TaskCreate {
+func (_c *TaskCreate) SetNillableRetry(v *uint32) *TaskCreate {
 	if v != nil {
 		_c.SetRetry(*v)
 	}
@@ -474,7 +474,7 @@ func (_c *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 		_node.Args = &value
 	}
 	if value, ok := _c.mutation.Retry(); ok {
-		_spec.SetField(task.FieldRetry, field.TypeUint8, value)
+		_spec.SetField(task.FieldRetry, field.TypeUint32, value)
 		_node.Retry = value
 	}
 	if value, ok := _c.mutation.Concurrent(); ok {
@@ -764,7 +764,7 @@ func (u *TaskUpsert) ClearArgs() *TaskUpsert {
 }
 
 // SetRetry sets the "retry" field.
-func (u *TaskUpsert) SetRetry(v uint8) *TaskUpsert {
+func (u *TaskUpsert) SetRetry(v uint32) *TaskUpsert {
 	u.Set(task.FieldRetry, v)
 	return u
 }
@@ -776,7 +776,7 @@ func (u *TaskUpsert) UpdateRetry() *TaskUpsert {
 }
 
 // AddRetry adds v to the "retry" field.
-func (u *TaskUpsert) AddRetry(v uint8) *TaskUpsert {
+func (u *TaskUpsert) AddRetry(v uint32) *TaskUpsert {
 	u.Add(task.FieldRetry, v)
 	return u
 }
@@ -1143,14 +1143,14 @@ func (u *TaskUpsertOne) ClearArgs() *TaskUpsertOne {
 }
 
 // SetRetry sets the "retry" field.
-func (u *TaskUpsertOne) SetRetry(v uint8) *TaskUpsertOne {
+func (u *TaskUpsertOne) SetRetry(v uint32) *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
 		s.SetRetry(v)
 	})
 }
 
 // AddRetry adds v to the "retry" field.
-func (u *TaskUpsertOne) AddRetry(v uint8) *TaskUpsertOne {
+func (u *TaskUpsertOne) AddRetry(v uint32) *TaskUpsertOne {
 	return u.Update(func(s *TaskUpsert) {
 		s.AddRetry(v)
 	})
@@ -1699,14 +1699,14 @@ func (u *TaskUpsertBulk) ClearArgs() *TaskUpsertBulk {
 }
 
 // SetRetry sets the "retry" field.
-func (u *TaskUpsertBulk) SetRetry(v uint8) *TaskUpsertBulk {
+func (u *TaskUpsertBulk) SetRetry(v uint32) *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
 		s.SetRetry(v)
 	})
 }
 
 // AddRetry adds v to the "retry" field.
-func (u *TaskUpsertBulk) AddRetry(v uint8) *TaskUpsertBulk {
+func (u *TaskUpsertBulk) AddRetry(v uint32) *TaskUpsertBulk {
 	return u.Update(func(s *TaskUpsert) {
 		s.AddRetry(v)
 	})
