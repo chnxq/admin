@@ -35,6 +35,12 @@ type UserRoleIDReader interface {
 	ListRoleIDsByUserID(context.Context, uint32) ([]uint32, error)
 }
 
+const (
+	defaultAdminUsername    = "admin"
+	defaultNormalUsername   = "user"
+	defaultPlatformUsername = "platform_admin"
+)
+
 func (r *userRepo) ListRoleIDsByUserID(ctx context.Context, userID uint32) ([]uint32, error) {
 	if r == nil || r.entClient == nil || userID == 0 {
 		return nil, nil
@@ -615,6 +621,9 @@ func (r *userRepo) userCustomDelete(ctx context.Context, req *identityv1.DeleteU
 		r.log.Errorf("load user before delete failed: %s", err.Error())
 		return nil, err
 	}
+	if isProtectedSeedUser(userEntity) {
+		return nil, identityv1.ErrorForbidden("default seed user cannot be deleted")
+	}
 	if err := ensureTenantAccessible(ctx, userEntity.TenantID); err != nil {
 		return nil, err
 	}
@@ -632,6 +641,19 @@ func (r *userRepo) userCustomDelete(ctx context.Context, req *identityv1.DeleteU
 	}
 	committed = true
 	return &emptypb.Empty{}, nil
+}
+
+func isProtectedSeedUser(entity *ent.User) bool {
+	if entity == nil || entity.Username == nil {
+		return false
+	}
+	username := strings.TrimSpace(strings.ToLower(*entity.Username))
+	switch username {
+	case defaultAdminUsername, defaultNormalUsername, defaultPlatformUsername:
+		return true
+	default:
+		return false
+	}
 }
 
 func (r *userRepo) deleteUserRelations(ctx context.Context, txClient *ent.Client, userID uint32) error {
