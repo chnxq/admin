@@ -3606,11 +3606,387 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListRouteResponse'
+    /admin/v1/task-groups:
+        get:
+            tags:
+                - TaskGroupService
+            description: 查询任务分组列表
+            operationId: TaskGroupService_List
+            parameters:
+                - name: page
+                  in: query
+                  description: 当前页码（从1开始，默认1）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: pageSize
+                  in: query
+                  description: 每页条数（默认10，建议设置上限如100）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: offset
+                  in: query
+                  description: 跳过的记录数（从0开始，默认0）
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  description: 最多返回的记录数（默认10，建议设置上限如100）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: token
+                  in: query
+                  description: 上一页最后一条记录的游标（如ID/时间戳+ID，首次请求为空）
+                  schema:
+                    type: string
+                - name: noPaging
+                  in: query
+                  description: 是否不分页，如果为true，则page和pageSize参数无效。
+                  schema:
+                    type: boolean
+                - name: query
+                  in: query
+                  description: JSON字符串过滤条件，基础语法：{"field1":"val1", "field2___icontains":"val2"}，具体请参见：https://github.com/chnxq/x-crud/tree/main/pagination/filter/README.md
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: Google AIP规范字符串过滤条件
+                  schema:
+                    type: string
+                - name: filterExpr.type
+                  in: query
+                  description: 过滤表达式类型
+                  schema:
+                    enum:
+                        - EXPR_TYPE_UNSPECIFIED
+                        - AND
+                        - OR
+                    type: string
+                    format: enum
+                - name: orderBy
+                  in: query
+                  description: 排序条件
+                  schema:
+                    type: string
+                - name: fieldMask
+                  in: query
+                  description: 字段掩码，其作用为SELECT中的字段，其语法为使用逗号分隔字段名，例如：id,realName,userName。如果为空则选中所有字段，即SELECT *。
+                  schema:
+                    type: string
+                    format: field-mask
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListTaskGroupResponse'
+        post:
+            tags:
+                - TaskGroupService
+            description: 创建任务分组
+            operationId: TaskGroupService_Create
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateTaskGroupRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+        delete:
+            tags:
+                - TaskGroupService
+            description: 删除任务分组
+            operationId: TaskGroupService_Delete
+            parameters:
+                - name: ids
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/task-groups/name/{groupName}:
+        get:
+            tags:
+                - TaskGroupService
+            description: 查询任务分组详情
+            operationId: TaskGroupService_Get
+            parameters:
+                - name: groupName
+                  in: path
+                  description: 按分组名称查询
+                  required: true
+                  schema:
+                    type: string
+                - name: id
+                  in: query
+                  description: 按ID查询
+                  schema:
+                    type: string
+                - name: viewMask
+                  in: query
+                  description: 返回字段掩码
+                  schema:
+                    type: string
+                    format: field-mask
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/TaskGroup'
+    /admin/v1/task-groups/{id}:
+        get:
+            tags:
+                - TaskGroupService
+            description: 查询任务分组详情
+            operationId: TaskGroupService_Get
+            parameters:
+                - name: id
+                  in: path
+                  description: 按ID查询
+                  required: true
+                  schema:
+                    type: string
+                - name: groupName
+                  in: query
+                  description: 按分组名称查询
+                  schema:
+                    type: string
+                - name: viewMask
+                  in: query
+                  description: 返回字段掩码
+                  schema:
+                    type: string
+                    format: field-mask
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/TaskGroup'
+        put:
+            tags:
+                - TaskGroupService
+            description: 更新任务分组
+            operationId: TaskGroupService_Update
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateTaskGroupRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/task-groups/{id}:run-once:
+        post:
+            tags:
+                - TaskGroupService
+            description: 立即执行分组下全部任务
+            operationId: TaskGroupService_RunOnce
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RunTaskGroupOnceRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/task-groups/{id}:start:
+        post:
+            tags:
+                - TaskGroupService
+            description: 启动分组下全部任务
+            operationId: TaskGroupService_Start
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/StartTaskGroupRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/task-groups/{id}:stop:
+        post:
+            tags:
+                - TaskGroupService
+            description: 停止分组下全部任务
+            operationId: TaskGroupService_Stop
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/StopTaskGroupRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/task-logs:
+        get:
+            tags:
+                - TaskLogService
+            description: 查询任务执行日志列表
+            operationId: TaskLogService_List
+            parameters:
+                - name: page
+                  in: query
+                  description: 当前页码（从1开始，默认1）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: pageSize
+                  in: query
+                  description: 每页条数（默认10，建议设置上限如100）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: offset
+                  in: query
+                  description: 跳过的记录数（从0开始，默认0）
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  description: 最多返回的记录数（默认10，建议设置上限如100）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: token
+                  in: query
+                  description: 上一页最后一条记录的游标（如ID/时间戳+ID，首次请求为空）
+                  schema:
+                    type: string
+                - name: noPaging
+                  in: query
+                  description: 是否不分页，如果为true，则page和pageSize参数无效。
+                  schema:
+                    type: boolean
+                - name: query
+                  in: query
+                  description: JSON字符串过滤条件，基础语法：{"field1":"val1", "field2___icontains":"val2"}，具体请参见：https://github.com/chnxq/x-crud/tree/main/pagination/filter/README.md
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: Google AIP规范字符串过滤条件
+                  schema:
+                    type: string
+                - name: filterExpr.type
+                  in: query
+                  description: 过滤表达式类型
+                  schema:
+                    enum:
+                        - EXPR_TYPE_UNSPECIFIED
+                        - AND
+                        - OR
+                    type: string
+                    format: enum
+                - name: orderBy
+                  in: query
+                  description: 排序条件
+                  schema:
+                    type: string
+                - name: fieldMask
+                  in: query
+                  description: 字段掩码，其作用为SELECT中的字段，其语法为使用逗号分隔字段名，例如：id,realName,userName。如果为空则选中所有字段，即SELECT *。
+                  schema:
+                    type: string
+                    format: field-mask
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListTaskLogResponse'
+        delete:
+            tags:
+                - TaskLogService
+            description: 删除任务执行日志
+            operationId: TaskLogService_Delete
+            parameters:
+                - name: ids
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/task-logs/{id}:
+        get:
+            tags:
+                - TaskLogService
+            description: 查询任务执行日志详情
+            operationId: TaskLogService_Get
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: viewMask
+                  in: query
+                  schema:
+                    type: string
+                    format: field-mask
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/TaskLog'
     /admin/v1/tasks:
         get:
             tags:
                 - TaskService
-            description: 查询调度任务列表
+            description: 查询任务列表
             operationId: TaskService_List
             parameters:
                 - name: page
@@ -3687,7 +4063,7 @@ paths:
         post:
             tags:
                 - TaskService
-            description: 创建调度任务
+            description: 创建任务
             operationId: TaskService_Create
             requestBody:
                 content:
@@ -3699,25 +4075,43 @@ paths:
                 "200":
                     description: OK
                     content: {}
-    /admin/v1/tasks/type-name/{typeName}:
+        delete:
+            tags:
+                - TaskService
+            description: 删除任务
+            operationId: TaskService_Delete
+            parameters:
+                - name: ids
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/tasks/name/{taskName}:
         get:
             tags:
                 - TaskService
-            description: 查询调度任务详情
+            description: 查询任务详情
             operationId: TaskService_Get
             parameters:
-                - name: typeName
+                - name: taskName
                   in: path
+                  description: 按任务名称查询
                   required: true
                   schema:
                     type: string
                 - name: id
                   in: query
+                  description: 按ID查询
                   schema:
-                    type: integer
-                    format: uint32
+                    type: string
                 - name: viewMask
                   in: query
+                  description: 返回字段掩码
                   schema:
                     type: string
                     format: field-mask
@@ -3732,21 +4126,23 @@ paths:
         get:
             tags:
                 - TaskService
-            description: 查询调度任务详情
+            description: 查询任务详情
             operationId: TaskService_Get
             parameters:
                 - name: id
                   in: path
+                  description: 按ID查询
                   required: true
                   schema:
-                    type: integer
-                    format: uint32
-                - name: typeName
+                    type: string
+                - name: taskName
                   in: query
+                  description: 按任务名称查询
                   schema:
                     type: string
                 - name: viewMask
                   in: query
+                  description: 返回字段掩码
                   schema:
                     type: string
                     format: field-mask
@@ -3760,15 +4156,14 @@ paths:
         put:
             tags:
                 - TaskService
-            description: 更新调度任务
+            description: 更新任务
             operationId: TaskService_Update
             parameters:
                 - name: id
                   in: path
                   required: true
                   schema:
-                    type: integer
-                    format: uint32
+                    type: string
             requestBody:
                 content:
                     application/json:
@@ -3779,96 +4174,72 @@ paths:
                 "200":
                     description: OK
                     content: {}
-        delete:
+    /admin/v1/tasks/{id}:run-once:
+        post:
             tags:
                 - TaskService
-            description: 删除调度任务
-            operationId: TaskService_Delete
+            description: 立即执行一次任务
+            operationId: TaskService_RunOnce
             parameters:
                 - name: id
                   in: path
                   required: true
                   schema:
-                    type: integer
-                    format: uint32
-            responses:
-                "200":
-                    description: OK
-                    content: {}
-    /admin/v1/tasks:control:
-        post:
-            tags:
-                - TaskService
-            description: 控制调度任务
-            operationId: TaskService_ControlTask
+                    type: string
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/ControlTaskRequest'
+                            $ref: '#/components/schemas/RunTaskOnceRequest'
                 required: true
             responses:
                 "200":
                     description: OK
                     content: {}
-    /admin/v1/tasks:restart:
+    /admin/v1/tasks/{id}:start:
         post:
             tags:
                 - TaskService
-            description: 重启所有的调度任务
-            operationId: TaskService_RestartAllTask
+            description: 启动任务
+            operationId: TaskService_Start
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
             requestBody:
                 content:
-                    application/json: {}
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/RestartAllTaskResponse'
-    /admin/v1/tasks:start:
-        post:
-            tags:
-                - TaskService
-            description: 启动所有的调度任务
-            operationId: TaskService_StartAllTask
-            requestBody:
-                content:
-                    application/json: {}
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/StartTaskRequest'
                 required: true
             responses:
                 "200":
                     description: OK
                     content: {}
-    /admin/v1/tasks:stop:
+    /admin/v1/tasks/{id}:stop:
         post:
             tags:
                 - TaskService
-            description: 停止所有的调度任务
-            operationId: TaskService_StopAllTask
+            description: 停止任务
+            operationId: TaskService_Stop
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
             requestBody:
                 content:
-                    application/json: {}
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/StopTaskRequest'
                 required: true
             responses:
                 "200":
                     description: OK
                     content: {}
-    /admin/v1/tasks:type-names:
-        get:
-            tags:
-                - TaskService
-            description: 任务类型名称列表
-            operationId: TaskService_ListTaskTypeName
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ListTaskTypeNameResponse'
     /admin/v1/tenants:
         get:
             tags:
@@ -4608,21 +4979,6 @@ components:
                     type: string
                     description: 新密码
             description: 修改用户密码（需要验证旧密码） - 请求
-        ControlTaskRequest:
-            type: object
-            properties:
-                controlType:
-                    enum:
-                        - Start
-                        - Stop
-                        - Restart
-                    type: string
-                    description: 控制类型
-                    format: enum
-                typeName:
-                    type: string
-                    description: 任务执行类型名，例如 "send_email"、"generate_report" 等，用于区分不同类型的任务
-            description: 控制调度任务 - 请求
         CreateApiRequest:
             type: object
             properties:
@@ -4713,12 +5069,18 @@ components:
                 data:
                     $ref: '#/components/schemas/Role'
             description: 创建角色 - 请求
+        CreateTaskGroupRequest:
+            type: object
+            properties:
+                data:
+                    $ref: '#/components/schemas/TaskGroup'
+            description: 创建任务分组请求
         CreateTaskRequest:
             type: object
             properties:
                 data:
                     $ref: '#/components/schemas/Task'
-            description: 创建调度任务 - 请求
+            description: 创建任务请求
         CreateTenantRequest:
             type: object
             properties:
@@ -5883,6 +6245,26 @@ components:
                     items:
                         $ref: '#/components/schemas/MenuRouteItem'
             description: 查询路由列表 - 响应
+        ListTaskGroupResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/TaskGroup'
+                total:
+                    type: string
+            description: 任务分组列表响应
+        ListTaskLogResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/TaskLog'
+                total:
+                    type: string
+            description: 任务执行日志列表响应
         ListTaskResponse:
             type: object
             properties:
@@ -5892,16 +6274,7 @@ components:
                         $ref: '#/components/schemas/Task'
                 total:
                     type: string
-            description: 查询调度任务列表 - 回应
-        ListTaskTypeNameResponse:
-            type: object
-            properties:
-                typeNames:
-                    type: array
-                    items:
-                        type: string
-                    description: 类型名称列表
-            description: 任务类型名称列表 - 回应
+            description: 任务列表响应
         ListTenantResponse:
             type: object
             properties:
@@ -7059,13 +7432,6 @@ components:
                     type: string
                     description: 预签名约束的 Content-Type（可选）
             description: 预签名选项
-        RestartAllTaskResponse:
-            type: object
-            properties:
-                count:
-                    type: integer
-                    format: int32
-            description: 重启调度任务 - 回应
         RevokeMessageRequest:
             type: object
             properties:
@@ -7154,6 +7520,23 @@ components:
                     description: 删除时间
                     format: date-time
             description: 角色
+        RunTaskGroupOnceRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                input:
+                    type: string
+            description: 立即执行任务分组请求
+        RunTaskOnceRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                input:
+                    type: string
+                    description: 立即执行时的临时输入参数
+            description: 立即执行任务请求
         SendMessageRequest:
             type: object
             properties:
@@ -7199,6 +7582,30 @@ components:
                     type: integer
                     description: 消息ID
                     format: uint32
+        StartTaskGroupRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+            description: 启动任务分组请求
+        StartTaskRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+            description: 启动任务请求
+        StopTaskGroupRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+            description: 停止任务分组请求
+        StopTaskRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+            description: 停止任务请求
         StorageObject:
             type: object
             properties:
@@ -7218,37 +7625,58 @@ components:
             type: object
             properties:
                 id:
-                    type: integer
+                    type: string
                     description: 任务ID
-                    format: uint32
-                type:
+                taskName:
+                    type: string
+                    description: 任务名称
+                groupId:
+                    type: string
+                    description: 任务分组ID
+                taskType:
                     enum:
-                        - PERIODIC
-                        - DELAY
-                        - WAIT_RESULT
+                        - TASK_TYPE_UNSPECIFIED
+                        - FUNCTION
+                        - API
+                        - EXTERNAL
                     type: string
                     description: 任务类型
                     format: enum
-                typeName:
+                cronExpression:
                     type: string
-                    description: 任务执行类型名，例如 "send_email"、"generate_report" 等，用于区分不同类型的任务
-                taskPayload:
+                    description: cron表达式
+                invokeTarget:
                     type: string
-                    description: 任务数据，以 JSON 格式存储，方便存储不同类型和数量的参数
-                cronSpec:
+                    description: 调用目标
+                args:
                     type: string
-                    description: cron表达式，用于定义任务的调度时间
-                taskOptions:
-                    $ref: '#/components/schemas/TaskOption'
-                enable:
+                    description: 目标参数
+                retry:
+                    type: integer
+                    description: 重试次数
+                    format: uint32
+                concurrent:
                     type: boolean
-                    description: 启用/禁用任务
+                    description: 是否并发
+                entryId:
+                    type: integer
+                    description: 启动时返回的ID
+                    format: uint32
+                status:
+                    enum:
+                        - STATUS_UNSPECIFIED
+                        - STOPPED
+                        - RUNNING
+                        - DISABLED
+                    type: string
+                    description: 任务状态
+                    format: enum
                 remark:
                     type: string
                     description: 备注
                 tenantId:
                     type: integer
-                    description: 租户ID，0代表系统全局角色
+                    description: 租户ID，0表示全局
                     format: uint32
                 createdBy:
                     type: integer
@@ -7260,7 +7688,7 @@ components:
                     format: uint32
                 deletedBy:
                     type: integer
-                    description: 删除者用户ID
+                    description: 删除者ID
                     format: uint32
                 createdAt:
                     type: string
@@ -7274,45 +7702,87 @@ components:
                     type: string
                     description: 删除时间
                     format: date-time
-            description: 调度任务
-        TaskOption:
+            description: 任务
+        TaskGroup:
             type: object
             properties:
-                maxRetry:
+                id:
+                    type: string
+                    description: 分组ID
+                groupName:
+                    type: string
+                    description: 分组名称
+                remark:
+                    type: string
+                    description: 备注
+                tenantId:
                     type: integer
-                    description: 任务最多可以重试的次数
+                    description: 租户ID，0表示全局
                     format: uint32
-                timeout:
-                    pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+                createdBy:
+                    type: integer
+                    description: 创建者ID
+                    format: uint32
+                updatedBy:
+                    type: integer
+                    description: 更新者ID
+                    format: uint32
+                deletedBy:
+                    type: integer
+                    description: 删除者ID
+                    format: uint32
+                createdAt:
                     type: string
-                    description: 任务超时时间
-                deadline:
-                    type: string
-                    description: 任务截止时间
+                    description: 创建时间
                     format: date-time
-                processIn:
-                    pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+                updatedAt:
                     type: string
-                    description: 任务延迟处理时间
-                processAt:
-                    type: string
-                    description: 任务执行时间点
+                    description: 更新时间
                     format: date-time
-                uniqueTTL:
-                    pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+                deletedAt:
                     type: string
-                    description: 任务唯一锁定时间
-                retention:
-                    pattern: ^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$
+                    description: 删除时间
+                    format: date-time
+            description: 任务分组
+        TaskLog:
+            type: object
+            properties:
+                id:
                     type: string
-                    description: 任务结果保留时间
-                group:
+                    description: 日志ID
+                taskId:
                     type: string
-                    description: 任务分组
-                taskID:
+                    description: 任务ID
+                input:
                     type: string
-                    description: 任务唯一标识ID
-            description: 任务选项
+                    description: 执行参数
+                output:
+                    type: string
+                    description: 输出结果
+                error:
+                    type: string
+                    description: 错误信息
+                status:
+                    enum:
+                        - STATUS_UNSPECIFIED
+                        - FAILURE
+                        - SUCCESS
+                    type: string
+                    description: 状态
+                    format: enum
+                processTime:
+                    type: integer
+                    description: 耗时(毫秒)
+                    format: uint32
+                executeTime:
+                    type: string
+                    description: 执行时间
+                    format: date-time
+                tenantId:
+                    type: integer
+                    description: 租户ID，0表示全局
+                    format: uint32
+            description: 任务执行日志
         Tenant:
             type: object
             properties:
@@ -7685,23 +8155,32 @@ components:
                     type: boolean
                     description: 如果设置为true的时候，资源不存在则会新增(插入)，并且在这种情况下`updateMask`字段将会被忽略。
             description: 更新角色 - 请求
+        UpdateTaskGroupRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/TaskGroup'
+                updateMask:
+                    type: string
+                    format: field-mask
+                allowMissing:
+                    type: boolean
+            description: 更新任务分组请求
         UpdateTaskRequest:
             type: object
             properties:
                 id:
-                    type: integer
-                    format: uint32
+                    type: string
                 data:
                     $ref: '#/components/schemas/Task'
                 updateMask:
-                    example: id,realname,username
                     type: string
-                    description: 要更新的字段列表
                     format: field-mask
                 allowMissing:
                     type: boolean
-                    description: 如果设置为true的时候，资源不存在则会新增(插入)，并且在这种情况下`updateMask`字段将会被忽略。
-            description: 更新调度任务 - 请求
+            description: 更新任务请求
         UpdateTenantRequest:
             type: object
             properties:
@@ -8044,8 +8523,12 @@ tags:
       description: 职位管理服务
     - name: RoleService
       description: 角色管理服务
+    - name: TaskGroupService
+      description: 任务分组管理服务
+    - name: TaskLogService
+      description: 任务执行日志服务
     - name: TaskService
-      description: 调度任务管理服务
+      description: 任务管理服务
     - name: TenantService
       description: 租户管理服务
     - name: UserProfileService
