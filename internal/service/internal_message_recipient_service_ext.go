@@ -3,8 +3,89 @@
 
 package service
 
+import (
+	"context"
+	"fmt"
+
+	v11 "admin/api/gen/internal_message/v1"
+	"admin/internal/data/repo"
+	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
+	crudviewer "github.com/chnxq/x-crud/viewer"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+)
+
 // TODO: add InternalMessageRecipientService-specific hooks, helpers, and hand-written business logic here.
 // Add InternalMessageRecipientService-specific hooks and helpers here.
 // This file is created once and is never overwritten by xkit.
 
 // Keep this file for future non-generated extension logic.
+
+func (s *InternalMessageRecipientService) listUserInboxImpl(ctx context.Context, req *paginationv1.PagingRequest) (*v11.ListUserInboxResponse, error) {
+	if s == nil || s.internalMessageRecipientRepo == nil {
+		return nil, fmt.Errorf("internal message recipient repo is not initialized")
+	}
+	userID, err := currentInboxUserID(ctx, 0)
+	if err != nil {
+		return nil, err
+	}
+	if req == nil {
+		req = &paginationv1.PagingRequest{}
+	}
+	pageSize := int(req.GetPageSize())
+	if pageSize == 0 {
+		pageSize = int(req.GetLimit())
+	}
+	offset := int(req.GetOffset())
+	if offset == 0 && req.GetPage() > 1 && pageSize > 0 {
+		offset = int((req.GetPage() - 1) * req.GetPageSize())
+	}
+	return s.internalMessageRecipientRepo.ListUserInbox(ctx, userID, repo.InboxPagingRequest{
+		Limit:  pageSize,
+		Offset: offset,
+	})
+}
+
+func (s *InternalMessageRecipientService) deleteNotificationFromInboxImpl(ctx context.Context, req *v11.DeleteNotificationFromInboxRequest) (*emptypb.Empty, error) {
+	if s == nil || s.internalMessageRecipientRepo == nil {
+		return nil, fmt.Errorf("internal message recipient repo is not initialized")
+	}
+	if req == nil {
+		return nil, v11.ErrorBadRequest("request is required")
+	}
+	userID, err := currentInboxUserID(ctx, req.GetUserId())
+	if err != nil {
+		return nil, err
+	}
+	if err := s.internalMessageRecipientRepo.DeleteFromInbox(ctx, userID, req.GetRecipientIds()); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (s *InternalMessageRecipientService) markNotificationAsReadImpl(ctx context.Context, req *v11.MarkNotificationAsReadRequest) (*emptypb.Empty, error) {
+	if s == nil || s.internalMessageRecipientRepo == nil {
+		return nil, fmt.Errorf("internal message recipient repo is not initialized")
+	}
+	if req == nil {
+		return nil, v11.ErrorBadRequest("request is required")
+	}
+	userID, err := currentInboxUserID(ctx, req.GetUserId())
+	if err != nil {
+		return nil, err
+	}
+	if err := s.internalMessageRecipientRepo.MarkAsRead(ctx, userID, req.GetRecipientIds()); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func currentInboxUserID(ctx context.Context, requested uint32) (uint32, error) {
+	if requested != 0 {
+		return requested, nil
+	}
+	viewer, ok := crudviewer.FromContext(ctx)
+	if !ok || viewer == nil || viewer.UserID() == 0 {
+		return 0, v11.ErrorBadRequest("user id is required")
+	}
+	return uint32(viewer.UserID()), nil
+}

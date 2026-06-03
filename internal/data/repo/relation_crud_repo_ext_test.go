@@ -291,6 +291,26 @@ func TestUserRepoTenantViewerCannotUpdateOrDeleteOtherTenantUser(t *testing.T) {
 	}
 }
 
+func TestUserRepoDeleteRejectsProtectedSeedUser(t *testing.T) {
+	entClient, client := newRelationCrudEntClientForTest(t, "relation-crud-user-protected-seed-delete")
+	repo := newUserRepoForRelationCrudTest(entClient)
+	ctx := relationCrudPlatformContext()
+
+	userEntity, err := client.User.Create().
+		SetUsername("admin").
+		SetTenantID(1).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create protected seed user failed: %v", err)
+	}
+
+	if _, err := repo.Delete(ctx, &identityv1.DeleteUserRequest{
+		QueryBy: &identityv1.DeleteUserRequest_Id{Id: userEntity.ID},
+	}); !identityv1.IsForbidden(err) {
+		t.Fatalf("expected protected seed user delete forbidden, got %v", err)
+	}
+}
+
 func TestUserRepoTenantScopedRelationsRejectCrossTenantAssignments(t *testing.T) {
 	entClient, client := newRelationCrudEntClientForTest(t, "relation-crud-user-cross-tenant-relations")
 	repo := newUserRepoForRelationCrudTest(entClient)
@@ -532,6 +552,65 @@ func TestRoleRepoTenantViewerCannotMutateGlobalRole(t *testing.T) {
 		QueryBy: &permissionv1.DeleteRoleRequest_Id{Id: roleEntity.ID},
 	}); !permissionv1.IsForbidden(err) {
 		t.Fatalf("expected forbidden delete, got %v", err)
+	}
+}
+
+func TestRoleRepoDeleteRejectsProtectedRole(t *testing.T) {
+	entClient, client := newRelationCrudEntClientForTest(t, "relation-crud-role-protected-delete")
+	repo := newRoleRepoForRelationCrudTest(entClient)
+	ctx := relationCrudPlatformContext()
+
+	roleEntity, err := client.Role.Create().
+		SetName("protected-role").
+		SetCode("protected-role").
+		SetTenantID(1).
+		SetIsProtected(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create protected role failed: %v", err)
+	}
+
+	if _, err := repo.Delete(ctx, &permissionv1.DeleteRoleRequest{
+		QueryBy: &permissionv1.DeleteRoleRequest_Id{Id: roleEntity.ID},
+	}); !permissionv1.IsForbidden(err) {
+		t.Fatalf("expected protected role delete forbidden, got %v", err)
+	}
+}
+
+func TestRoleRepoUpdateKeepsProtectedRoleProtected(t *testing.T) {
+	entClient, client := newRelationCrudEntClientForTest(t, "relation-crud-role-keep-protected")
+	repo := newRoleRepoForRelationCrudTest(entClient)
+	ctx := relationCrudPlatformContext()
+
+	roleEntity, err := client.Role.Create().
+		SetName("protected-role").
+		SetCode("protected-role").
+		SetTenantID(1).
+		SetIsProtected(true).
+		SetType("SYSTEM").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create protected role failed: %v", err)
+	}
+
+	newName := "protected-role-updated"
+	if _, err := repo.Update(ctx, &permissionv1.UpdateRoleRequest{
+		Id: roleEntity.ID,
+		Data: &permissionv1.Role{
+			Name: &newName,
+			Code: stringPtr("protected-role"),
+			Type: permissionv1.Role_SYSTEM.Enum(),
+		},
+	}); err != nil {
+		t.Fatalf("update protected role failed: %v", err)
+	}
+
+	updated, err := client.Role.Get(ctx, roleEntity.ID)
+	if err != nil {
+		t.Fatalf("reload protected role failed: %v", err)
+	}
+	if updated.IsProtected == nil || !*updated.IsProtected {
+		t.Fatalf("expected protected role to remain protected after update")
 	}
 }
 

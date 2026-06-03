@@ -228,7 +228,7 @@ paths:
         get:
             tags:
                 - ApiService
-            description: 查询路由数据
+            description: 获取路由数据
             operationId: ApiService_GetWalkRouteData
             responses:
                 "200":
@@ -433,6 +433,7 @@ paths:
         get:
             tags:
                 - DictCategoryService
+            description: 查询字典分类列表
             operationId: DictCategoryService_List
             parameters:
                 - name: page
@@ -509,6 +510,7 @@ paths:
         post:
             tags:
                 - DictCategoryService
+            description: 创建字典分类
             operationId: DictCategoryService_Create
             requestBody:
                 content:
@@ -523,10 +525,12 @@ paths:
         delete:
             tags:
                 - DictCategoryService
+            description: 删除字典分类
             operationId: DictCategoryService_Delete
             parameters:
                 - name: ids
                   in: query
+                  description: 待删除ID列表
                   schema:
                     type: array
                     items:
@@ -540,20 +544,24 @@ paths:
         get:
             tags:
                 - DictCategoryService
+            description: 查询字典分类详情
             operationId: DictCategoryService_Get
             parameters:
                 - name: categoryKey
                   in: path
+                  description: 按分类标识查询
                   required: true
                   schema:
                     type: string
                 - name: id
                   in: query
+                  description: 按ID查询
                   schema:
                     type: integer
                     format: uint32
                 - name: viewMask
                   in: query
+                  description: 返回字段掩码
                   schema:
                     type: string
                     format: field-mask
@@ -568,20 +576,24 @@ paths:
         get:
             tags:
                 - DictCategoryService
+            description: 查询字典分类详情
             operationId: DictCategoryService_Get
             parameters:
                 - name: id
                   in: path
+                  description: 按ID查询
                   required: true
                   schema:
                     type: integer
                     format: uint32
                 - name: categoryKey
                   in: query
+                  description: 按分类标识查询
                   schema:
                     type: string
                 - name: viewMask
                   in: query
+                  description: 返回字段掩码
                   schema:
                     type: string
                     format: field-mask
@@ -595,10 +607,12 @@ paths:
         put:
             tags:
                 - DictCategoryService
+            description: 更新字典分类
             operationId: DictCategoryService_Update
             parameters:
                 - name: id
                   in: path
+                  description: 目标ID
                   required: true
                   schema:
                     type: integer
@@ -617,6 +631,7 @@ paths:
         get:
             tags:
                 - DictLabelI18NService
+            description: 查询字典标签多语言列表
             operationId: DictLabelI18NService_List
             parameters:
                 - name: page
@@ -693,6 +708,7 @@ paths:
         post:
             tags:
                 - DictLabelI18NService
+            description: 创建字典标签多语言
             operationId: DictLabelI18NService_Create
             requestBody:
                 content:
@@ -707,10 +723,12 @@ paths:
         delete:
             tags:
                 - DictLabelI18NService
+            description: 删除字典标签多语言
             operationId: DictLabelI18NService_Delete
             parameters:
                 - name: ids
                   in: query
+                  description: 待删除ID列表
                   schema:
                     type: array
                     items:
@@ -724,16 +742,19 @@ paths:
         get:
             tags:
                 - DictLabelI18NService
+            description: 查询字典标签多语言详情
             operationId: DictLabelI18NService_Get
             parameters:
                 - name: id
                   in: path
+                  description: 按ID查询
                   required: true
                   schema:
                     type: integer
                     format: uint32
                 - name: viewMask
                   in: query
+                  description: 返回字段掩码
                   schema:
                     type: string
                     format: field-mask
@@ -747,10 +768,12 @@ paths:
         put:
             tags:
                 - DictLabelI18NService
+            description: 更新字典标签多语言
             operationId: DictLabelI18NService_Update
             parameters:
                 - name: id
                   in: path
+                  description: 目标ID
                   required: true
                   schema:
                     type: integer
@@ -769,6 +792,7 @@ paths:
         get:
             tags:
                 - DictLabelService
+            description: 查询字典标签列表
             operationId: DictLabelService_List
             parameters:
                 - name: page
@@ -845,6 +869,7 @@ paths:
         post:
             tags:
                 - DictLabelService
+            description: 创建字典标签
             operationId: DictLabelService_Create
             requestBody:
                 content:
@@ -859,10 +884,12 @@ paths:
         delete:
             tags:
                 - DictLabelService
+            description: 删除字典标签
             operationId: DictLabelService_Delete
             parameters:
                 - name: ids
                   in: query
+                  description: 待删除ID列表
                   schema:
                     type: array
                     items:
@@ -876,20 +903,24 @@ paths:
         get:
             tags:
                 - DictLabelService
+            description: 查询字典标签详情
             operationId: DictLabelService_Get
             parameters:
                 - name: labelKey
                   in: path
+                  description: 按标签标识查询
                   required: true
                   schema:
                     type: string
                 - name: id
                   in: query
+                  description: 按ID查询
                   schema:
                     type: integer
                     format: uint32
                 - name: viewMask
                   in: query
+                  description: 返回字段掩码
                   schema:
                     type: string
                     format: field-mask
@@ -904,20 +935,24 @@ paths:
         get:
             tags:
                 - DictLabelService
+            description: 查询字典标签详情
             operationId: DictLabelService_Get
             parameters:
                 - name: id
                   in: path
+                  description: 按ID查询
                   required: true
                   schema:
                     type: integer
                     format: uint32
                 - name: labelKey
                   in: query
+                  description: 按标签标识查询
                   schema:
                     type: string
                 - name: viewMask
                   in: query
+                  description: 返回字段掩码
                   schema:
                     type: string
                     format: field-mask
@@ -931,10 +966,12 @@ paths:
         put:
             tags:
                 - DictLabelService
+            description: 更新字典标签
             operationId: DictLabelService_Update
             parameters:
                 - name: id
                   in: path
+                  description: 目标ID
                   required: true
                   schema:
                     type: integer
@@ -4596,17 +4633,26 @@ components:
             type: object
             properties:
                 data:
-                    $ref: '#/components/schemas/DictCategory'
+                    allOf:
+                        - $ref: '#/components/schemas/DictCategory'
+                    description: 待创建数据
+            description: 创建字典分类请求
         CreateDictLabelI18nRequest:
             type: object
             properties:
                 data:
-                    $ref: '#/components/schemas/DictLabelI18n'
+                    allOf:
+                        - $ref: '#/components/schemas/DictLabelI18n'
+                    description: 待创建数据
+            description: 创建字典标签多语言请求
         CreateDictLabelRequest:
             type: object
             properties:
                 data:
-                    $ref: '#/components/schemas/DictLabel'
+                    allOf:
+                        - $ref: '#/components/schemas/DictLabel'
+                    description: 待创建数据
+            description: 创建字典标签请求
         CreateFileRequest:
             type: object
             properties:
@@ -4914,22 +4960,28 @@ components:
             properties:
                 id:
                     type: integer
+                    description: 主键ID
                     format: uint32
                 parentId:
                     type: integer
+                    description: 父分类ID
                     format: uint32
                 path:
                     type: string
+                    description: 树路径
                 categoryKey:
                     type: string
+                    description: 分类唯一标识
                 categoryName:
                     type: string
+                    description: 分类名称
                 categoryLevel:
                     enum:
                         - CATEGORY_LEVEL_UNSPECIFIED
                         - ROOT
                         - CHILD
                     type: string
+                    description: 分类层级
                     format: enum
                 scene:
                     enum:
@@ -4940,60 +4992,81 @@ components:
                         - DEVICE
                         - OTHER
                     type: string
+                    description: 使用场景
                     format: enum
                 isBuiltin:
                     type: boolean
+                    description: 是否内置
                 isEnabled:
                     type: boolean
+                    description: 是否启用
                 sortOrder:
                     type: integer
+                    description: 排序值
                     format: uint32
                 tenantId:
                     type: integer
+                    description: 所属租户ID
                     format: uint32
                 tenantName:
                     type: string
+                    description: 所属租户名称
                 remark:
                     type: string
+                    description: 备注
                 description:
                     type: string
+                    description: 描述
                 children:
                     type: array
                     items:
                         $ref: '#/components/schemas/DictCategory'
+                    description: 子分类
                 createdBy:
                     type: integer
+                    description: 创建者ID
                     format: uint32
                 updatedBy:
                     type: integer
+                    description: 更新者ID
                     format: uint32
                 deletedBy:
                     type: integer
+                    description: 删除者ID
                     format: uint32
                 createdAt:
                     type: string
+                    description: 创建时间
                     format: date-time
                 updatedAt:
                     type: string
+                    description: 更新时间
                     format: date-time
                 deletedAt:
                     type: string
+                    description: 删除时间
                     format: date-time
+            description: 字典分类
         DictLabel:
             type: object
             properties:
                 id:
                     type: integer
+                    description: 主键ID
                     format: uint32
                 categoryId:
                     type: integer
+                    description: 所属分类ID
                     format: uint32
                 categoryKey:
                     type: string
+                    description: 所属分类标识
                 labelKey:
                     type: string
+                    description: 标签唯一标识
                 labelCode:
                     type: string
+                    description: 标签编码
                 labelKind:
                     enum:
                         - LABEL_KIND_UNSPECIFIED
@@ -5004,100 +5077,137 @@ components:
                         - HINT
                         - BADGE
                     type: string
+                    description: 标签类型
                     format: enum
                 defaultText:
                     type: string
+                    description: 默认文本
                 payloadJson:
                     type: string
+                    description: 扩展载荷JSON
                 isBuiltin:
                     type: boolean
+                    description: 是否内置
                 isEnabled:
                     type: boolean
+                    description: 是否启用
                 status:
                     enum:
                         - STATUS_UNSPECIFIED
                         - OFF
                         - ON
                     type: string
+                    description: 状态
                     format: enum
                 sortOrder:
                     type: integer
+                    description: 排序值
                     format: uint32
                 tenantId:
                     type: integer
+                    description: 所属租户ID
                     format: uint32
                 tenantName:
                     type: string
+                    description: 所属租户名称
                 remark:
                     type: string
+                    description: 备注
                 description:
                     type: string
+                    description: 描述
                 itemsI18n:
                     type: array
                     items:
                         $ref: '#/components/schemas/DictLabelI18n'
+                    description: 多语言条目列表
                 currentI18n:
-                    $ref: '#/components/schemas/DictLabelI18n'
+                    allOf:
+                        - $ref: '#/components/schemas/DictLabelI18n'
+                    description: 当前语言条目
                 createdBy:
                     type: integer
+                    description: 创建者ID
                     format: uint32
                 updatedBy:
                     type: integer
+                    description: 更新者ID
                     format: uint32
                 deletedBy:
                     type: integer
+                    description: 删除者ID
                     format: uint32
                 createdAt:
                     type: string
+                    description: 创建时间
                     format: date-time
                 updatedAt:
                     type: string
+                    description: 更新时间
                     format: date-time
                 deletedAt:
                     type: string
+                    description: 删除时间
                     format: date-time
+            description: 字典标签
         DictLabelI18n:
             type: object
             properties:
                 id:
                     type: integer
+                    description: 主键ID
                     format: uint32
                 labelId:
                     type: integer
+                    description: 所属标签ID
                     format: uint32
                 labelKey:
                     type: string
+                    description: 所属标签标识
                 languageCode:
                     type: string
+                    description: 语言编码
                 languageName:
                     type: string
+                    description: 语言名称
                 textValue:
                     type: string
+                    description: 文本值
                 shortText:
                     type: string
+                    description: 短文本
                 description:
                     type: string
+                    description: 描述
                 tenantId:
                     type: integer
+                    description: 所属租户ID
                     format: uint32
                 createdBy:
                     type: integer
+                    description: 创建者ID
                     format: uint32
                 updatedBy:
                     type: integer
+                    description: 更新者ID
                     format: uint32
                 deletedBy:
                     type: integer
+                    description: 删除者ID
                     format: uint32
                 createdAt:
                     type: string
+                    description: 创建时间
                     format: date-time
                 updatedAt:
                     type: string
+                    description: 更新时间
                     format: date-time
                 deletedAt:
                     type: string
+                    description: 删除时间
                     format: date-time
+            description: 字典标签多语言值
         DownloadFileResponse:
             type: object
             properties:
@@ -5578,8 +5688,11 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/DictCategory'
+                    description: 数据项
                 total:
                     type: string
+                    description: 总数
+            description: 字典分类列表响应
         ListDictLabelI18nResponse:
             type: object
             properties:
@@ -5587,8 +5700,11 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/DictLabelI18n'
+                    description: 数据项
                 total:
                     type: string
+                    description: 总数
+            description: 字典标签多语言列表响应
         ListDictLabelResponse:
             type: object
             properties:
@@ -5596,8 +5712,11 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/DictLabel'
+                    description: 数据项
                 total:
                     type: string
+                    description: 总数
+            description: 字典标签列表响应
         ListFileResponse:
             type: object
             properties:
@@ -7327,40 +7446,58 @@ components:
             properties:
                 id:
                     type: integer
+                    description: 目标ID
                     format: uint32
                 data:
-                    $ref: '#/components/schemas/DictCategory'
+                    allOf:
+                        - $ref: '#/components/schemas/DictCategory'
+                    description: 更新数据
                 updateMask:
                     type: string
+                    description: 更新字段掩码
                     format: field-mask
                 allowMissing:
                     type: boolean
+                    description: 不存在时是否允许创建
+            description: 更新字典分类请求
         UpdateDictLabelI18nRequest:
             type: object
             properties:
                 id:
                     type: integer
+                    description: 目标ID
                     format: uint32
                 data:
-                    $ref: '#/components/schemas/DictLabelI18n'
+                    allOf:
+                        - $ref: '#/components/schemas/DictLabelI18n'
+                    description: 更新数据
                 updateMask:
                     type: string
+                    description: 更新字段掩码
                     format: field-mask
                 allowMissing:
                     type: boolean
+                    description: 不存在时是否允许创建
+            description: 更新字典标签多语言请求
         UpdateDictLabelRequest:
             type: object
             properties:
                 id:
                     type: integer
+                    description: 目标ID
                     format: uint32
                 data:
-                    $ref: '#/components/schemas/DictLabel'
+                    allOf:
+                        - $ref: '#/components/schemas/DictLabel'
+                    description: 更新数据
                 updateMask:
                     type: string
+                    description: 更新字段掩码
                     format: field-mask
                 allowMissing:
                     type: boolean
+                    description: 不存在时是否允许创建
+            description: 更新字典标签请求
         UpdateFileRequest:
             type: object
             properties:
@@ -7868,8 +8005,11 @@ tags:
     - name: DataAccessAuditLogService
       description: 数据访问审计日志管理服务
     - name: DictCategoryService
+      description: 字典分类管理服务
     - name: DictLabelI18NService
+      description: 字典标签多语言管理服务
     - name: DictLabelService
+      description: 字典标签管理服务
     - name: FileService
       description: 文件管理服务
     - name: FileTransferService

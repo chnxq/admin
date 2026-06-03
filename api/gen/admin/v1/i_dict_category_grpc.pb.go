@@ -32,11 +32,18 @@ const (
 // DictCategoryServiceClient is the client API for DictCategoryService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// 字典分类管理服务
 type DictCategoryServiceClient interface {
+	// 查询字典分类列表
 	List(ctx context.Context, in *v1.PagingRequest, opts ...grpc.CallOption) (*v11.ListDictCategoryResponse, error)
+	// 查询字典分类详情
 	Get(ctx context.Context, in *v11.GetDictCategoryRequest, opts ...grpc.CallOption) (*v11.DictCategory, error)
+	// 创建字典分类
 	Create(ctx context.Context, in *v11.CreateDictCategoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// 更新字典分类
 	Update(ctx context.Context, in *v11.UpdateDictCategoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// 删除字典分类
 	Delete(ctx context.Context, in *v11.DeleteDictCategoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -101,11 +108,18 @@ func (c *dictCategoryServiceClient) Delete(ctx context.Context, in *v11.DeleteDi
 // DictCategoryServiceServer is the server API for DictCategoryService service.
 // All implementations must embed UnimplementedDictCategoryServiceServer
 // for forward compatibility.
+//
+// 字典分类管理服务
 type DictCategoryServiceServer interface {
+	// 查询字典分类列表
 	List(context.Context, *v1.PagingRequest) (*v11.ListDictCategoryResponse, error)
+	// 查询字典分类详情
 	Get(context.Context, *v11.GetDictCategoryRequest) (*v11.DictCategory, error)
+	// 创建字典分类
 	Create(context.Context, *v11.CreateDictCategoryRequest) (*emptypb.Empty, error)
+	// 更新字典分类
 	Update(context.Context, *v11.UpdateDictCategoryRequest) (*emptypb.Empty, error)
+	// 删除字典分类
 	Delete(context.Context, *v11.DeleteDictCategoryRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDictCategoryServiceServer()
 }

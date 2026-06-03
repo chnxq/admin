@@ -7,15 +7,19 @@ import "google/protobuf/empty.proto";
 import "pagination/v1/pagination.proto";
 import "dict/v1/dict_label_i18n.proto";
 
+// 字典标签多语言管理服务
 service DictLabelI18nService {
+  // 查询字典标签多语言列表
   rpc List(pagination.PagingRequest) returns (dict.service.v1.ListDictLabelI18nResponse) {
     option (google.api.http) = { get: "/admin/v1/dict/label-i18n" };
   }
 
+  // 查询字典标签多语言详情
   rpc Get(dict.service.v1.GetDictLabelI18nRequest) returns (dict.service.v1.DictLabelI18n) {
     option (google.api.http) = { get: "/admin/v1/dict/label-i18n/{id}" };
   }
 
+  // 创建字典标签多语言
   rpc Create(dict.service.v1.CreateDictLabelI18nRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       post: "/admin/v1/dict/label-i18n"
@@ -23,6 +27,7 @@ service DictLabelI18nService {
     };
   }
 
+  // 更新字典标签多语言
   rpc Update(dict.service.v1.UpdateDictLabelI18nRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       put: "/admin/v1/dict/label-i18n/{id}"
@@ -30,6 +35,7 @@ service DictLabelI18nService {
     };
   }
 
+  // 删除字典标签多语言
   rpc Delete(dict.service.v1.DeleteDictLabelI18nRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = { delete: "/admin/v1/dict/label-i18n" };
   }

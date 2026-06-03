@@ -15,19 +15,26 @@ import (
 	"admin/internal/data/repo"
 
 	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
+	crudviewer "github.com/chnxq/x-crud/viewer"
 	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 const (
 	defaultPermissionGroupModule = "biz"
 	uncategorizedPermissionGroup = "uncategorized"
+	permissionGroupModuleService = "permission:view:service"
+	permissionGroupModuleFeature = "permission:view:feature"
+	permissionGroupModuleExport  = "permission:view:service:export"
+	permissionGroupModuleMisc    = "permission:view:service:uncategorized"
+	servicePermissionCodePrefix  = "service:"
 )
 
 type desiredPermissionGroup struct {
-	id       uint32
-	module   string
-	name     string
-	parentID *uint32
+	module       string
+	name         string
+	parentModule string
+	sortOrder    uint32
+	path         string
 }
 
 type desiredPermission struct {
@@ -37,6 +44,24 @@ type desiredPermission struct {
 	groupModule string
 	menuIDs     []uint32
 	apiIDs      []uint32
+}
+
+type featureMenuDescriptor struct {
+	groupModule   string
+	groupName     string
+	menuID        uint32
+	menuPath      string
+	baseResource  string
+	explicitCodes []string
+}
+
+type featureActionAggregate struct {
+	apiIDs []uint32
+	codes  []string
+}
+
+type featureExplicitAggregate struct {
+	apiIDs []uint32
 }
 
 func (s *PermissionService) syncPermissions(ctx context.Context) error {
@@ -64,115 +89,80 @@ func (s *PermissionService) syncPermissions(ctx context.Context) error {
 	for index := range permissions {
 		groupID, ok := groupIDs[permissions[index].groupModule]
 		if !ok || groupID == 0 {
-			groupID = groupIDs[uncategorizedPermissionGroup]
+			groupID = groupIDs[permissionGroupModuleMisc]
 		}
 		permissions[index].id = groupID
 	}
 
-	return s.reconcilePermissions(ctx, permissions)
+	if err := s.reconcilePermissions(ctx, permissions); err != nil {
+		return err
+	}
+	return s.reconcileDefaultRolePermissions(ctx)
 }
 
 func (s *PermissionService) collectDesiredPermissionGroups(ctx context.Context) ([]desiredPermissionGroup, error) {
-	menuResp, err := s.menuRepo.List(ctx, &paginationv1.PagingRequest{
-		NoPaging: boolPtr(true),
-	})
+	apiResp, err := s.apiRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
+	if err != nil {
+		return nil, err
+	}
+	menuResp, err := s.menuRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
 		return nil, err
 	}
 
-	groups := make([]desiredPermissionGroup, 0)
-	seen := map[string]struct{}{}
-
-	groups = append(groups, desiredPermissionGroup{
-		module: uncategorizedPermissionGroup,
-		name:   "未分类",
-	})
-	seen[uncategorizedPermissionGroup] = struct{}{}
-
-	for _, menu := range menuResp.GetItems() {
-		if menu == nil || menu.GetStatus() != resourcev1.Menu_ON || menu.GetType() != resourcev1.Menu_CATALOG {
-			continue
-		}
-		module := moduleFromMenuPath(menu.GetPath())
-		if _, ok := seen[module]; ok {
-			continue
-		}
-		seen[module] = struct{}{}
-		groups = append(groups, desiredPermissionGroup{
-			module: module,
-			name:   firstNonEmpty(menu.GetName(), displayMenuTitle(menu), module),
-		})
+	groups := []desiredPermissionGroup{
+		{module: permissionGroupModuleService, name: "服务分组", sortOrder: 1, path: "/"},
+		{module: permissionGroupModuleExport, name: "数据导出", parentModule: permissionGroupModuleService, sortOrder: 1},
+		{module: permissionGroupModuleMisc, name: "未分类", parentModule: permissionGroupModuleService, sortOrder: 2},
+		{module: permissionGroupModuleFeature, name: "功能分组", sortOrder: 2, path: "/"},
 	}
 
-	sort.SliceStable(groups, func(i, j int) bool {
-		if groups[i].module == uncategorizedPermissionGroup {
-			return true
+	serviceGroups := map[string]desiredPermissionGroup{}
+	nextSort := uint32(100)
+	for _, api := range apiResp.GetItems() {
+		if api == nil || api.GetStatus() != resourcev1.Api_ON {
+			continue
 		}
-		if groups[j].module == uncategorizedPermissionGroup {
-			return false
+		module, name := serviceGroupIdentityFromAPI(api)
+		if module == "" || module == permissionGroupModuleExport || module == permissionGroupModuleMisc {
+			continue
 		}
-		return groups[i].module < groups[j].module
-	})
+		if _, ok := serviceGroups[module]; ok {
+			continue
+		}
+		serviceGroups[module] = desiredPermissionGroup{
+			module:       module,
+			name:         name,
+			parentModule: permissionGroupModuleService,
+			sortOrder:    nextSort,
+		}
+		nextSort++
+	}
 
+	serviceKeys := make([]string, 0, len(serviceGroups))
+	for key := range serviceGroups {
+		serviceKeys = append(serviceKeys, key)
+	}
+	sort.Strings(serviceKeys)
+	for _, key := range serviceKeys {
+		groups = append(groups, serviceGroups[key])
+	}
+
+	groups = append(groups, collectFeaturePermissionGroups(menuResp.GetItems())...)
 	return groups, nil
 }
 
 func (s *PermissionService) collectDesiredPermissions(ctx context.Context) ([]desiredPermission, error) {
-	menuResp, err := s.menuRepo.List(ctx, &paginationv1.PagingRequest{
-		NoPaging: boolPtr(true),
-	})
+	menuResp, err := s.menuRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
 		return nil, err
 	}
-	apiResp, err := s.apiRepo.List(ctx, &paginationv1.PagingRequest{
-		NoPaging: boolPtr(true),
-	})
+	apiResp, err := s.apiRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
 		return nil, err
 	}
 
 	desired := map[string]*desiredPermission{}
-
-	for _, menu := range menuResp.GetItems() {
-		if menu == nil || menu.GetStatus() != resourcev1.Menu_ON {
-			continue
-		}
-
-		fullPath := composeMenuFullPath(menu, menuResp.GetItems())
-		explicitAuthorities := menuAuthorityCodes(menu)
-		if len(explicitAuthorities) > 0 {
-			for _, code := range explicitAuthorities {
-				current, ok := desired[code]
-				if !ok {
-					current = &desiredPermission{
-						code:        code,
-						name:        firstNonEmpty(displayMenuTitle(menu), menu.GetName(), code),
-						groupModule: moduleFromMenuPath(fullPath),
-					}
-					desired[code] = current
-				}
-				current.menuIDs = appendUniqueUint32(current.menuIDs, menu.GetId())
-			}
-			continue
-		}
-
-		code := menuPermissionCode(fullPath, displayMenuTitle(menu), menu.GetType())
-		if code == "" {
-			continue
-		}
-
-		current, ok := desired[code]
-		if !ok {
-			current = &desiredPermission{
-				code:        code,
-				name:        firstNonEmpty(displayMenuTitle(menu), menu.GetName(), code),
-				groupModule: moduleFromMenuPath(fullPath),
-			}
-			desired[code] = current
-		}
-		current.menuIDs = appendUniqueUint32(current.menuIDs, menu.GetId())
-	}
-
 	for _, api := range apiResp.GetItems() {
 		if api == nil || api.GetStatus() != resourcev1.Api_ON {
 			continue
@@ -182,17 +172,19 @@ func (s *PermissionService) collectDesiredPermissions(ctx context.Context) ([]de
 			continue
 		}
 
-		current, ok := desired[code]
+		module, _ := serviceGroupIdentityFromAPI(api)
+		serviceCode := servicePermissionCode(module, code)
+		if serviceCode == "" {
+			continue
+		}
+		current, ok := desired[serviceCode]
 		if !ok {
 			current = &desiredPermission{
-				code:        code,
-				name:        firstNonEmpty(api.GetDescription(), api.GetOperation(), code),
-				groupModule: moduleFromAPIPath(api.GetPath()),
+				code:        serviceCode,
+				name:        "[服务] " + permissionNameFromAPI(api),
+				groupModule: module,
 			}
-			desired[code] = current
-		}
-		if current.groupModule == "" {
-			current.groupModule = moduleFromAPIPath(api.GetPath())
+			desired[current.code] = current
 		}
 		current.apiIDs = appendUniqueUint32(current.apiIDs, api.GetId())
 
@@ -200,39 +192,50 @@ func (s *PermissionService) collectDesiredPermissions(ctx context.Context) ([]de
 		if exportCode == "" {
 			continue
 		}
-		exportCurrent, ok := desired[exportCode]
+
+		exportPermCode := servicePermissionCode(module, exportCode)
+		exportCurrent, ok := desired[exportPermCode]
 		if !ok {
 			exportCurrent = &desiredPermission{
-				code:        exportCode,
-				name:        firstNonEmpty(current.name, exportCode),
-				groupModule: firstNonEmpty(current.groupModule, uncategorizedPermissionGroup),
+				code:        exportPermCode,
+				name:        "[服务] " + exportPermissionNameFromAPI(api),
+				groupModule: permissionGroupModuleExport,
 			}
-			desired[exportCode] = exportCurrent
+			desired[exportCurrent.code] = exportCurrent
 		}
 		exportCurrent.apiIDs = appendUniqueUint32(exportCurrent.apiIDs, api.GetId())
 	}
 
+	for _, item := range collectFeaturePermissions(menuResp.GetItems(), apiResp.GetItems()) {
+		current, ok := desired[item.code]
+		if !ok {
+			clone := item
+			desired[item.code] = &clone
+			continue
+		}
+		if current.groupModule == "" {
+			current.groupModule = item.groupModule
+		}
+		current.name = firstNonEmpty(current.name, item.name)
+		current.menuIDs = mergeUniqueUint32(current.menuIDs, item.menuIDs)
+		current.apiIDs = mergeUniqueUint32(current.apiIDs, item.apiIDs)
+	}
+
 	items := make([]desiredPermission, 0, len(desired))
 	for _, item := range desired {
-		if item.groupModule == "" {
-			item.groupModule = uncategorizedPermissionGroup
+		if strings.TrimSpace(item.groupModule) == "" {
+			item.groupModule = permissionGroupModuleMisc
 		}
 		sort.SliceStable(item.menuIDs, func(i, j int) bool { return item.menuIDs[i] < item.menuIDs[j] })
 		sort.SliceStable(item.apiIDs, func(i, j int) bool { return item.apiIDs[i] < item.apiIDs[j] })
 		items = append(items, *item)
 	}
-
-	sort.SliceStable(items, func(i, j int) bool {
-		return items[i].code < items[j].code
-	})
-
+	sort.SliceStable(items, func(i, j int) bool { return items[i].code < items[j].code })
 	return items, nil
 }
 
 func (s *PermissionService) reconcilePermissionGroups(ctx context.Context, desired []desiredPermissionGroup) (map[string]uint32, error) {
-	existingResp, err := s.permissionGroupRepo.List(ctx, &paginationv1.PagingRequest{
-		NoPaging: boolPtr(true),
-	})
+	existingResp, err := s.permissionGroupRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
 		return nil, err
 	}
@@ -250,65 +253,90 @@ func (s *PermissionService) reconcilePermissionGroups(ctx context.Context, desir
 	}
 
 	groupIDs := make(map[string]uint32, len(desired))
-	for index, group := range desired {
-		sortOrder := uint32(index + 1)
-		if existing, ok := existingByModule[group.module]; ok && existing.GetId() > 0 {
-			groupIDs[group.module] = existing.GetId()
-			_, err = s.permissionGroupRepo.Update(ctx, &permissionv1.UpdatePermissionGroupRequest{
-				Id: existing.GetId(),
+	pending := append([]desiredPermissionGroup(nil), desired...)
+	for len(pending) > 0 {
+		progressed := false
+		remaining := make([]desiredPermissionGroup, 0, len(pending))
+		for _, group := range pending {
+			var parentID *uint32
+			path := strings.TrimSpace(group.path)
+			if group.parentModule != "" {
+				id, ok := groupIDs[group.parentModule]
+				if !ok || id == 0 {
+					remaining = append(remaining, group)
+					continue
+				}
+				parentID = uint32Ptr(id)
+				path = buildPermissionGroupPath(groupIDs, group.parentModule)
+			} else if path == "" {
+				path = "/"
+			}
+
+			if existing, ok := existingByModule[group.module]; ok && existing.GetId() > 0 {
+				groupIDs[group.module] = existing.GetId()
+				_, err = s.permissionGroupRepo.Update(ctx, &permissionv1.UpdatePermissionGroupRequest{
+					Id: existing.GetId(),
+					Data: &permissionv1.PermissionGroup{
+						Id:        uint32Ptr(existing.GetId()),
+						Name:      stringPtr(group.name),
+						Module:    stringPtr(group.module),
+						SortOrder: uint32Ptr(group.sortOrder),
+						Status:    permissionv1.PermissionGroup_ON.Enum(),
+						ParentId:  parentID,
+						Path:      stringPtr(path),
+					},
+					UpdateMask: &fieldmaskpb.FieldMask{
+						Paths: []string{"name", "module", "sortOrder", "status", "parentId", "path"},
+					},
+				})
+				if err != nil {
+					return nil, err
+				}
+				progressed = true
+				continue
+			}
+
+			if _, err = s.permissionGroupRepo.Create(ctx, &permissionv1.CreatePermissionGroupRequest{
 				Data: &permissionv1.PermissionGroup{
-					Id:        uint32Ptr(existing.GetId()),
-					Module:    stringPtr(group.module),
 					Name:      stringPtr(group.name),
-					SortOrder: uint32Ptr(sortOrder),
+					Module:    stringPtr(group.module),
+					SortOrder: uint32Ptr(group.sortOrder),
 					Status:    permissionv1.PermissionGroup_ON.Enum(),
+					ParentId:  parentID,
+					Path:      stringPtr(path),
 				},
-				UpdateMask: &fieldmaskpb.FieldMask{
-					Paths: []string{"module", "name", "sortOrder", "status"},
-				},
-			})
-			if err != nil {
+			}); err != nil {
 				return nil, err
 			}
-			continue
-		}
+			progressed = true
 
-		if _, err = s.permissionGroupRepo.Create(ctx, &permissionv1.CreatePermissionGroupRequest{
-			Data: &permissionv1.PermissionGroup{
-				Module:    stringPtr(group.module),
-				Name:      stringPtr(group.name),
-				SortOrder: uint32Ptr(sortOrder),
-				Status:    permissionv1.PermissionGroup_ON.Enum(),
-			},
-		}); err != nil {
-			return nil, err
+			refreshedResp, refreshErr := s.permissionGroupRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
+			if refreshErr != nil {
+				return nil, refreshErr
+			}
+			for _, item := range refreshedResp.GetItems() {
+				if item == nil || item.GetId() == 0 {
+					continue
+				}
+				module := strings.TrimSpace(item.GetModule())
+				if module == "" {
+					continue
+				}
+				existingByModule[module] = item
+				groupIDs[module] = item.GetId()
+			}
 		}
-	}
-
-	refreshedResp, err := s.permissionGroupRepo.List(ctx, &paginationv1.PagingRequest{
-		NoPaging: boolPtr(true),
-	})
-	if err != nil {
-		return nil, err
-	}
-	for _, item := range refreshedResp.GetItems() {
-		if item == nil || item.GetId() == 0 {
-			continue
+		if !progressed {
+			return nil, fmt.Errorf("permission group reconciliation stalled")
 		}
-		module := strings.TrimSpace(item.GetModule())
-		if module == "" {
-			continue
-		}
-		groupIDs[module] = item.GetId()
+		pending = remaining
 	}
 
 	return groupIDs, nil
 }
 
 func (s *PermissionService) reconcilePermissions(ctx context.Context, desired []desiredPermission) error {
-	existingResp, err := s.permissionRepo.List(ctx, &paginationv1.PagingRequest{
-		NoPaging: boolPtr(true),
-	})
+	existingResp, err := s.permissionRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
 		return err
 	}
@@ -326,16 +354,17 @@ func (s *PermissionService) reconcilePermissions(ctx context.Context, desired []
 	}
 
 	for _, item := range desired {
-		groupID := item.id
+		if strings.TrimSpace(item.code) == "" {
+			continue
+		}
 		data := &permissionv1.Permission{
 			Name:    stringPtr(item.name),
 			Code:    stringPtr(item.code),
-			GroupId: uint32Ptr(groupID),
+			GroupId: uint32Ptr(item.id),
 			Status:  permissionv1.Permission_ON.Enum(),
 			MenuIds: append([]uint32(nil), item.menuIDs...),
 			ApiIds:  append([]uint32(nil), item.apiIDs...),
 		}
-
 		if existing, ok := existingByCode[item.code]; ok && existing.GetId() > 0 {
 			_, err = s.permissionRepo.Update(ctx, &permissionv1.UpdatePermissionRequest{
 				Id:   existing.GetId(),
@@ -349,14 +378,10 @@ func (s *PermissionService) reconcilePermissions(ctx context.Context, desired []
 			}
 			continue
 		}
-
-		if _, err = s.permissionRepo.Create(ctx, &permissionv1.CreatePermissionRequest{
-			Data: data,
-		}); err != nil {
+		if _, err = s.permissionRepo.Create(ctx, &permissionv1.CreatePermissionRequest{Data: data}); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -498,7 +523,6 @@ func apiPathSegments(path string) []string {
 		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
 			continue
 		}
-
 		normalized := normalizeSegment(part)
 		if normalized == "" {
 			continue
@@ -556,7 +580,7 @@ func displayMenuTitle(menu *resourcev1.Menu) string {
 	if menu == nil || menu.GetMeta() == nil {
 		return ""
 	}
-	return strings.TrimSpace(menu.GetMeta().GetTitle())
+	return resolveMenuTitleKey(menu.GetMeta().GetTitle())
 }
 
 func menuAuthorityCodes(menu *resourcev1.Menu) []string {
@@ -579,27 +603,650 @@ func menuAuthorityCodes(menu *resourcev1.Menu) []string {
 	return result
 }
 
-func moduleFromMenuPath(path string) string {
-	path = strings.Trim(strings.TrimSpace(path), "/")
-	if path == "" {
-		return defaultPermissionGroupModule
-	}
-	segments := strings.Split(path, "/")
-	if len(segments) > 1 {
-		segment := normalizeSegment(segments[1])
-		if segment != "" {
-			return segment
-		}
-	}
-	return defaultPermissionGroupModule
-}
-
 func moduleFromAPIPath(path string) string {
 	module := apiResourceFromPath(path)
 	if module == "" {
 		return uncategorizedPermissionGroup
 	}
 	return strings.Split(module, ":")[0]
+}
+
+func serviceGroupIdentityFromAPI(api *resourcev1.Api) (string, string) {
+	if api == nil {
+		return permissionGroupModuleMisc, "未分类"
+	}
+	if isExplicitExportAPI(api.GetMethod(), api.GetPath()) {
+		return permissionGroupModuleExport, "数据导出"
+	}
+
+	module := strings.TrimSpace(api.GetModule())
+	if module == "" {
+		module = moduleFromAPIPath(api.GetPath())
+	}
+	module = normalizeSegment(module)
+	if module == "" || module == uncategorizedPermissionGroup {
+		return permissionGroupModuleMisc, "未分类"
+	}
+
+	name := trimServiceSuffix(firstNonEmpty(api.GetModuleDescription(), api.GetModule(), module))
+	return permissionGroupModuleService + ":" + module, name
+}
+
+func permissionNameFromAPI(api *resourcev1.Api) string {
+	if api == nil {
+		return ""
+	}
+	return firstNonEmpty(api.GetDescription(), api.GetOperation(), apiPermissionCode(api.GetMethod(), api.GetPath()))
+}
+
+func servicePermissionCode(module, code string) string {
+	module = strings.TrimSpace(module)
+	code = strings.TrimSpace(code)
+	if module == "" || module == permissionGroupModuleExport || module == permissionGroupModuleMisc || code == "" {
+		return ""
+	}
+	module = strings.TrimPrefix(module, permissionGroupModuleService+":")
+	module = normalizeSegment(module)
+	if module == "" {
+		return ""
+	}
+	return servicePermissionCodePrefix + module + ":" + code
+}
+
+func exportPermissionNameFromAPI(api *resourcev1.Api) string {
+	name := permissionNameFromAPI(api)
+	if strings.HasPrefix(name, "查询") {
+		return "导出" + strings.TrimPrefix(name, "查询")
+	}
+	return firstNonEmpty("导出"+name, "导出")
+}
+
+func buildPermissionGroupPath(groupIDs map[string]uint32, parentModule string) string {
+	parentID, ok := groupIDs[parentModule]
+	if !ok || parentID == 0 {
+		return "/"
+	}
+	return fmt.Sprintf("/%d/", parentID)
+}
+
+func isExplicitExportAPI(method, path string) bool {
+	if !strings.EqualFold(strings.TrimSpace(method), "GET") {
+		return false
+	}
+	segments := apiPathSegments(path)
+	if len(segments) == 0 {
+		return false
+	}
+	last := segments[len(segments)-1]
+	return last == "export" || last == "download"
+}
+
+func collectFeaturePermissionGroups(menus []*resourcev1.Menu) []desiredPermissionGroup {
+	descriptors := buildFeatureMenuDescriptors(menus)
+	groups := make([]desiredPermissionGroup, 0, len(descriptors))
+	for _, item := range descriptors {
+		groups = append(groups, desiredPermissionGroup{
+			module:       item.groupModule,
+			name:         item.groupName,
+			parentModule: permissionGroupModuleFeature,
+			sortOrder:    uint32(len(groups) + 1),
+		})
+	}
+	return groups
+}
+
+func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api) []desiredPermission {
+	descriptors := buildFeatureMenuDescriptors(menus)
+	if len(descriptors) == 0 {
+		return nil
+	}
+
+	menuByID := make(map[uint32]*resourcev1.Menu, len(menus))
+	parentByID := make(map[uint32]uint32, len(menus))
+	featureByModule := make(map[string]featureMenuDescriptor, len(descriptors))
+	featureByCanonicalResource := make(map[string][]featureMenuDescriptor)
+	authorityToFeature := map[string][]string{}
+	featureHasExplicitAuthorities := map[string]bool{}
+	featureNamespaces := map[string]map[string]struct{}{}
+	for _, menu := range menus {
+		if menu == nil || menu.GetId() == 0 {
+			continue
+		}
+		menuByID[menu.GetId()] = menu
+		if menu.GetParentId() != 0 {
+			parentByID[menu.GetId()] = menu.GetParentId()
+		}
+	}
+	for _, item := range descriptors {
+		featureByModule[item.groupModule] = item
+		canonical := canonicalResourceName(item.baseResource)
+		if canonical != "" {
+			featureByCanonicalResource[canonical] = append(featureByCanonicalResource[canonical], item)
+		}
+		for _, code := range item.explicitCodes {
+			authorityToFeature[code] = appendUniqueString(authorityToFeature[code], item.groupModule)
+			namespace := permissionCodeNamespace(code)
+			if namespace == "" {
+				continue
+			}
+			if featureNamespaces[item.groupModule] == nil {
+				featureNamespaces[item.groupModule] = map[string]struct{}{}
+			}
+			featureNamespaces[item.groupModule][namespace] = struct{}{}
+		}
+		if len(item.explicitCodes) > 0 {
+			featureHasExplicitAuthorities[item.groupModule] = true
+		}
+	}
+
+	apiAgg := map[string]map[string]*featureActionAggregate{}
+	explicitAgg := map[string]map[string]*featureExplicitAggregate{}
+	for _, api := range apis {
+		if api == nil || api.GetStatus() != resourcev1.Api_ON {
+			continue
+		}
+		actualCode := apiPermissionCode(api.GetMethod(), api.GetPath())
+		if actualCode == "" {
+			continue
+		}
+
+		matchedModules := map[string]struct{}{}
+		for _, module := range authorityToFeature[actualCode] {
+			matchedModules[module] = struct{}{}
+			if explicitAgg[module] == nil {
+				explicitAgg[module] = map[string]*featureExplicitAggregate{}
+			}
+			if explicitAgg[module][actualCode] == nil {
+				explicitAgg[module][actualCode] = &featureExplicitAggregate{}
+			}
+			explicitAgg[module][actualCode].apiIDs = appendUniqueUint32(explicitAgg[module][actualCode].apiIDs, api.GetId())
+		}
+		exportCode := apiExportPermissionCode(api.GetMethod(), api.GetPath())
+		if exportCode != "" {
+			for _, module := range authorityToFeature[exportCode] {
+				matchedModules[module] = struct{}{}
+				if explicitAgg[module] == nil {
+					explicitAgg[module] = map[string]*featureExplicitAggregate{}
+				}
+				if explicitAgg[module][exportCode] == nil {
+					explicitAgg[module][exportCode] = &featureExplicitAggregate{}
+				}
+				explicitAgg[module][exportCode].apiIDs = appendUniqueUint32(explicitAgg[module][exportCode].apiIDs, api.GetId())
+			}
+		}
+		actualNamespace := permissionCodeNamespace(actualCode)
+		exportNamespace := permissionCodeNamespace(exportCode)
+		for _, descriptor := range descriptors {
+			namespaces := featureNamespaces[descriptor.groupModule]
+			if len(namespaces) == 0 {
+				continue
+			}
+			if _, ok := namespaces[actualNamespace]; ok {
+				matchedModules[descriptor.groupModule] = struct{}{}
+				continue
+			}
+			if exportNamespace != "" {
+				if _, ok := namespaces[exportNamespace]; ok {
+					matchedModules[descriptor.groupModule] = struct{}{}
+				}
+			}
+		}
+
+		resourceKey := canonicalResourceName(primaryAPIResource(api.GetPath()))
+		for _, descriptor := range featureByCanonicalResource[resourceKey] {
+			if featureHasExplicitAuthorities[descriptor.groupModule] {
+				continue
+			}
+			matchedModules[descriptor.groupModule] = struct{}{}
+		}
+
+		action := featurePermissionActionFromAPI(api)
+		for module := range matchedModules {
+			if apiAgg[module] == nil {
+				apiAgg[module] = map[string]*featureActionAggregate{}
+			}
+			if apiAgg[module][action] == nil {
+				apiAgg[module][action] = &featureActionAggregate{}
+			}
+			apiAgg[module][action].apiIDs = appendUniqueUint32(apiAgg[module][action].apiIDs, api.GetId())
+			apiAgg[module][action].codes = appendUniqueString(apiAgg[module][action].codes, actualCode)
+			if exportCode != "" && action == "export" {
+				apiAgg[module][action].codes = appendUniqueString(apiAgg[module][action].codes, exportCode)
+			}
+		}
+	}
+
+	desired := map[string]*desiredPermission{}
+	for _, feature := range descriptors {
+		if len(feature.explicitCodes) > 0 {
+			for _, explicitCode := range feature.explicitCodes {
+				current := ensureDesiredPermission(desired, explicitCode, explicitFeaturePermissionDisplayName(feature.groupName, explicitCode), feature.groupModule)
+				if current == nil {
+					continue
+				}
+				if strings.HasSuffix(strings.TrimSpace(explicitCode), ":view") {
+					current.menuIDs = appendUniqueUint32(current.menuIDs, feature.menuID)
+				}
+				if aggregate := explicitAgg[feature.groupModule][explicitCode]; aggregate != nil {
+					current.apiIDs = mergeUniqueUint32(current.apiIDs, aggregate.apiIDs)
+				}
+			}
+			continue
+		}
+		viewCode := firstNonEmpty(firstString(feature.explicitCodes), firstCodeForAction(apiAgg[feature.groupModule], "view"), menuPermissionCode(feature.menuPath, feature.groupName, resourcev1.Menu_MENU))
+		if viewCode != "" {
+			current := ensureDesiredPermission(desired, viewCode, featurePermissionDisplayName(feature.groupName, "view"), feature.groupModule)
+			current.menuIDs = appendUniqueUint32(current.menuIDs, feature.menuID)
+			if aggregate := apiAgg[feature.groupModule]["view"]; aggregate != nil {
+				current.apiIDs = mergeUniqueUint32(current.apiIDs, aggregate.apiIDs)
+			}
+		}
+	}
+
+	for _, menu := range menus {
+		if menu == nil || menu.GetStatus() != resourcev1.Menu_ON || menu.GetType() != resourcev1.Menu_BUTTON {
+			continue
+		}
+		feature := resolveFeatureDescriptorForMenu(menu.GetId(), menuByID, parentByID, featureByModule)
+		if feature == nil {
+			continue
+		}
+		action := buttonAction(firstNonEmpty(displayMenuTitle(menu), menu.GetName()))
+		code := firstNonEmpty(firstString(menuAuthorityCodes(menu)), firstCodeForAction(apiAgg[feature.groupModule], action), menuPermissionCode(resolvedMenuPath(menu, menuByID), displayMenuTitle(menu), menu.GetType()))
+		if code == "" {
+			code = featureActionSyntheticCode(feature.menuPath, action)
+		}
+		name := featurePermissionDisplayName(feature.groupName, action)
+		if action == "act" {
+			name = firstNonEmpty(displayMenuTitle(menu), menu.GetName(), name)
+		}
+		current := ensureDesiredPermission(desired, code, name, feature.groupModule)
+		current.menuIDs = appendUniqueUint32(current.menuIDs, menu.GetId())
+		if aggregate := apiAgg[feature.groupModule][action]; aggregate != nil {
+			current.apiIDs = mergeUniqueUint32(current.apiIDs, aggregate.apiIDs)
+		}
+	}
+
+	for _, feature := range descriptors {
+		for action, aggregate := range apiAgg[feature.groupModule] {
+			code := firstCodeForAction(apiAgg[feature.groupModule], action)
+			if code == "" {
+				code = featureActionSyntheticCode(feature.menuPath, action)
+			}
+			name := featurePermissionDisplayName(feature.groupName, action)
+			current := ensureDesiredPermission(desired, code, name, feature.groupModule)
+			if action == "view" {
+				current.menuIDs = appendUniqueUint32(current.menuIDs, feature.menuID)
+			}
+			current.apiIDs = mergeUniqueUint32(current.apiIDs, aggregate.apiIDs)
+		}
+	}
+
+	items := make([]desiredPermission, 0, len(desired))
+	for _, item := range desired {
+		sort.SliceStable(item.menuIDs, func(i, j int) bool { return item.menuIDs[i] < item.menuIDs[j] })
+		sort.SliceStable(item.apiIDs, func(i, j int) bool { return item.apiIDs[i] < item.apiIDs[j] })
+		items = append(items, *item)
+	}
+	sort.SliceStable(items, func(i, j int) bool {
+		if items[i].groupModule == items[j].groupModule {
+			return items[i].code < items[j].code
+		}
+		return items[i].groupModule < items[j].groupModule
+	})
+	return items
+}
+
+func buildFeatureMenuDescriptors(menus []*resourcev1.Menu) []featureMenuDescriptor {
+	menuByID := make(map[uint32]*resourcev1.Menu, len(menus))
+	for _, item := range menus {
+		if item == nil || item.GetId() == 0 {
+			continue
+		}
+		menuByID[item.GetId()] = item
+	}
+
+	descriptors := make([]featureMenuDescriptor, 0)
+	for _, item := range menus {
+		if item == nil || item.GetStatus() != resourcev1.Menu_ON || item.GetType() != resourcev1.Menu_MENU {
+			continue
+		}
+		path := resolvedMenuPath(item, menuByID)
+		module := featureGroupModuleFromPath(path)
+		if module == "" {
+			continue
+		}
+		descriptors = append(descriptors, featureMenuDescriptor{
+			groupModule:   module,
+			groupName:     firstNonEmpty(displayMenuTitle(item), item.GetName(), module),
+			menuID:        item.GetId(),
+			menuPath:      path,
+			baseResource:  featureBaseResourceFromPath(path),
+			explicitCodes: menuAuthorityCodes(item),
+		})
+	}
+
+	sort.SliceStable(descriptors, func(i, j int) bool { return descriptors[i].groupModule < descriptors[j].groupModule })
+	return descriptors
+}
+
+func resolvedMenuPath(target *resourcev1.Menu, itemsByID map[uint32]*resourcev1.Menu) string {
+	if target == nil {
+		return ""
+	}
+	path := strings.TrimSpace(target.GetPath())
+	if strings.HasPrefix(path, "/") {
+		return path
+	}
+	if path != "" {
+		return "/" + strings.Trim(path, "/")
+	}
+	return composeMenuFullPath(target, mapValuesMenus(itemsByID))
+}
+
+func featureGroupModuleFromPath(path string) string {
+	path = strings.Trim(strings.TrimSpace(path), "/")
+	if path == "" {
+		return ""
+	}
+	segments := strings.Split(path, "/")
+	cleaned := make([]string, 0, len(segments))
+	for _, segment := range segments {
+		segment = normalizeSegment(segment)
+		if segment == "" {
+			continue
+		}
+		cleaned = append(cleaned, segment)
+	}
+	if len(cleaned) == 0 {
+		return ""
+	}
+	return permissionGroupModuleFeature + ":" + strings.Join(cleaned, ":")
+}
+
+func featureBaseResourceFromPath(path string) string {
+	path = strings.Trim(strings.TrimSpace(path), "/")
+	if path == "" {
+		return ""
+	}
+	segments := strings.Split(path, "/")
+	if len(segments) == 0 {
+		return ""
+	}
+	return normalizeSegment(segments[len(segments)-1])
+}
+
+func canonicalResourceName(value string) string {
+	value = normalizeSegment(value)
+	switch {
+	case strings.HasSuffix(value, "ies") && len(value) > 3:
+		return strings.TrimSuffix(value, "ies") + "y"
+	case strings.HasSuffix(value, "ses") && len(value) > 3:
+		return strings.TrimSuffix(value, "es")
+	case strings.HasSuffix(value, "s") && len(value) > 1:
+		return strings.TrimSuffix(value, "s")
+	default:
+		return value
+	}
+}
+
+func primaryAPIResource(path string) string {
+	resource := apiResourceFromPath(path)
+	if resource == "" {
+		return ""
+	}
+	return strings.Split(resource, ":")[0]
+}
+
+func featurePermissionActionFromAPI(api *resourcev1.Api) string {
+	if isExplicitExportAPI(api.GetMethod(), api.GetPath()) {
+		return "export"
+	}
+	return apiActionFromMethod(api.GetMethod(), api.GetPath())
+}
+
+func resolveFeatureDescriptorForMenu(menuID uint32, menuByID map[uint32]*resourcev1.Menu, parentByID map[uint32]uint32, featureByModule map[string]featureMenuDescriptor) *featureMenuDescriptor {
+	currentID := menuID
+	visited := map[uint32]struct{}{}
+	for currentID != 0 {
+		if _, ok := visited[currentID]; ok {
+			break
+		}
+		visited[currentID] = struct{}{}
+		menu := menuByID[currentID]
+		if menu == nil {
+			break
+		}
+		module := featureGroupModuleFromPath(resolvedMenuPath(menu, menuByID))
+		if descriptor, ok := featureByModule[module]; ok {
+			return &descriptor
+		}
+		currentID = parentByID[currentID]
+	}
+	return nil
+}
+
+func ensureDesiredPermission(desired map[string]*desiredPermission, code, name, groupModule string) *desiredPermission {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return nil
+	}
+	if current, ok := desired[code]; ok {
+		if current.name == "" {
+			current.name = name
+		}
+		if current.groupModule == "" {
+			current.groupModule = groupModule
+		}
+		return current
+	}
+	current := &desiredPermission{
+		code:        code,
+		name:        name,
+		groupModule: groupModule,
+	}
+	desired[code] = current
+	return current
+}
+
+func firstCodeForAction(aggregates map[string]*featureActionAggregate, action string) string {
+	if aggregates == nil {
+		return ""
+	}
+	aggregate := aggregates[action]
+	if aggregate == nil {
+		return ""
+	}
+	return firstString(aggregate.codes)
+}
+
+func featureActionSyntheticCode(menuPath, action string) string {
+	base := featureGroupModuleFromPath(menuPath)
+	base = strings.TrimPrefix(base, permissionGroupModuleFeature+":")
+	if base == "" {
+		base = "feature"
+	}
+	return "feature:" + base + ":" + action
+}
+
+func featurePermissionDisplayName(featureName, action string) string {
+	entityName := trimFeatureNameSuffix(featureName)
+	switch action {
+	case "view":
+		return "[菜单]" + featureName
+	case "create":
+		return "新增" + entityName
+	case "edit":
+		return "更新" + entityName
+	case "delete":
+		return "删除" + entityName
+	case "export":
+		return "导出" + entityName
+	case "import":
+		return "导入" + entityName
+	default:
+		return featureName + ":" + action
+	}
+}
+
+func explicitFeaturePermissionDisplayName(featureName, code string) string {
+	code = strings.TrimSpace(code)
+	switch code {
+	case "permissions:view":
+		return "[菜单]" + featureName
+	case "permissions:create":
+		return "新增权限点"
+	case "permissions:edit":
+		return "更新权限点"
+	case "permissions:delete":
+		return "删除权限点"
+	case "permissions:export":
+		return "导出权限点"
+	case "permissions:sync:perms:create":
+		return "同步权限点"
+	case "permission:groups:create":
+		return "新增权限组"
+	case "permission:groups:edit":
+		return "更新权限组"
+	case "permission:groups:delete":
+		return "删除权限组"
+	default:
+		action := codeAction(code)
+		if action == "view" {
+			return "[菜单]" + featureName
+		}
+		return featurePermissionDisplayName(featureName, action)
+	}
+}
+
+func codeAction(code string) string {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return "act"
+	}
+	parts := strings.Split(code, ":")
+	last := strings.TrimSpace(parts[len(parts)-1])
+	switch last {
+	case "view", "create", "edit", "delete", "export", "import":
+		return last
+	default:
+		return "act"
+	}
+}
+
+func resolveMenuTitleKey(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	if resolved, ok := defaultMenuTitleDisplayNames[value]; ok {
+		return resolved
+	}
+	return value
+}
+
+const (
+	defaultRoleCodePlatformSuperAdmin = "PLATFORM_SUPER_ADMIN"
+	defaultRoleCodeSuperAdmin         = "SUPER_ADMIN"
+	defaultRoleCodeUser               = "USER"
+	platformTenantID                  = uint32(0)
+)
+
+func trimServiceSuffix(value string) string {
+	value = strings.TrimSpace(value)
+	if strings.HasSuffix(value, "服务") && len([]rune(value)) > 2 {
+		return strings.TrimSpace(strings.TrimSuffix(value, "服务"))
+	}
+	if strings.EqualFold(value, "file management service") {
+		return "文件管理"
+	}
+	return value
+}
+
+func trimFeatureNameSuffix(value string) string {
+	value = strings.TrimSpace(value)
+	switch {
+	case strings.HasSuffix(value, "管理") && strings.HasPrefix(value, "API"):
+		return strings.TrimSpace(strings.TrimSuffix(value, "管理"))
+	case strings.HasSuffix(value, "管理") && len([]rune(value)) > 2:
+		return strings.TrimSpace(strings.TrimSuffix(value, "管理"))
+	case strings.HasSuffix(value, "页面") && len([]rune(value)) > 2:
+		return strings.TrimSpace(strings.TrimSuffix(value, "页面"))
+	default:
+		return value
+	}
+}
+
+var defaultMenuTitleDisplayNames = map[string]string{
+	"page.dashboard.title":                 "仪表盘",
+	"page.dashboard.analytics":             "分析页",
+	"page.dashboard.workspace":             "工作台",
+	"menu.system.moduleName":               "系统管理",
+	"menu.system.user":                     "用户管理",
+	"menu.system.role":                     "角色管理",
+	"menu.system.menu":                     "菜单管理",
+	"menu.system.api":                      "API管理",
+	"menu.system.apiDocs":                  "API文档",
+	"menu.system.dict":                     "字典管理",
+	"menu.system.file":                     "文件管理",
+	"menu.system.tenant":                   "租户管理",
+	"menu.system.orgUnit":                  "组织管理",
+	"menu.system.position":                 "岗位管理",
+	"menu.permission.permission":           "权限点管理",
+	"menu.log.moduleName":                  "日志管理",
+	"menu.log.loginAuditLog":               "登录审计日志",
+	"menu.log.apiAuditLog":                 "API审计日志",
+	"menu.log.permissionAuditLog":          "权限审计日志",
+	"menu.internalMessage.moduleName":      "站内消息",
+	"menu.internalMessage.internalMessage": "消息管理",
+}
+
+func mergeUniqueUint32(left, right []uint32) []uint32 {
+	result := append([]uint32(nil), left...)
+	for _, item := range right {
+		result = appendUniqueUint32(result, item)
+	}
+	return result
+}
+
+func appendUniqueString(values []string, value string) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return values
+	}
+	for _, current := range values {
+		if current == value {
+			return values
+		}
+	}
+	return append(values, value)
+}
+
+func permissionCodeNamespace(code string) string {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return ""
+	}
+	part := code
+	if index := strings.Index(part, ":"); index >= 0 {
+		part = part[:index]
+	}
+	return strings.TrimSpace(part)
+}
+
+func firstString(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(values[0])
+}
+
+func mapValuesMenus(itemsByID map[uint32]*resourcev1.Menu) []*resourcev1.Menu {
+	items := make([]*resourcev1.Menu, 0, len(itemsByID))
+	for _, item := range itemsByID {
+		items = append(items, item)
+	}
+	return items
 }
 
 func normalizeSegment(value string) string {
@@ -685,6 +1332,151 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func (s *PermissionService) reconcileDefaultRolePermissions(ctx context.Context) error {
+	if s == nil || s.roleRepo == nil || s.permissionRepo == nil || s.permissionGroupRepo == nil {
+		return nil
+	}
+
+	groupResp, err := s.permissionGroupRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
+	if err != nil {
+		return err
+	}
+	groupParentByID := make(map[uint32]uint32, len(groupResp.GetItems()))
+	var featureRootID uint32
+	var exportGroupID uint32
+	for _, item := range groupResp.GetItems() {
+		if item == nil || item.GetId() == 0 || item.GetStatus() != permissionv1.PermissionGroup_ON {
+			continue
+		}
+		groupID := item.GetId()
+		groupModule := strings.TrimSpace(item.GetModule())
+		groupParentByID[groupID] = item.GetParentId()
+		if groupModule == permissionGroupModuleFeature {
+			if featureRootID != 0 && featureRootID != groupID {
+				return fmt.Errorf("multiple active feature root permission groups detected: %d and %d", featureRootID, groupID)
+			}
+			featureRootID = groupID
+		}
+		if groupModule == permissionGroupModuleExport {
+			if exportGroupID != 0 && exportGroupID != groupID {
+				return fmt.Errorf("multiple active export permission groups detected: %d and %d", exportGroupID, groupID)
+			}
+			exportGroupID = groupID
+		}
+	}
+
+	defaultAdminGroupIDs := map[uint32]struct{}{}
+	if featureRootID != 0 {
+		defaultAdminGroupIDs[featureRootID] = struct{}{}
+		for groupID, parentID := range groupParentByID {
+			if parentID == featureRootID {
+				defaultAdminGroupIDs[groupID] = struct{}{}
+			}
+		}
+	}
+	if exportGroupID != 0 {
+		defaultAdminGroupIDs[exportGroupID] = struct{}{}
+	}
+
+	permissionResp, err := s.permissionRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
+	if err != nil {
+		return err
+	}
+
+	adminIDs := make([]uint32, 0, len(permissionResp.GetItems()))
+	normalUserIDs := make([]uint32, 0, 8)
+	for _, item := range permissionResp.GetItems() {
+		if item == nil || item.GetId() == 0 || item.GetStatus() != permissionv1.Permission_ON {
+			continue
+		}
+		code := strings.TrimSpace(item.GetCode())
+		if code == "" {
+			continue
+		}
+		if _, ok := defaultAdminGroupIDs[item.GetGroupId()]; ok {
+			adminIDs = appendUniqueUint32(adminIDs, item.GetId())
+		}
+		if isNormalUserPermissionCode(code) {
+			normalUserIDs = appendUniqueUint32(normalUserIDs, item.GetId())
+		}
+	}
+
+	roleResp, err := s.roleRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
+	if err != nil {
+		return err
+	}
+	for _, item := range roleResp.GetItems() {
+		if item == nil || item.GetId() == 0 {
+			continue
+		}
+		var permissionIDs []uint32
+		switch strings.TrimSpace(item.GetCode()) {
+		case defaultRoleCodePlatformSuperAdmin:
+			permissionIDs = adminIDs
+		case defaultRoleCodeSuperAdmin:
+			permissionIDs = adminIDs
+		case defaultRoleCodeUser:
+			permissionIDs = normalUserIDs
+		default:
+			continue
+		}
+		if err := s.updateRolePermissions(ctx, item, permissionIDs); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *PermissionService) updateRolePermissions(ctx context.Context, current *permissionv1.Role, permissionIDs []uint32) error {
+	if s == nil || s.roleRepo == nil || current == nil || current.GetId() == 0 {
+		return nil
+	}
+
+	data := &permissionv1.Role{
+		Id:          uint32Ptr(current.GetId()),
+		Name:        stringPtr(current.GetName()),
+		Code:        stringPtr(current.GetCode()),
+		IsProtected: boolPtr(current.GetIsProtected()),
+		SortOrder:   uint32Ptr(current.GetSortOrder()),
+		Status:      current.Status.Enum(),
+		Permissions: permissionIDs,
+	}
+	if current.Type != nil {
+		data.Type = current.Type.Enum()
+	}
+	if current.TenantId != nil {
+		tenantID := current.GetTenantId()
+		data.TenantId = uint32Ptr(tenantID)
+	} else if strings.TrimSpace(current.GetCode()) == defaultRoleCodePlatformSuperAdmin {
+		data.TenantId = uint32Ptr(platformTenantID)
+	} else {
+		viewer := crudviewer.MustFromContext(ctx)
+		if viewer.IsTenantContext() {
+			data.TenantId = uint32Ptr(uint32(viewer.TenantID()))
+		}
+	}
+
+	_, err := s.roleRepo.Update(ctx, &permissionv1.UpdateRoleRequest{
+		Id:   current.GetId(),
+		Data: data,
+		UpdateMask: &fieldmaskpb.FieldMask{
+			Paths: []string{"permissions"},
+		},
+	})
+	return err
+}
+
+func isNormalUserPermissionCode(code string) bool {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return false
+	}
+	return strings.HasPrefix(code, "dashboard:") ||
+		strings.HasPrefix(code, "analytics:") ||
+		strings.HasPrefix(code, "workspace:") ||
+		strings.HasPrefix(code, "system:user:view")
 }
 
 func boolPtr(value bool) *bool {

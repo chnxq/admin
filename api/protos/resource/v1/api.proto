@@ -34,7 +34,7 @@ service ApiService {
   // 同步API资源
   rpc SyncApis (google.protobuf.Empty) returns (google.protobuf.Empty) {}
 
-  // 查询路由数据
+  // 获取路由数据
   rpc GetWalkRouteData (google.protobuf.Empty) returns (ListApiResponse) {}
 }
 

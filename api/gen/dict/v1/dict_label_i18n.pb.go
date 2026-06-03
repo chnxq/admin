@@ -26,22 +26,38 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// 字典标签多语言值
 type DictLabelI18N struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            *uint32                `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`
-	LabelId       *uint32                `protobuf:"varint,2,opt,name=label_id,json=labelId,proto3,oneof" json:"label_id,omitempty"`
-	LabelKey      *string                `protobuf:"bytes,3,opt,name=label_key,json=labelKey,proto3,oneof" json:"label_key,omitempty"`
-	LanguageCode  *string                `protobuf:"bytes,4,opt,name=language_code,json=languageCode,proto3,oneof" json:"language_code,omitempty"`
-	LanguageName  *string                `protobuf:"bytes,5,opt,name=language_name,json=languageName,proto3,oneof" json:"language_name,omitempty"`
-	TextValue     *string                `protobuf:"bytes,6,opt,name=text_value,json=textValue,proto3,oneof" json:"text_value,omitempty"`
-	ShortText     *string                `protobuf:"bytes,7,opt,name=short_text,json=shortText,proto3,oneof" json:"short_text,omitempty"`
-	Description   *string                `protobuf:"bytes,8,opt,name=description,proto3,oneof" json:"description,omitempty"`
-	TenantId      *uint32                `protobuf:"varint,9,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`
-	CreatedBy     *uint32                `protobuf:"varint,100,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`
-	UpdatedBy     *uint32                `protobuf:"varint,101,opt,name=updated_by,json=updatedBy,proto3,oneof" json:"updated_by,omitempty"`
-	DeletedBy     *uint32                `protobuf:"varint,102,opt,name=deleted_by,json=deletedBy,proto3,oneof" json:"deleted_by,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,200,opt,name=created_at,json=createdAt,proto3,oneof" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,201,opt,name=updated_at,json=updatedAt,proto3,oneof" json:"updated_at,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 主键ID
+	Id *uint32 `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`
+	// 所属标签ID
+	LabelId *uint32 `protobuf:"varint,2,opt,name=label_id,json=labelId,proto3,oneof" json:"label_id,omitempty"`
+	// 所属标签标识
+	LabelKey *string `protobuf:"bytes,3,opt,name=label_key,json=labelKey,proto3,oneof" json:"label_key,omitempty"`
+	// 语言编码
+	LanguageCode *string `protobuf:"bytes,4,opt,name=language_code,json=languageCode,proto3,oneof" json:"language_code,omitempty"`
+	// 语言名称
+	LanguageName *string `protobuf:"bytes,5,opt,name=language_name,json=languageName,proto3,oneof" json:"language_name,omitempty"`
+	// 文本值
+	TextValue *string `protobuf:"bytes,6,opt,name=text_value,json=textValue,proto3,oneof" json:"text_value,omitempty"`
+	// 短文本
+	ShortText *string `protobuf:"bytes,7,opt,name=short_text,json=shortText,proto3,oneof" json:"short_text,omitempty"`
+	// 描述
+	Description *string `protobuf:"bytes,8,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	// 所属租户ID
+	TenantId *uint32 `protobuf:"varint,9,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`
+	// 创建者ID
+	CreatedBy *uint32 `protobuf:"varint,100,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`
+	// 更新者ID
+	UpdatedBy *uint32 `protobuf:"varint,101,opt,name=updated_by,json=updatedBy,proto3,oneof" json:"updated_by,omitempty"`
+	// 删除者ID
+	DeletedBy *uint32 `protobuf:"varint,102,opt,name=deleted_by,json=deletedBy,proto3,oneof" json:"deleted_by,omitempty"`
+	// 创建时间
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,200,opt,name=created_at,json=createdAt,proto3,oneof" json:"created_at,omitempty"`
+	// 更新时间
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,201,opt,name=updated_at,json=updatedAt,proto3,oneof" json:"updated_at,omitempty"`
+	// 删除时间
 	DeletedAt     *timestamppb.Timestamp `protobuf:"bytes,202,opt,name=deleted_at,json=deletedAt,proto3,oneof" json:"deleted_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -182,10 +198,13 @@ func (x *DictLabelI18N) GetDeletedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// 字典标签多语言列表响应
 type ListDictLabelI18NResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []*DictLabelI18N       `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	Total         uint64                 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 数据项
+	Items []*DictLabelI18N `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	// 总数
+	Total         uint64 `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -234,13 +253,17 @@ func (x *ListDictLabelI18NResponse) GetTotal() uint64 {
 	return 0
 }
 
+// 查询字典标签多语言请求
 type GetDictLabelI18NRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// 查询条件
+	//
 	// Types that are valid to be assigned to QueryBy:
 	//
 	//	*GetDictLabelI18NRequest_Id
-	QueryBy       isGetDictLabelI18NRequest_QueryBy `protobuf_oneof:"query_by"`
-	ViewMask      *fieldmaskpb.FieldMask            `protobuf:"bytes,100,opt,name=view_mask,json=viewMask,proto3,oneof" json:"view_mask,omitempty"`
+	QueryBy isGetDictLabelI18NRequest_QueryBy `protobuf_oneof:"query_by"`
+	// 返回字段掩码
+	ViewMask      *fieldmaskpb.FieldMask `protobuf:"bytes,100,opt,name=view_mask,json=viewMask,proto3,oneof" json:"view_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -303,14 +326,17 @@ type isGetDictLabelI18NRequest_QueryBy interface {
 }
 
 type GetDictLabelI18NRequest_Id struct {
+	// 按ID查询
 	Id uint32 `protobuf:"varint,1,opt,name=id,proto3,oneof"`
 }
 
 func (*GetDictLabelI18NRequest_Id) isGetDictLabelI18NRequest_QueryBy() {}
 
+// 创建字典标签多语言请求
 type CreateDictLabelI18NRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Data          *DictLabelI18N         `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 待创建数据
+	Data          *DictLabelI18N `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -352,12 +378,17 @@ func (x *CreateDictLabelI18NRequest) GetData() *DictLabelI18N {
 	return nil
 }
 
+// 更新字典标签多语言请求
 type UpdateDictLabelI18NRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Data          *DictLabelI18N         `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
-	AllowMissing  *bool                  `protobuf:"varint,4,opt,name=allow_missing,json=allowMissing,proto3,oneof" json:"allow_missing,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 目标ID
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// 更新数据
+	Data *DictLabelI18N `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	// 更新字段掩码
+	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
+	// 不存在时是否允许创建
+	AllowMissing  *bool `protobuf:"varint,4,opt,name=allow_missing,json=allowMissing,proto3,oneof" json:"allow_missing,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -420,9 +451,11 @@ func (x *UpdateDictLabelI18NRequest) GetAllowMissing() bool {
 	return false
 }
 
+// 删除字典标签多语言请求
 type DeleteDictLabelI18NRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ids           []uint32               `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 待删除ID列表
+	Ids           []uint32 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -464,9 +497,11 @@ func (x *DeleteDictLabelI18NRequest) GetIds() []uint32 {
 	return nil
 }
 
+// 字典标签多语言数量响应
 type CountDictLabelI18NResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Count         uint64                 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 数量
+	Count         uint64 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

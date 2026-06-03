@@ -3,7 +3,7 @@
 // - protoc-gen-go-errors v2.0.4
 // - protoc             34.0
 // source: resource/v1/resource_error.proto
-// generated at        2026-05-30 19:55:20
+// generated at        2026-06-02 01:56:21
 
 package resource
 

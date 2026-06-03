@@ -9,6 +9,7 @@ import (
 	"time"
 
 	auditv1 "admin/api/gen/audit/v1"
+	identityv1 "admin/api/gen/identity/v1"
 	permissionv1 "admin/api/gen/permission/v1"
 	"admin/internal/data/ent"
 	"admin/internal/data/ent/permission"
@@ -317,7 +318,11 @@ func (r *roleRepo) roleCustomUpdate(ctx context.Context, req *permissionv1.Updat
 	} else if req.GetUpdateMask() != nil && roleFieldMaskContains(req.GetUpdateMask().GetPaths(), "code") {
 		builder.ClearCode()
 	}
-	builder.SetIsProtected(req.Data.GetIsProtected())
+	if existing.IsProtected != nil && *existing.IsProtected {
+		builder.SetIsProtected(true)
+	} else if req.Data.IsProtected != nil {
+		builder.SetIsProtected(req.Data.GetIsProtected())
+	}
 	builder.SetType(role.Type(req.Data.GetType().String()))
 	if req.Data.SortOrder != nil {
 		builder.SetNillableSortOrder(req.Data.SortOrder)
@@ -381,6 +386,9 @@ func (r *roleRepo) roleCustomDelete(ctx context.Context, req *permissionv1.Delet
 			r.log.Errorf("load role before delete failed: %s", err.Error())
 			return nil, err
 		}
+		if entity.IsProtected != nil && *entity.IsProtected {
+			return nil, identityv1.ErrorForbidden("protected role cannot be deleted")
+		}
 		if err := ensureHybridTenantMutable(ctx, entity.TenantID); err != nil {
 			return nil, err
 		}
@@ -410,6 +418,9 @@ func (r *roleRepo) roleCustomDelete(ctx context.Context, req *permissionv1.Delet
 		for _, entity := range entities {
 			if entity == nil {
 				continue
+			}
+			if entity.IsProtected != nil && *entity.IsProtected {
+				return nil, identityv1.ErrorForbidden("protected role cannot be deleted")
 			}
 			if err := ensureHybridTenantMutable(ctx, entity.TenantID); err != nil {
 				return nil, err

@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_api.proto
-// generated at        2026-05-30 19:55:21
+// generated at        2026-06-02 01:56:21
 
 package admin
 
@@ -38,7 +38,7 @@ type ApiServiceHTTPServer interface {
 	Delete(context.Context, *v11.DeleteApiRequest) (*emptypb.Empty, error)
 	// Get 查询API资源详情
 	Get(context.Context, *v11.GetApiRequest) (*v11.Api, error)
-	// GetWalkRouteData 查询路由数据
+	// GetWalkRouteData 获取路由数据
 	GetWalkRouteData(context.Context, *emptypb.Empty) (*v11.ListApiResponse, error)
 	// List 查询API资源列表
 	List(context.Context, *v1.PagingRequest) (*v11.ListApiResponse, error)

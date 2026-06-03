@@ -128,7 +128,7 @@ func NewGeneratedServices(appCtx *app.AppCtx, data *GeneratedData) *GeneratedSer
 		Menu:                     service.NewMenuService(appCtx, data.MenuRepo),
 		OperationAuditLog:        service.NewOperationAuditLogService(appCtx, data.OperationAuditLogRepo),
 		OrgUnit:                  service.NewOrgUnitService(appCtx, data.OrgUnitRepo),
-		Permission:               service.NewPermissionService(appCtx, data.PermissionRepo, data.PermissionGroupRepo, data.MenuRepo, data.ApiRepo),
+		Permission:               service.NewPermissionService(appCtx, data.PermissionRepo, data.PermissionGroupRepo, data.MenuRepo, data.ApiRepo, data.RoleRepo),
 		PermissionAuditLog:       service.NewPermissionAuditLogService(appCtx, data.PermissionAuditLogRepo),
 		PermissionGroup:          service.NewPermissionGroupService(appCtx, data.PermissionGroupRepo),
 		PolicyEvaluationLog:      service.NewPolicyEvaluationLogService(appCtx, data.PolicyEvaluationLogRepo),

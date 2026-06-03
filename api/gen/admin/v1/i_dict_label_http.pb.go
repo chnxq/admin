@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_dict_label.proto
-// generated at        2026-05-30 19:55:21
+// generated at        2026-06-02 01:56:21
 
 package admin
 
@@ -30,10 +30,15 @@ const OperationDictLabelServiceList = "/admin.service.v1.DictLabelService/List"
 const OperationDictLabelServiceUpdate = "/admin.service.v1.DictLabelService/Update"
 
 type DictLabelServiceHTTPServer interface {
+	// Create 创建字典标签
 	Create(context.Context, *v11.CreateDictLabelRequest) (*emptypb.Empty, error)
+	// Delete 删除字典标签
 	Delete(context.Context, *v11.DeleteDictLabelRequest) (*emptypb.Empty, error)
+	// Get 查询字典标签详情
 	Get(context.Context, *v11.GetDictLabelRequest) (*v11.DictLabel, error)
+	// List 查询字典标签列表
 	List(context.Context, *v1.PagingRequest) (*v11.ListDictLabelResponse, error)
+	// Update 更新字典标签
 	Update(context.Context, *v11.UpdateDictLabelRequest) (*emptypb.Empty, error)
 }
 

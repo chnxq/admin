@@ -51,7 +51,7 @@ type ApiServiceClient interface {
 	Delete(ctx context.Context, in *DeleteApiRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// 同步API资源
 	SyncApis(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// 查询路由数据
+	// 获取路由数据
 	GetWalkRouteData(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListApiResponse, error)
 }
 
@@ -163,7 +163,7 @@ type ApiServiceServer interface {
 	Delete(context.Context, *DeleteApiRequest) (*emptypb.Empty, error)
 	// 同步API资源
 	SyncApis(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
-	// 查询路由数据
+	// 获取路由数据
 	GetWalkRouteData(context.Context, *emptypb.Empty) (*ListApiResponse, error)
 	mustEmbedUnimplementedApiServiceServer()
 }

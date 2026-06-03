@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_dict_category.proto
-// generated at        2026-05-30 19:55:21
+// generated at        2026-06-02 01:56:21
 
 package admin
 
@@ -30,10 +30,15 @@ const OperationDictCategoryServiceList = "/admin.service.v1.DictCategoryService/
 const OperationDictCategoryServiceUpdate = "/admin.service.v1.DictCategoryService/Update"
 
 type DictCategoryServiceHTTPServer interface {
+	// Create 创建字典分类
 	Create(context.Context, *v11.CreateDictCategoryRequest) (*emptypb.Empty, error)
+	// Delete 删除字典分类
 	Delete(context.Context, *v11.DeleteDictCategoryRequest) (*emptypb.Empty, error)
+	// Get 查询字典分类详情
 	Get(context.Context, *v11.GetDictCategoryRequest) (*v11.DictCategory, error)
+	// List 查询字典分类列表
 	List(context.Context, *v1.PagingRequest) (*v11.ListDictCategoryResponse, error)
+	// Update 更新字典分类
 	Update(context.Context, *v11.UpdateDictCategoryRequest) (*emptypb.Empty, error)
 }
 
