@@ -2,13 +2,15 @@ BEGIN;
 
 SET LOCAL search_path = public, pg_catalog;
 
-TRUNCATE TABLE public.sys_tasks RESTART IDENTITY CASCADE;
-TRUNCATE TABLE public.sys_login_policies RESTART IDENTITY CASCADE;
-TRUNCATE TABLE public.sys_dict_label_i18n RESTART IDENTITY CASCADE;
-TRUNCATE TABLE public.sys_dict_labels RESTART IDENTITY CASCADE;
-TRUNCATE TABLE public.sys_dict_category_i18n RESTART IDENTITY CASCADE;
-TRUNCATE TABLE public.sys_dict_categories RESTART IDENTITY CASCADE;
-TRUNCATE TABLE public.internal_message_categories RESTART IDENTITY CASCADE;
+DELETE FROM public.sys_task_logs WHERE id BETWEEN 1701 AND 1799;
+DELETE FROM public.sys_tasks WHERE id BETWEEN 1601 AND 1699;
+DELETE FROM public.sys_task_groups WHERE id BETWEEN 1501 AND 1599;
+DELETE FROM public.sys_login_policies WHERE id BETWEEN 1801 AND 1899;
+DELETE FROM public.sys_dict_label_i18n WHERE label_id BETWEEN 2001 AND 2099;
+DELETE FROM public.sys_dict_labels WHERE id BETWEEN 2001 AND 2099;
+DELETE FROM public.sys_dict_category_i18n WHERE category_id BETWEEN 1901 AND 1999;
+DELETE FROM public.sys_dict_categories WHERE id BETWEEN 1901 AND 1999;
+DELETE FROM public.internal_message_categories WHERE id BETWEEN 2101 AND 2199;
 
 DELETE FROM public.sys_membership_roles WHERE id BETWEEN 1401 AND 1499;
 DELETE FROM public.sys_user_roles WHERE user_id BETWEEN 1001 AND 1099;
@@ -169,114 +171,135 @@ SELECT setval('sys_user_positions_id_seq', (SELECT COALESCE(MAX(id), 1) FROM pub
 SELECT setval('sys_user_roles_id_seq', (SELECT COALESCE(MAX(id), 1) FROM public.sys_user_roles));
 SELECT setval('sys_membership_roles_id_seq', (SELECT COALESCE(MAX(id), 1) FROM public.sys_membership_roles));
 
-INSERT INTO public.sys_tasks(type, type_name, task_payload, cron_spec, enable, created_at)
+INSERT INTO public.sys_task_groups(
+    id, tenant_id, group_name, remark, created_at, updated_at, created_by, updated_by
+)
 VALUES
-    ('PERIODIC', 'backup', '{ "name": "demo-backup" }', '0 * * * *', true, now());
+    (1501, 0, '系统维护（测试）', '系统级周期维护任务', now(), now(), 0, 0),
+    (1502, 101, '东岳制造任务', '东岳制造租户示例任务分组', now(), now(), 0, 0),
+    (1503, 102, '星澜医疗任务', '星澜医疗租户示例任务分组', now(), now(), 0, 0),
+    (1504, 103, '远舟供应链任务', '远舟供应链租户示例任务分组', now(), now(), 0, 0);
+SELECT setval('sys_task_groups_id_seq', (SELECT COALESCE(MAX(id), 1) FROM public.sys_task_groups));
+
+INSERT INTO public.sys_tasks(
+    id, tenant_id, group_id, task_name, task_type, cron_expression, invoke_target, args, retry, concurrent, entry_id, status, remark, created_at, updated_at, created_by, updated_by
+)
+VALUES
+    (1601, 0, 1501, '删除过期日志', 'FUNCTION', '0 0 3 * * *', 'system:cleanup:audit-logs', 'expireHours=720,targets=api,login,permission', 1, false, NULL, 'STOPPED', '每天凌晨三点清理过期审计日志', now(), now(), 0, 0),
+    (1602, 0, 1501, '每周汇总统计', 'FUNCTION', '0 30 2 * * 1', 'system:metrics:weekly-summary', NULL, 0, false, NULL, 'DISABLED', '每周一凌晨生成统计摘要', now(), now(), 0, 0),
+    (1603, 101, 1502, '同步供应商目录', 'API', '0 0 */6 * * *', 'tenant:vendor:sync', 'mode=incremental', 2, true, NULL, 'RUNNING', '东岳制造租户示例同步任务', now(), now(), 0, 0),
+    (1604, 102, 1503, '生成门诊统计报表', 'FUNCTION', '0 15 1 * * *', 'medical:report:outpatient-summary', 'scope=daily', 1, false, NULL, 'STOPPED', '星澜医疗租户示例统计任务', now(), now(), 0, 0),
+    (1605, 103, 1504, '刷新库存预警', 'EXTERNAL', '0 */30 * * * *', 'supply:inventory:refresh', 'level=warning', 0, true, NULL, 'RUNNING', '远舟供应链租户示例库存任务', now(), now(), 0, 0);
 SELECT setval('sys_tasks_id_seq', (SELECT COALESCE(MAX(id), 1) FROM public.sys_tasks));
+
+INSERT INTO public.sys_task_logs(
+    id, tenant_id, task_id, input, output, error, status, process_time, execute_time
+)
+VALUES
+    (1701, 0, 1601, 'expireHours=720,targets=api,login,permission', 'deleted api=18, login=6, permission=3', NULL, 'SUCCESS', 842, now() - INTERVAL '1 day'),
+    (1702, 0, 1602, NULL, NULL, 'task disabled by administrator', 'FAILURE', 25, now() - INTERVAL '2 day'),
+    (1703, 101, 1603, 'mode=incremental', 'synced suppliers=27', NULL, 'SUCCESS', 1265, now() - INTERVAL '6 hour'),
+    (1704, 102, 1604, 'scope=daily', 'generated report count=14', NULL, 'SUCCESS', 933, now() - INTERVAL '12 hour'),
+    (1705, 103, 1605, 'level=warning', NULL, 'upstream connector timeout', 'FAILURE', 3012, now() - INTERVAL '2 hour');
+SELECT setval('sys_task_logs_id_seq', (SELECT COALESCE(MAX(id), 1) FROM public.sys_task_logs));
 
 INSERT INTO public.sys_login_policies(id, target_id, type, method, value, reason, created_at)
 VALUES
-    (1, 1, 'BLACKLIST', 'IP', '127.0.0.2', '演示环境黑名单示例', now()),
-    (2, 1, 'WHITELIST', 'MAC', '00:1B:44:11:3A:B7', '演示环境白名单示例', now());
+    (1801, 1001, 'BLACKLIST', 'IP', '127.0.0.2', '演示环境黑名单记录', now()),
+    (1802, 1001, 'WHITELIST', 'MAC', '00:1B:44:11:3A:B7', '演示环境白名单记录', now());
 SELECT setval('sys_login_policies_id_seq', (SELECT COALESCE(MAX(id), 1) FROM public.sys_login_policies));
-
 INSERT INTO public.sys_dict_categories(
     id, parent_id, path, category_key, category_name, category_level, scene, is_builtin, is_enabled, sort_order, tenant_id, description, created_at, updated_at
 )
 VALUES
-    (1, NULL, '/', 'page', '页面', 'ROOT', 'PAGE', true, true, 10, 0, '页面类国际化分类根节点', now(), now()),
-    (2, 1, '/1/', 'page.user_management', '用户管理页面', 'CHILD', 'PAGE', true, true, 11, 0, '用户与组织相关页面', now(), now()),
-    (3, 1, '/1/', 'page.device_management', '设备管理页面', 'CHILD', 'PAGE', true, true, 12, 0, '设备与物联相关页面', now(), now()),
-    (4, NULL, '/', 'menu', '菜单', 'ROOT', 'MENU', true, true, 20, 0, '菜单类国际化分类根节点', now(), now()),
-    (5, 4, '/4/', 'menu.platform', '平台菜单', 'CHILD', 'MENU', true, true, 21, 0, '后台平台菜单项', now(), now()),
-    (6, NULL, '/', 'prompt', '提示', 'ROOT', 'PROMPT', true, true, 30, 0, '提示语国际化分类根节点', now(), now()),
-    (7, 6, '/6/', 'prompt.common', '通用提示', 'CHILD', 'PROMPT', true, true, 31, 0, '通用成功/确认类提示', now(), now()),
-    (8, NULL, '/', 'device', '设备', 'ROOT', 'DEVICE', true, true, 40, 0, '设备业务标签分类根节点', now(), now()),
-    (9, 8, '/8/', 'device.type', '设备类型', 'CHILD', 'DEVICE', true, true, 41, 0, '设备类型标签', now(), now());
+    (1901, NULL, '/', 'page', '页面', 'ROOT', 'PAGE', true, true, 10, 0, '页面类国际化根分类', now(), now()),
+    (1902, 1901, '/1901/', 'page.user_management', '用户管理页面', 'CHILD', 'PAGE', true, true, 11, 0, '用户与组织管理相关页面文案', now(), now()),
+    (1903, 1901, '/1901/', 'page.device_management', '设备管理页面', 'CHILD', 'PAGE', true, true, 12, 0, '设备与物联网管理相关页面文案', now(), now()),
+    (1904, NULL, '/', 'menu', '菜单', 'ROOT', 'MENU', true, true, 20, 0, '菜单类国际化根分类', now(), now()),
+    (1905, 1904, '/1904/', 'menu.platform', '平台菜单', 'CHILD', 'MENU', true, true, 21, 0, '后台平台菜单项文案', now(), now()),
+    (1906, NULL, '/', 'prompt', '提示', 'ROOT', 'PROMPT', true, true, 30, 0, '提示类国际化根分类', now(), now()),
+    (1907, 1906, '/1906/', 'prompt.common', '通用提示', 'CHILD', 'PROMPT', true, true, 31, 0, '通用成功提示与确认提示', now(), now()),
+    (1908, NULL, '/', 'device', '设备', 'ROOT', 'DEVICE', true, true, 40, 0, '设备业务标签根分类', now(), now()),
+    (1909, 1908, '/1908/', 'device.type', '设备类型', 'CHILD', 'DEVICE', true, true, 41, 0, '设备类型标签文案', now(), now());
 SELECT setval('sys_dict_categories_id_seq', (SELECT COALESCE(MAX(id), 1) FROM public.sys_dict_categories));
-
 INSERT INTO public.sys_dict_category_i18n (
     category_id, language_code, display_name, description, tenant_id, created_at, updated_at
 )
 VALUES
-    (1, 'zh-CN', '页面', '页面类国际化分类根节点', 0, now(), now()),
-    (2, 'zh-CN', '用户管理页面', '用户与组织相关页面', 0, now(), now()),
-    (3, 'zh-CN', '设备管理页面', '设备与物联相关页面', 0, now(), now()),
-    (4, 'zh-CN', '菜单', '菜单类国际化分类根节点', 0, now(), now()),
-    (5, 'zh-CN', '平台菜单', '后台平台菜单项', 0, now(), now()),
-    (6, 'zh-CN', '提示', '提示语国际化分类根节点', 0, now(), now()),
-    (7, 'zh-CN', '通用提示', '通用成功/确认类提示', 0, now(), now()),
-    (8, 'zh-CN', '设备', '设备业务标签分类根节点', 0, now(), now()),
-    (9, 'zh-CN', '设备类型', '设备类型标签', 0, now(), now()),
-    (1, 'en-US', 'Page', 'Root category for page translations', 0, now(), now()),
-    (2, 'en-US', 'User Management Pages', 'Pages for user and organization management', 0, now(), now()),
-    (3, 'en-US', 'Device Management Pages', 'Pages for device and IoT management', 0, now(), now()),
-    (4, 'en-US', 'Menu', 'Root category for menu translations', 0, now(), now()),
-    (5, 'en-US', 'Platform Menu', 'Back-office platform menu items', 0, now(), now()),
-    (6, 'en-US', 'Prompt', 'Root category for prompt translations', 0, now(), now()),
-    (7, 'en-US', 'Common Prompt', 'Shared success and confirmation prompts', 0, now(), now()),
-    (8, 'en-US', 'Device', 'Root category for device business labels', 0, now(), now()),
-    (9, 'en-US', 'Device Type', 'Device type labels', 0, now(), now());
+    (1901, 'zh-CN', '页面', '页面类国际化根分类', 0, now(), now()),
+    (1902, 'zh-CN', '用户管理页面', '用户与组织管理相关页面文案', 0, now(), now()),
+    (1903, 'zh-CN', '设备管理页面', '设备与物联网管理相关页面文案', 0, now(), now()),
+    (1904, 'zh-CN', '菜单', '菜单类国际化根分类', 0, now(), now()),
+    (1905, 'zh-CN', '平台菜单', '后台平台菜单项文案', 0, now(), now()),
+    (1906, 'zh-CN', '提示', '提示类国际化根分类', 0, now(), now()),
+    (1907, 'zh-CN', '通用提示', '通用成功提示与确认提示', 0, now(), now()),
+    (1908, 'zh-CN', '设备', '设备业务标签根分类', 0, now(), now()),
+    (1909, 'zh-CN', '设备类型', '设备类型标签文案', 0, now(), now()),
+    (1901, 'en-US', 'Page', 'Root category for page translations', 0, now(), now()),
+    (1902, 'en-US', 'User Management Page', 'Pages for user and organization management', 0, now(), now()),
+    (1903, 'en-US', 'Device Management Page', 'Pages for device and IoT management', 0, now(), now()),
+    (1904, 'en-US', 'Menu', 'Root category for menu translations', 0, now(), now()),
+    (1905, 'en-US', 'Platform Menu', 'Back-office platform menu items', 0, now(), now()),
+    (1906, 'en-US', 'Prompt', 'Root category for prompt translations', 0, now(), now()),
+    (1907, 'en-US', 'Common Prompt', 'Shared success and confirmation prompts', 0, now(), now()),
+    (1908, 'en-US', 'Device', 'Root category for device business labels', 0, now(), now()),
+    (1909, 'en-US', 'Device Type', 'Device type labels', 0, now(), now());
 SELECT setval('sys_dict_category_i18n_id_seq', (SELECT COALESCE(MAX(id), 1) FROM public.sys_dict_category_i18n));
-
 INSERT INTO public.sys_dict_labels (
     id, category_id, label_key, label_code, label_kind, default_text, payload_json, is_builtin, is_enabled, status, sort_order, tenant_id, description, created_at, updated_at
 )
 VALUES
-    (1, 2, 'page.user.list.title', 'PAGE_USER_LIST_TITLE', 'TEXT', '用户列表', '{"module":"user","view":"list"}'::jsonb, true, true, 'ON', 10, 0, '用户列表页标题', now(), now()),
-    (2, 2, 'page.user.detail.title', 'PAGE_USER_DETAIL_TITLE', 'TEXT', '用户详情', '{"module":"user","view":"detail"}'::jsonb, true, true, 'ON', 11, 0, '用户详情页标题', now(), now()),
-    (3, 5, 'menu.system.user', 'MENU_SYSTEM_USER', 'MENU', '用户管理', '{"icon":"mdi:account-cog","route":"/system/user"}'::jsonb, true, true, 'ON', 20, 0, '系统菜单-用户管理', now(), now()),
-    (4, 5, 'menu.system.role', 'MENU_SYSTEM_ROLE', 'MENU', '角色管理', '{"icon":"mdi:shield-account","route":"/system/role"}'::jsonb, true, true, 'ON', 21, 0, '系统菜单-角色管理', now(), now()),
-    (5, 7, 'prompt.common.save_success', 'PROMPT_COMMON_SAVE_SUCCESS', 'MESSAGE', '保存成功', '{"tone":"success"}'::jsonb, true, true, 'ON', 30, 0, '通用保存成功提示', now(), now()),
-    (6, 7, 'prompt.common.delete_confirm', 'PROMPT_COMMON_DELETE_CONFIRM', 'HINT', '确认删除当前数据？', '{"tone":"warning"}'::jsonb, true, true, 'ON', 31, 0, '通用删除确认提示', now(), now()),
-    (7, 9, 'device.type.temp_sensor', 'DEVICE_TYPE_TEMP_SENSOR', 'ENUM', '温湿度传感器', '{"deviceType":"sensor","code":"TEMP_SENSOR"}'::jsonb, true, true, 'ON', 40, 0, '设备类型-温湿度传感器', now(), now()),
-    (8, 9, 'device.type.current_meter', 'DEVICE_TYPE_CURRENT_METER', 'ENUM', '电流表', '{"deviceType":"meter","code":"CURRENT_METER"}'::jsonb, true, true, 'ON', 41, 0, '设备类型-电流表', now(), now()),
-    (9, 9, 'device.type.gas_detector', 'DEVICE_TYPE_GAS_DETECTOR', 'ENUM', '气体探测器', '{"deviceType":"detector","code":"GAS_DETECTOR"}'::jsonb, true, true, 'ON', 42, 0, '设备类型-气体探测器', now(), now());
+    (2001, 1902, 'page.user.list.title', 'PAGE_USER_LIST_TITLE', 'TEXT', '用户列表', '{"module":"user","view":"list"}'::jsonb, true, true, 'ON', 10, 0, '用户列表页面标题', now(), now()),
+    (2002, 1902, 'page.user.detail.title', 'PAGE_USER_DETAIL_TITLE', 'TEXT', '用户详情', '{"module":"user","view":"detail"}'::jsonb, true, true, 'ON', 11, 0, '用户详情页面标题', now(), now()),
+    (2003, 1905, 'menu.system.user', 'MENU_SYSTEM_USER', 'MENU', '用户管理', '{"icon":"mdi:account-cog","route":"/system/user"}'::jsonb, true, true, 'ON', 20, 0, '系统菜单用户管理项', now(), now()),
+    (2004, 1905, 'menu.system.role', 'MENU_SYSTEM_ROLE', 'MENU', '角色管理', '{"icon":"mdi:shield-account","route":"/system/role"}'::jsonb, true, true, 'ON', 21, 0, '系统菜单角色管理项', now(), now()),
+    (2005, 1907, 'prompt.common.save_success', 'PROMPT_COMMON_SAVE_SUCCESS', 'MESSAGE', '保存成功', '{"tone":"success"}'::jsonb, true, true, 'ON', 30, 0, '通用保存成功提示', now(), now()),
+    (2006, 1907, 'prompt.common.delete_confirm', 'PROMPT_COMMON_DELETE_CONFIRM', 'HINT', '确认删除当前记录吗？', '{"tone":"warning"}'::jsonb, true, true, 'ON', 31, 0, '通用删除确认提示', now(), now()),
+    (2007, 1909, 'device.type.temp_sensor', 'DEVICE_TYPE_TEMP_SENSOR', 'ENUM', '温度传感器', '{"deviceType":"sensor","code":"TEMP_SENSOR"}'::jsonb, true, true, 'ON', 40, 0, '设备类型温度传感器', now(), now()),
+    (2008, 1909, 'device.type.current_meter', 'DEVICE_TYPE_CURRENT_METER', 'ENUM', '电流表', '{"deviceType":"meter","code":"CURRENT_METER"}'::jsonb, true, true, 'ON', 41, 0, '设备类型电流表', now(), now()),
+    (2009, 1909, 'device.type.gas_detector', 'DEVICE_TYPE_GAS_DETECTOR', 'ENUM', '气体探测器', '{"deviceType":"detector","code":"GAS_DETECTOR"}'::jsonb, true, true, 'ON', 42, 0, '设备类型气体探测器', now(), now());
 SELECT setval('sys_dict_labels_id_seq', (SELECT COALESCE(MAX(id), 1) FROM public.sys_dict_labels));
-
 INSERT INTO public.sys_dict_label_i18n (
     label_id, language_code, text_value, short_text, description, tenant_id, created_at, updated_at
 )
 VALUES
-    (1, 'zh-CN', '用户列表', '列表', '用户列表页标题', 0, now(), now()),
-    (2, 'zh-CN', '用户详情', '详情', '用户详情页标题', 0, now(), now()),
-    (3, 'zh-CN', '用户管理', '用户', '系统菜单-用户管理', 0, now(), now()),
-    (4, 'zh-CN', '角色管理', '角色', '系统菜单-角色管理', 0, now(), now()),
-    (5, 'zh-CN', '保存成功', '成功', '通用保存成功提示', 0, now(), now()),
-    (6, 'zh-CN', '确认删除当前数据？', '确认删除', '通用删除确认提示', 0, now(), now()),
-    (7, 'zh-CN', '温湿度传感器', '温湿度', '设备类型-温湿度传感器', 0, now(), now()),
-    (8, 'zh-CN', '电流表', '电流表', '设备类型-电流表', 0, now(), now()),
-    (9, 'zh-CN', '气体探测器', '气体探测', '设备类型-气体探测器', 0, now(), now()),
-    (1, 'en-US', 'User List', 'List', 'User list page title', 0, now(), now()),
-    (2, 'en-US', 'User Detail', 'Detail', 'User detail page title', 0, now(), now()),
-    (3, 'en-US', 'User Management', 'Users', 'System menu - user management', 0, now(), now()),
-    (4, 'en-US', 'Role Management', 'Roles', 'System menu - role management', 0, now(), now()),
-    (5, 'en-US', 'Saved successfully', 'Saved', 'Common save success prompt', 0, now(), now()),
-    (6, 'en-US', 'Are you sure you want to delete this record?', 'Delete?', 'Common delete confirmation prompt', 0, now(), now()),
-    (7, 'en-US', 'Temperature Sensor', 'Temp', 'Device type - temperature sensor', 0, now(), now()),
-    (8, 'en-US', 'Current Meter', 'Meter', 'Device type - current meter', 0, now(), now()),
-    (9, 'en-US', 'Gas Detector', 'Gas', 'Device type - gas detector', 0, now(), now());
+    (2001, 'zh-CN', '用户列表', '列表', '用户列表页面标题', 0, now(), now()),
+    (2002, 'zh-CN', '用户详情', '详情', '用户详情页面标题', 0, now(), now()),
+    (2003, 'zh-CN', '用户管理', '用户', '系统菜单用户管理项', 0, now(), now()),
+    (2004, 'zh-CN', '角色管理', '角色', '系统菜单角色管理项', 0, now(), now()),
+    (2005, 'zh-CN', '保存成功', '成功', '通用保存成功提示', 0, now(), now()),
+    (2006, 'zh-CN', '确认删除当前记录吗？', '删除确认', '通用删除确认提示', 0, now(), now()),
+    (2007, 'zh-CN', '温度传感器', '温度', '设备类型温度传感器', 0, now(), now()),
+    (2008, 'zh-CN', '电流表', '电流', '设备类型电流表', 0, now(), now()),
+    (2009, 'zh-CN', '气体探测器', '气体', '设备类型气体探测器', 0, now(), now()),
+    (2001, 'en-US', 'User List', 'List', 'User list page title', 0, now(), now()),
+    (2002, 'en-US', 'User Detail', 'Detail', 'User detail page title', 0, now(), now()),
+    (2003, 'en-US', 'User Management', 'Users', 'System menu - user management', 0, now(), now()),
+    (2004, 'en-US', 'Role Management', 'Roles', 'System menu - role management', 0, now(), now()),
+    (2005, 'en-US', 'Saved successfully', 'Saved', 'Common save success prompt', 0, now(), now()),
+    (2006, 'en-US', 'Are you sure you want to delete this record?', 'Delete?', 'Common delete confirmation prompt', 0, now(), now()),
+    (2007, 'en-US', 'Temperature Sensor', 'Temp', 'Device type - temperature sensor', 0, now(), now()),
+    (2008, 'en-US', 'Current Meter', 'Meter', 'Device type - current meter', 0, now(), now()),
+    (2009, 'en-US', 'Gas Detector', 'Gas', 'Device type - gas detector', 0, now(), now());
 SELECT setval('sys_dict_label_i18n_id_seq', (SELECT COALESCE(MAX(id), 1) FROM public.sys_dict_label_i18n));
-
 INSERT INTO public.internal_message_categories (id, code, name, remark, sort_order, is_enabled, created_at)
 VALUES
-    (1, 'order', '订单通知', '包含订单支付、发货、退款等全流程通知', 1, true, now()),
-    (101, 'order_paid', '支付成功', '订单支付完成时触发的通知', 2, true, now()),
-    (102, 'order_unpaid', '支付超时', '订单未在规定时间内支付的提醒', 3, true, now()),
-    (103, 'order_shipped', '已发货', '商家发货后通知用户', 4, true, now()),
-    (104, 'order_refunded', '已退款', '订单退款流程完成的通知', 5, true, now()),
-    (2, 'system', '系统通知', '系统公告、维护提醒、版本更新等平台级通知', 6, true, now()),
-    (201, 'system_announcement', '系统公告', '平台规则更新、重要通知等', 7, true, now()),
-    (202, 'system_maintenance', '维护通知', '系统计划维护的时间提醒', 8, true, now()),
-    (203, 'system_upgrade', '版本更新', '客户端或功能升级提示', 9, true, now()),
-    (3, 'activity', '活动通知', '营销活动报名、开始、结束等提醒', 10, true, now()),
-    (301, 'activity_signup', '报名成功', '用户报名活动后的确认通知', 11, true, now()),
-    (302, 'activity_start', '活动开始', '活动即将开始的倒计时提醒', 12, true, now()),
-    (303, 'activity_end', '活动结束', '活动结束及结果公示通知', 13, true, now()),
-    (4, 'user', '用户通知', '账号安全、资料变更、权限调整等通知', 14, true, now()),
-    (401, 'user_login_abnormal', '异地登录', '账号在陌生设备登录的安全提醒', 15, true, now()),
-    (402, 'user_profile_updated', '资料变更', '用户手机号、邮箱等信息修改后的通知', 16, true, now()),
-    (403, 'user_permission_changed', '权限变更', '账号角色或功能权限调整通知', 17, true, now());
+    (2101, 'order', '订单通知', '覆盖订单全生命周期的通知消息', 1, true, now()),
+    (2102, 'order_paid', '订单已支付', '订单支付完成后发送', 2, true, now()),
+    (2103, 'order_unpaid', '支付超时', '用于提醒未支付订单', 3, true, now()),
+    (2104, 'order_shipped', '订单已发货', '商家发货后发送', 4, true, now()),
+    (2105, 'order_refunded', '订单已退款', '退款完成后发送', 5, true, now()),
+    (2106, 'system', '系统通知', '平台公告与维护提醒', 6, true, now()),
+    (2107, 'system_announcement', '系统公告', '重要平台公告通知', 7, true, now()),
+    (2108, 'system_maintenance', '维护通知', '计划内系统维护提醒', 8, true, now()),
+    (2109, 'system_upgrade', '版本升级', '客户端或功能升级通知', 9, true, now()),
+    (2110, 'activity', '活动通知', '活动报名与开始结束提醒', 10, true, now()),
+    (2111, 'activity_signup', '报名成功', '活动报名成功后的确认通知', 11, true, now()),
+    (2112, 'activity_start', '活动开始', '活动开始前倒计时提醒', 12, true, now()),
+    (2113, 'activity_end', '活动结束', '活动结束后的结果通知', 13, true, now()),
+    (2114, 'user', '用户通知', '账号安全、资料与权限变更提醒', 14, true, now()),
+    (2115, 'user_login_abnormal', '异常登录', '陌生设备登录告警提醒', 15, true, now()),
+    (2116, 'user_profile_updated', '资料更新', '用户资料变更后的通知', 16, true, now()),
+    (2117, 'user_permission_changed', '权限变更', '角色或权限调整后的通知', 17, true, now());
 SELECT setval('internal_message_categories_id_seq', (SELECT COALESCE(MAX(id), 1) FROM public.internal_message_categories));
-
 COMMIT;

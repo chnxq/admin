@@ -2,6 +2,16 @@ BEGIN;
 
 SET LOCAL search_path = public, pg_catalog;
 
+DELETE FROM public.sys_task_logs WHERE id BETWEEN 1701 AND 1799;
+DELETE FROM public.sys_tasks WHERE id BETWEEN 1601 AND 1699;
+DELETE FROM public.sys_task_groups WHERE id BETWEEN 1501 AND 1599;
+DELETE FROM public.sys_login_policies WHERE id BETWEEN 1801 AND 1899;
+DELETE FROM public.sys_dict_label_i18n WHERE label_id BETWEEN 2001 AND 2099;
+DELETE FROM public.sys_dict_labels WHERE id BETWEEN 2001 AND 2099;
+DELETE FROM public.sys_dict_category_i18n WHERE category_id BETWEEN 1901 AND 1999;
+DELETE FROM public.sys_dict_categories WHERE id BETWEEN 1901 AND 1999;
+DELETE FROM public.internal_message_categories WHERE id BETWEEN 2101 AND 2199;
+
 DELETE FROM public.sys_membership_roles WHERE id BETWEEN 1401 AND 1499;
 DELETE FROM public.sys_user_roles WHERE user_id BETWEEN 1001 AND 1099;
 DELETE FROM public.sys_user_org_units WHERE user_id BETWEEN 1001 AND 1099;
