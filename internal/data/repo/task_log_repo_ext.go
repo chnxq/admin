@@ -4,7 +4,60 @@
 
 package repo
 
+import (
+	"context"
+	"time"
+
+	taskv1 "admin/api/gen/task/v1"
+	"admin/internal/data/ent/tasklog"
+)
+
 // Add TaskLogRepo-specific query helpers and hand-written data access code here.
 // Tree assembly, aggregate hydration, and child-table orchestration belong here when they
 // are not yet safe to fully generate from config.
 // This file is created once and is never overwritten by xkit.
+
+type TaskLogWriter interface {
+	WriteTaskLog(ctx context.Context, data *taskv1.TaskLog) error
+}
+
+func (r *taskLogRepo) WriteTaskLog(ctx context.Context, data *taskv1.TaskLog) error {
+	if data == nil {
+		return nil
+	}
+
+	executeAt := time.Now()
+	if data.GetExecuteTime() != nil {
+		executeAt = data.GetExecuteTime().AsTime()
+	}
+
+	builder := r.entClient.Client().TaskLog.Create().
+		SetExecuteTime(executeAt)
+	if data.TaskId != nil {
+		builder.SetTaskID(data.GetTaskId())
+	}
+	if data.Input != nil {
+		builder.SetInput(data.GetInput())
+	}
+	if data.Output != nil {
+		builder.SetOutput(data.GetOutput())
+	}
+	if data.Error != nil {
+		builder.SetError(data.GetError())
+	}
+	if data.Status != nil {
+		builder.SetStatus(tasklog.Status(data.GetStatus().String()))
+	}
+	if data.ProcessTime != nil {
+		builder.SetProcessTime(data.GetProcessTime())
+	}
+	if data.TenantId != nil {
+		builder.SetTenantID(data.GetTenantId())
+	}
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("write task log failed: %s", err.Error())
+		return err
+	}
+	return nil
+}

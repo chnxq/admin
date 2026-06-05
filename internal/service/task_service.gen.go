@@ -22,6 +22,12 @@ type TaskService struct {
 	log *log.Helper
 
 	taskRepo repo.TaskRepo
+
+	taskGroupRepo          repo.TaskGroupRepo
+	taskLogRepo            repo.TaskLogRepo
+	apiAuditLogRepo        repo.ApiAuditLogRepo
+	loginAuditLogRepo      repo.LoginAuditLogRepo
+	permissionAuditLogRepo repo.PermissionAuditLogRepo
 }
 
 func NewTaskService(ctx *app.AppCtx, taskRepo repo.TaskRepo) *TaskService {
@@ -64,29 +70,17 @@ func (s *TaskService) Delete(ctx context.Context, req *v11.DeleteTaskRequest) (*
 // Start is generated from the source proto contract.
 // Classification: special.
 func (s *TaskService) Start(ctx context.Context, req *v11.StartTaskRequest) (*emptypb.Empty, error) {
-	_ = ctx
-	_ = req
-
-	// TODO: implement TaskService.Start business logic manually or move it to a manual extension.
-	return &emptypb.Empty{}, nil
+	return s.start(ctx, req)
 }
 
 // Stop is generated from the source proto contract.
 // Classification: special.
 func (s *TaskService) Stop(ctx context.Context, req *v11.StopTaskRequest) (*emptypb.Empty, error) {
-	_ = ctx
-	_ = req
-
-	// TODO: implement TaskService.Stop business logic manually or move it to a manual extension.
-	return &emptypb.Empty{}, nil
+	return s.stop(ctx, req)
 }
 
 // RunOnce is generated from the source proto contract.
 // Classification: special.
 func (s *TaskService) RunOnce(ctx context.Context, req *v11.RunTaskOnceRequest) (*emptypb.Empty, error) {
-	_ = ctx
-	_ = req
-
-	// TODO: implement TaskService.RunOnce business logic manually or move it to a manual extension.
-	return &emptypb.Empty{}, nil
+	return s.runOnce(ctx, req)
 }

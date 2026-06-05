@@ -57,6 +57,13 @@ func (w *wrappedApiAuditLogRepo) AnalyticsSummary(ctx context.Context, now time.
 	return &ApiAuditAnalyticsSummary{}, nil
 }
 
+func (w *wrappedApiAuditLogRepo) CleanupApiAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error) {
+	if cleaner, ok := w.ApiAuditLogRepo.(ApiAuditLogCleaner); ok {
+		return cleaner.CleanupApiAuditLogsBefore(ctx, tenantID, before)
+	}
+	return 0, nil
+}
+
 type wrappedLoginAuditLogRepo struct {
 	LoginAuditLogRepo
 }
@@ -90,6 +97,13 @@ func (w *wrappedLoginAuditLogRepo) WriteLoginAuditLog(ctx context.Context, data 
 	return nil
 }
 
+func (w *wrappedLoginAuditLogRepo) CleanupLoginAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error) {
+	if cleaner, ok := w.LoginAuditLogRepo.(LoginAuditLogCleaner); ok {
+		return cleaner.CleanupLoginAuditLogsBefore(ctx, tenantID, before)
+	}
+	return 0, nil
+}
+
 type wrappedPermissionAuditLogRepo struct {
 	PermissionAuditLogRepo
 }
@@ -121,4 +135,11 @@ func (w *wrappedPermissionAuditLogRepo) WritePermissionAuditLog(ctx context.Cont
 		return writer.WritePermissionAuditLog(ctx, data)
 	}
 	return nil
+}
+
+func (w *wrappedPermissionAuditLogRepo) CleanupPermissionAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error) {
+	if cleaner, ok := w.PermissionAuditLogRepo.(PermissionAuditLogCleaner); ok {
+		return cleaner.CleanupPermissionAuditLogsBefore(ctx, tenantID, before)
+	}
+	return 0, nil
 }

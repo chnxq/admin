@@ -23,6 +23,10 @@ type ApiAuditLogWriter interface {
 	WriteApiAuditLog(ctx context.Context, data *auditv1.ApiAuditLog) error
 }
 
+type ApiAuditLogCleaner interface {
+	CleanupApiAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error)
+}
+
 type ApiAuditTrendPoint struct {
 	Label    string
 	Accesses uint64
@@ -104,6 +108,21 @@ func (r *apiAuditLogRepo) WriteApiAuditLog(ctx context.Context, data *auditv1.Ap
 		return err
 	}
 	return nil
+}
+
+func (r *apiAuditLogRepo) CleanupApiAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error) {
+	query := r.entClient.Client().ApiAuditLog.Delete().
+		Where(apiauditlog.CreatedAtLT(before))
+	if tenantID != nil && *tenantID > 0 {
+		query.Where(apiauditlog.TenantIDEQ(*tenantID))
+	}
+
+	affected, err := query.Exec(ctx)
+	if err != nil {
+		r.log.Errorf("cleanup api audit logs failed: %s", err.Error())
+		return 0, err
+	}
+	return affected, nil
 }
 
 func (r *apiAuditLogRepo) AnalyticsSummary(ctx context.Context, now time.Time) (*ApiAuditAnalyticsSummary, error) {

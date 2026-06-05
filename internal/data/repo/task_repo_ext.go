@@ -4,5 +4,61 @@
 
 package repo
 
+import (
+	"context"
+	"fmt"
+
+	taskv1 "admin/api/gen/task/v1"
+	"admin/internal/data/ent/task"
+)
+
 // Add TaskRepo-specific query helpers and hand-written data access code here.
 // This file is created once and is never overwritten by xkit.
+
+type TaskRuntimeRepo interface {
+	ListTasksByGroupID(ctx context.Context, groupID uint64) ([]*taskv1.Task, error)
+	UpdateTaskRuntimeState(ctx context.Context, taskID uint64, status taskv1.Task_Status, entryID *uint32) error
+}
+
+func (r *taskRepo) ListTasksByGroupID(ctx context.Context, groupID uint64) ([]*taskv1.Task, error) {
+	entities, err := r.entClient.Client().Task.Query().
+		Where(task.GroupIDEQ(groupID)).
+		Order(task.ByID()).
+		All(ctx)
+	if err != nil {
+		r.log.Errorf("list task by group failed: %s", err.Error())
+		return nil, err
+	}
+
+	items := make([]*taskv1.Task, 0, len(entities))
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		items = append(items, r.mapper.ToDTO(entity))
+	}
+	return items, nil
+}
+
+func (r *taskRepo) UpdateTaskRuntimeState(ctx context.Context, taskID uint64, status taskv1.Task_Status, entryID *uint32) error {
+	if taskID == 0 {
+		return fmt.Errorf("invalid task id")
+	}
+
+	now, viewer := r.generatedAuditContext(ctx)
+	builder := r.entClient.Client().Task.UpdateOneID(taskID).
+		SetStatus(task.Status(status.String())).
+		SetUpdatedAt(now).
+		SetUpdatedBy(uint32(viewer.UserID()))
+	if entryID != nil {
+		builder.SetEntryID(*entryID)
+	} else {
+		builder.ClearEntryID()
+	}
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("update task runtime state failed: %s", err.Error())
+		return err
+	}
+	return nil
+}

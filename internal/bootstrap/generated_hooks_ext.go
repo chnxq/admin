@@ -4,6 +4,8 @@
 
 package bootstrap
 
+import "admin/internal/service"
+
 // Add GeneratedData/GeneratedServices bootstrap hooks here.
 // This file is created once and is never overwritten by xkit.
 
@@ -15,5 +17,26 @@ func (data *GeneratedData) afterInit() {
 }
 
 func (services *GeneratedServices) afterInit(data *GeneratedData) {
-	_, _ = services, data
+	if services == nil || data == nil {
+		return
+	}
+	if services.Task != nil {
+		services.Task.RegisterRuntimeDeps(
+			data.TaskGroupRepo,
+			data.TaskLogRepo,
+			data.ApiAuditLogRepo,
+			data.LoginAuditLogRepo,
+			data.PermissionAuditLogRepo,
+		)
+	}
+	if services.TaskGroup != nil {
+		services.TaskGroup.RegisterRuntimeDeps(
+			data.TaskRepo,
+			data.TaskLogRepo,
+			data.ApiAuditLogRepo,
+			data.LoginAuditLogRepo,
+			data.PermissionAuditLogRepo,
+		)
+	}
+	_ = service.NewTaskService
 }

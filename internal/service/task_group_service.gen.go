@@ -22,6 +22,12 @@ type TaskGroupService struct {
 	log *log.Helper
 
 	taskGroupRepo repo.TaskGroupRepo
+
+	taskRepo               repo.TaskRepo
+	taskLogRepo            repo.TaskLogRepo
+	apiAuditLogRepo        repo.ApiAuditLogRepo
+	loginAuditLogRepo      repo.LoginAuditLogRepo
+	permissionAuditLogRepo repo.PermissionAuditLogRepo
 }
 
 func NewTaskGroupService(ctx *app.AppCtx, taskGroupRepo repo.TaskGroupRepo) *TaskGroupService {
@@ -64,29 +70,17 @@ func (s *TaskGroupService) Delete(ctx context.Context, req *v11.DeleteTaskGroupR
 // Start is generated from the source proto contract.
 // Classification: special.
 func (s *TaskGroupService) Start(ctx context.Context, req *v11.StartTaskGroupRequest) (*emptypb.Empty, error) {
-	_ = ctx
-	_ = req
-
-	// TODO: implement TaskGroupService.Start business logic manually or move it to a manual extension.
-	return &emptypb.Empty{}, nil
+	return s.start(ctx, req)
 }
 
 // Stop is generated from the source proto contract.
 // Classification: special.
 func (s *TaskGroupService) Stop(ctx context.Context, req *v11.StopTaskGroupRequest) (*emptypb.Empty, error) {
-	_ = ctx
-	_ = req
-
-	// TODO: implement TaskGroupService.Stop business logic manually or move it to a manual extension.
-	return &emptypb.Empty{}, nil
+	return s.stop(ctx, req)
 }
 
 // RunOnce is generated from the source proto contract.
 // Classification: special.
 func (s *TaskGroupService) RunOnce(ctx context.Context, req *v11.RunTaskGroupOnceRequest) (*emptypb.Empty, error) {
-	_ = ctx
-	_ = req
-
-	// TODO: implement TaskGroupService.RunOnce business logic manually or move it to a manual extension.
-	return &emptypb.Empty{}, nil
+	return s.runOnce(ctx, req)
 }

@@ -20,6 +20,8 @@ import (
 	"admin/internal/data/ent/position"
 	"admin/internal/data/ent/role"
 	"admin/internal/data/ent/rolepermission"
+	enttask "admin/internal/data/ent/task"
+	enttaskgroup "admin/internal/data/ent/taskgroup"
 	"admin/internal/data/ent/tenant"
 	"admin/internal/data/ent/user"
 	"admin/internal/data/ent/usercredential"
@@ -116,6 +118,10 @@ func (s *defaultDataSeed) run() error {
 
 	adminPosition, staffPosition, err := s.ensurePositions(ctx, tenantEntity.ID, deptOrg.ID)
 	if err != nil {
+		return err
+	}
+
+	if err := s.ensureTaskSeeds(ctx); err != nil {
 		return err
 	}
 
@@ -531,6 +537,95 @@ func (s *defaultDataSeed) ensurePosition(ctx context.Context, tenantID, orgUnitI
 		Save(ctx)
 }
 
+func (s *defaultDataSeed) ensureTaskSeeds(ctx context.Context) error {
+	groupEntity, err := s.entClient.Client().TaskGroup.Query().
+		Where(
+			enttaskgroup.TenantIDEQ(platformTenantID),
+			enttaskgroup.GroupNameEQ("系统维护"),
+		).
+		Only(ctx)
+	if err == nil {
+		groupEntity, err = s.entClient.Client().TaskGroup.UpdateOneID(groupEntity.ID).
+			SetGroupName("系统维护").
+			SetRemark("系统内置维护任务").
+			SetUpdatedAt(s.now).
+			SetUpdatedBy(0).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("update task group seed: %w", err)
+		}
+	} else if ent.IsNotFound(err) {
+		groupEntity, err = s.entClient.Client().TaskGroup.Create().
+			SetTenantID(platformTenantID).
+			SetGroupName("系统维护").
+			SetRemark("系统内置维护任务").
+			SetCreatedAt(s.now).
+			SetCreatedBy(0).
+			SetUpdatedAt(s.now).
+			SetUpdatedBy(0).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("create task group seed: %w", err)
+		}
+	} else {
+		return fmt.Errorf("query task group seed: %w", err)
+	}
+
+	args := `{"expireHours":720,"targets":["api","login","permission"]}`
+	taskEntity, err := s.entClient.Client().Task.Query().
+		Where(
+			enttask.TenantIDEQ(platformTenantID),
+			enttask.GroupIDEQ(uint64(groupEntity.ID)),
+			enttask.TaskNameEQ("删除过期日志"),
+		).
+		Only(ctx)
+	if err == nil {
+		_, err = s.entClient.Client().Task.UpdateOneID(taskEntity.ID).
+			SetTaskName("删除过期日志").
+			SetGroupID(uint64(groupEntity.ID)).
+			SetTaskType(enttask.TaskTypeFunction).
+			SetCronExpression("0 0 3 * * *").
+			SetInvokeTarget("system:cleanup:audit-logs").
+			SetArgs(args).
+			SetRetry(0).
+			SetConcurrent(false).
+			SetStatus(enttask.StatusStopped).
+			SetRemark("按小时参数清理 API/登录/权限审计日志").
+			SetUpdatedAt(s.now).
+			SetUpdatedBy(0).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("update task seed: %w", err)
+		}
+		return nil
+	}
+	if !ent.IsNotFound(err) {
+		return fmt.Errorf("query task seed: %w", err)
+	}
+
+	if _, err := s.entClient.Client().Task.Create().
+		SetTenantID(platformTenantID).
+		SetTaskName("删除过期日志").
+		SetGroupID(uint64(groupEntity.ID)).
+		SetTaskType(enttask.TaskTypeFunction).
+		SetCronExpression("0 0 3 * * *").
+		SetInvokeTarget("system:cleanup:audit-logs").
+		SetArgs(args).
+		SetRetry(0).
+		SetConcurrent(false).
+		SetStatus(enttask.StatusStopped).
+		SetRemark("按小时参数清理 API/登录/权限审计日志").
+		SetCreatedAt(s.now).
+		SetCreatedBy(0).
+		SetUpdatedAt(s.now).
+		SetUpdatedBy(0).
+		Save(ctx); err != nil {
+		return fmt.Errorf("create task seed: %w", err)
+	}
+
+	return nil
+}
+
 func (s *defaultDataSeed) collectPermissionIDs(ctx context.Context) ([]uint32, error) {
 	items, err := s.entClient.Client().Permission.Query().
 		Where(permission.StatusEQ(permission.StatusOn)).
@@ -591,6 +686,11 @@ func (s *defaultDataSeed) collectDefaultAdminPermissionIDs(ctx context.Context) 
 	}
 	if exportGroupID != 0 {
 		targetGroupIDs[exportGroupID] = struct{}{}
+		for groupID, parentID := range groupParentByID {
+			if parentID == exportGroupID {
+				targetGroupIDs[groupID] = struct{}{}
+			}
+		}
 	}
 	if len(targetGroupIDs) == 0 {
 		return nil, nil

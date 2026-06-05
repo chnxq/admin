@@ -38,6 +38,10 @@ type PermissionAuditLogWriter interface {
 	WritePermissionAuditLog(ctx context.Context, data *auditv1.PermissionAuditLog) error
 }
 
+type PermissionAuditLogCleaner interface {
+	CleanupPermissionAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error)
+}
+
 type permissionAuditLogSnapshot struct {
 	Label string `json:"label,omitempty"`
 	Value any    `json:"value,omitempty"`
@@ -45,6 +49,21 @@ type permissionAuditLogSnapshot struct {
 
 func (r *permissionAuditLogRepo) WritePermissionAuditLog(ctx context.Context, data *auditv1.PermissionAuditLog) error {
 	return writePermissionAuditLogEntity(ctx, r.entClient, r.log, data)
+}
+
+func (r *permissionAuditLogRepo) CleanupPermissionAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error) {
+	query := r.entClient.Client().PermissionAuditLog.Delete().
+		Where(permissionauditlog.CreatedAtLT(before))
+	if tenantID != nil && *tenantID > 0 {
+		query.Where(permissionauditlog.TenantIDEQ(*tenantID))
+	}
+
+	affected, err := query.Exec(ctx)
+	if err != nil {
+		r.log.Errorf("cleanup permission audit logs failed: %s", err.Error())
+		return 0, err
+	}
+	return affected, nil
 }
 
 func writePermissionAuditLogEntity(ctx context.Context, entClient *entCrud.EntClient[*ent.Client], logHelper *xlog.Helper, data *auditv1.PermissionAuditLog) error {
