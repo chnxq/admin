@@ -3,44 +3,38 @@ package service
 import (
 	"context"
 	"fmt"
-	"strings"
-	"time"
 
 	taskv1 "admin/api/gen/task/v1"
 	"admin/internal/data/repo"
-	taskruntime "admin/internal/task"
+	taskruntime "admin/internal/task/runtime"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (s *TaskService) RegisterRuntimeDeps(
-	taskGroupRepo repo.TaskGroupRepo,
-	taskLogRepo repo.TaskLogRepo,
-	apiAuditLogRepo repo.ApiAuditLogRepo,
-	loginAuditLogRepo repo.LoginAuditLogRepo,
-	permissionAuditLogRepo repo.PermissionAuditLogRepo,
-) {
-	s.taskGroupRepo = taskGroupRepo
-	s.taskLogRepo = taskLogRepo
-	s.apiAuditLogRepo = apiAuditLogRepo
-	s.loginAuditLogRepo = loginAuditLogRepo
-	s.permissionAuditLogRepo = permissionAuditLogRepo
-	s.executorRegistry = newTaskExecutorRegistry(s.taskRepo, apiAuditLogRepo, loginAuditLogRepo, permissionAuditLogRepo)
-}
-
-func (s *TaskGroupService) RegisterRuntimeDeps(
+func BindTaskServices(
+	taskService *TaskService,
+	taskGroupService *TaskGroupService,
 	taskRepo repo.TaskRepo,
-	taskLogRepo repo.TaskLogRepo,
-	apiAuditLogRepo repo.ApiAuditLogRepo,
-	loginAuditLogRepo repo.LoginAuditLogRepo,
-	permissionAuditLogRepo repo.PermissionAuditLogRepo,
-) {
-	s.taskRepo = taskRepo
-	s.taskLogRepo = taskLogRepo
-	s.apiAuditLogRepo = apiAuditLogRepo
-	s.loginAuditLogRepo = loginAuditLogRepo
-	s.permissionAuditLogRepo = permissionAuditLogRepo
-	s.executorRegistry = newTaskExecutorRegistry(taskRepo, apiAuditLogRepo, loginAuditLogRepo, permissionAuditLogRepo)
+	taskGroupRepo repo.TaskGroupRepo,
+	runner *taskruntime.Runner,
+	scheduler *taskruntime.Scheduler,
+) error {
+	if runner == nil {
+		return fmt.Errorf("task runner is not configured")
+	}
+	if scheduler == nil {
+		return fmt.Errorf("task scheduler is not configured")
+	}
+	if taskService != nil {
+		taskService.taskGroupRepo = taskGroupRepo
+		taskService.runtimeRunner = runner
+		taskService.scheduler = scheduler
+	}
+	if taskGroupService != nil {
+		taskGroupService.taskRepo = taskRepo
+		taskGroupService.runtimeRunner = runner
+		taskGroupService.scheduler = scheduler
+	}
+	return nil
 }
 
 func (s *TaskService) start(ctx context.Context, req *taskv1.StartTaskRequest) (*emptypb.Empty, error) {
@@ -92,7 +86,10 @@ func (s *TaskService) runOnce(ctx context.Context, req *taskv1.RunTaskOnceReques
 		}
 		return &emptypb.Empty{}, nil
 	}
-	if err := executeTaskOnce(ctx, taskItem, req.GetInput(), s.taskLogRepo, s.apiAuditLogRepo, s.loginAuditLogRepo, s.permissionAuditLogRepo, s.executorRegistry); err != nil {
+	if s.runtimeRunner == nil {
+		return nil, fmt.Errorf("task runner is not configured")
+	}
+	if err := s.runtimeRunner.RunTask(ctx, taskItem, req.GetInput()); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -152,7 +149,10 @@ func (s *TaskGroupService) runOnce(ctx context.Context, req *taskv1.RunTaskGroup
 			}
 			continue
 		}
-		if err := executeTaskOnce(ctx, item, req.GetInput(), s.taskLogRepo, s.apiAuditLogRepo, s.loginAuditLogRepo, s.permissionAuditLogRepo, s.executorRegistry); err != nil {
+		if s.runtimeRunner == nil {
+			return nil, fmt.Errorf("task runner is not configured")
+		}
+		if err := s.runtimeRunner.RunTask(ctx, item, req.GetInput()); err != nil {
 			return nil, err
 		}
 	}
@@ -182,108 +182,4 @@ func updateTaskRuntimeState(ctx context.Context, taskRepo repo.TaskRepo, taskID 
 		return fmt.Errorf("task runtime repo is not configured")
 	}
 	return runtimeRepo.UpdateTaskRuntimeState(ctx, taskID, status, entryID)
-}
-
-func executeTaskOnce(
-	ctx context.Context,
-	taskItem *taskv1.Task,
-	overrideInput string,
-	taskLogRepo repo.TaskLogRepo,
-	apiAuditLogRepo repo.ApiAuditLogRepo,
-	loginAuditLogRepo repo.LoginAuditLogRepo,
-	permissionAuditLogRepo repo.PermissionAuditLogRepo,
-	executorRegistry *taskruntime.Registry,
-) error {
-	if taskItem == nil || taskItem.GetId() == 0 {
-		return fmt.Errorf("task not found")
-	}
-
-	startAt := time.Now()
-	input := strings.TrimSpace(taskItem.GetArgs())
-	if strings.TrimSpace(overrideInput) != "" {
-		input = strings.TrimSpace(overrideInput)
-	}
-
-	resultText, execErr := dispatchTaskExecution(
-		ctx,
-		taskItem,
-		input,
-		executorRegistry,
-	)
-
-	writeErr := writeTaskExecutionLog(ctx, taskLogRepo, taskItem, input, resultText, execErr, startAt)
-	if execErr != nil {
-		if writeErr != nil {
-			return fmt.Errorf("%w; write task log: %v", execErr, writeErr)
-		}
-		return execErr
-	}
-	if writeErr != nil {
-		return writeErr
-	}
-	return nil
-}
-
-func dispatchTaskExecution(
-	ctx context.Context,
-	taskItem *taskv1.Task,
-	input string,
-	registry *taskruntime.Registry,
-) (string, error) {
-	if registry == nil {
-		return "", fmt.Errorf("task executor registry is not configured")
-	}
-	return registry.Execute(ctx, taskItem, input)
-}
-
-func writeTaskExecutionLog(
-	ctx context.Context,
-	taskLogRepo repo.TaskLogRepo,
-	taskItem *taskv1.Task,
-	input string,
-	output string,
-	execErr error,
-	startAt time.Time,
-) error {
-	if taskLogRepo == nil {
-		return nil
-	}
-	writer, ok := taskLogRepo.(repo.TaskLogWriter)
-	if !ok {
-		return fmt.Errorf("task log writer is not configured")
-	}
-
-	processTime := uint32(time.Since(startAt).Milliseconds())
-	logItem := &taskv1.TaskLog{
-		TaskId:      uint64Ptr(taskItem.GetId()),
-		Input:       stringValuePtr(input),
-		ProcessTime: &processTime,
-		ExecuteTime: timestamppb.New(startAt),
-	}
-	if taskItem.TenantId != nil {
-		tenantID := taskItem.GetTenantId()
-		logItem.TenantId = &tenantID
-	}
-	if execErr != nil {
-		status := taskv1.TaskLog_FAILURE
-		text := execErr.Error()
-		logItem.Status = &status
-		logItem.Error = &text
-		if strings.TrimSpace(output) != "" {
-			logItem.Output = &output
-		}
-	} else {
-		status := taskv1.TaskLog_SUCCESS
-		logItem.Status = &status
-		logItem.Output = &output
-	}
-	return writer.WriteTaskLog(ctx, logItem)
-}
-
-func uint64Ptr(value uint64) *uint64 {
-	return &value
-}
-
-func stringValuePtr(value string) *string {
-	return &value
 }

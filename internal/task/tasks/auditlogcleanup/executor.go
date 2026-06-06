@@ -1,4 +1,4 @@
-package task
+package auditlogcleanup
 
 import (
 	"context"
@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	taskruntime "admin/internal/task/runtime"
 )
 
-type CleanupAuditLogInput struct {
+type Input struct {
 	ExpireHours uint32   `json:"expireHours"`
 	Targets     []string `json:"targets"`
 }
 
-type CleanupAuditLogResult struct {
+type Result struct {
 	ExpireHours       uint32 `json:"expireHours"`
 	DeletedAPI        int    `json:"deletedApi"`
 	DeletedLogin      int    `json:"deletedLogin"`
@@ -21,25 +23,19 @@ type CleanupAuditLogResult struct {
 	TotalDeleted      int    `json:"totalDeleted"`
 }
 
-type CleanupAuditLogsExecutor struct {
-	apiAuditLogCleaner        ApiAuditLogCleaner
-	loginAuditLogCleaner      LoginAuditLogCleaner
-	permissionAuditLogCleaner PermissionAuditLogCleaner
+type Executor struct {
+	store Store
 }
 
-func NewCleanupAuditLogsExecutor(deps RuntimeDeps) *CleanupAuditLogsExecutor {
-	return &CleanupAuditLogsExecutor{
-		apiAuditLogCleaner:        deps.ApiAuditLogCleaner,
-		loginAuditLogCleaner:      deps.LoginAuditLogCleaner,
-		permissionAuditLogCleaner: deps.PermissionAuditLogCleaner,
-	}
+func NewExecutor(store Store) *Executor {
+	return &Executor{store: store}
 }
 
-func (e *CleanupAuditLogsExecutor) InvokeTarget() string {
+func (e *Executor) InvokeTarget() string {
 	return CleanupAuditLogsInvokeTarget
 }
 
-func (e *CleanupAuditLogsExecutor) Validate(_ context.Context, req ValidationRequest) error {
+func (e *Executor) Validate(_ context.Context, req taskruntime.ValidationRequest) error {
 	raw := strings.TrimSpace(req.Raw)
 	if raw == "" && req.Task != nil {
 		raw = strings.TrimSpace(req.Task.GetArgs())
@@ -48,7 +44,7 @@ func (e *CleanupAuditLogsExecutor) Validate(_ context.Context, req ValidationReq
 		return fmt.Errorf("task args are required")
 	}
 
-	payload, err := ParseCleanupAuditLogInput(raw)
+	payload, err := ParseInput(raw)
 	if err != nil {
 		return err
 	}
@@ -59,7 +55,7 @@ func (e *CleanupAuditLogsExecutor) Validate(_ context.Context, req ValidationReq
 		return fmt.Errorf("targets must not be empty")
 	}
 	for _, target := range payload.Targets {
-		switch normalizeCleanupTarget(target) {
+		switch normalizeTarget(target) {
 		case "api", "login", "permission":
 		default:
 			return fmt.Errorf("unsupported cleanup target: %s", target)
@@ -68,7 +64,7 @@ func (e *CleanupAuditLogsExecutor) Validate(_ context.Context, req ValidationReq
 	return nil
 }
 
-func (e *CleanupAuditLogsExecutor) Execute(ctx context.Context, req ExecuteRequest) (string, error) {
+func (e *Executor) Execute(ctx context.Context, req taskruntime.ExecuteRequest) (string, error) {
 	taskItem := req.Task
 	if taskItem == nil {
 		return "", fmt.Errorf("task not found")
@@ -78,18 +74,16 @@ func (e *CleanupAuditLogsExecutor) Execute(ctx context.Context, req ExecuteReque
 		raw = strings.TrimSpace(taskItem.GetArgs())
 	}
 
-	payload, err := ParseCleanupAuditLogInput(raw)
+	payload, err := ParseInput(raw)
 	if err != nil {
 		return "", err
 	}
-	if err := e.Validate(ctx, ValidationRequest{Task: taskItem, Raw: raw}); err != nil {
+	if err := e.Validate(ctx, taskruntime.ValidationRequest{Task: taskItem, Raw: raw}); err != nil {
 		return "", err
 	}
 
 	before := time.Now().Add(-time.Duration(payload.ExpireHours) * time.Hour)
-	result := CleanupAuditLogResult{
-		ExpireHours: payload.ExpireHours,
-	}
+	result := Result{ExpireHours: payload.ExpireHours}
 
 	var tenantID *uint32
 	if taskItem.TenantId != nil && taskItem.GetTenantId() > 0 {
@@ -98,30 +92,30 @@ func (e *CleanupAuditLogsExecutor) Execute(ctx context.Context, req ExecuteReque
 	}
 
 	for _, target := range payload.Targets {
-		switch normalizeCleanupTarget(target) {
+		switch normalizeTarget(target) {
 		case "api":
-			if e.apiAuditLogCleaner == nil {
-				return "", fmt.Errorf("api audit log cleaner is not configured")
+			if e.store == nil {
+				return "", fmt.Errorf("audit log cleanup store is not configured")
 			}
-			affected, err := e.apiAuditLogCleaner.CleanupApiAuditLogsBefore(ctx, tenantID, before)
+			affected, err := e.store.CleanupAPIBefore(ctx, tenantID, before)
 			if err != nil {
 				return "", err
 			}
 			result.DeletedAPI = affected
 		case "login":
-			if e.loginAuditLogCleaner == nil {
-				return "", fmt.Errorf("login audit log cleaner is not configured")
+			if e.store == nil {
+				return "", fmt.Errorf("audit log cleanup store is not configured")
 			}
-			affected, err := e.loginAuditLogCleaner.CleanupLoginAuditLogsBefore(ctx, tenantID, before)
+			affected, err := e.store.CleanupLoginBefore(ctx, tenantID, before)
 			if err != nil {
 				return "", err
 			}
 			result.DeletedLogin = affected
 		case "permission":
-			if e.permissionAuditLogCleaner == nil {
-				return "", fmt.Errorf("permission audit log cleaner is not configured")
+			if e.store == nil {
+				return "", fmt.Errorf("audit log cleanup store is not configured")
 			}
-			affected, err := e.permissionAuditLogCleaner.CleanupPermissionAuditLogsBefore(ctx, tenantID, before)
+			affected, err := e.store.CleanupPermissionBefore(ctx, tenantID, before)
 			if err != nil {
 				return "", err
 			}
@@ -137,14 +131,14 @@ func (e *CleanupAuditLogsExecutor) Execute(ctx context.Context, req ExecuteReque
 	return string(rawResult), nil
 }
 
-func ParseCleanupAuditLogInput(raw string) (*CleanupAuditLogInput, error) {
-	var payload CleanupAuditLogInput
+func ParseInput(raw string) (*Input, error) {
+	var payload Input
 	if err := json.Unmarshal([]byte(strings.TrimSpace(raw)), &payload); err != nil {
 		return nil, fmt.Errorf("invalid cleanup args: %w", err)
 	}
 	return &payload, nil
 }
 
-func normalizeCleanupTarget(target string) string {
+func normalizeTarget(target string) string {
 	return strings.ToLower(strings.TrimSpace(target))
 }

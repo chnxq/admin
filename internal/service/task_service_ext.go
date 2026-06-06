@@ -11,7 +11,7 @@ import (
 
 	taskv1 "admin/api/gen/task/v1"
 	"admin/internal/data/repo"
-	taskruntime "admin/internal/task"
+	taskruntime "admin/internal/task/runtime"
 	crudviewer "github.com/chnxq/x-crud/viewer"
 	"github.com/robfig/cron/v3"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -91,13 +91,13 @@ func (s *TaskService) validateTaskInput(ctx context.Context, data *taskv1.Task, 
 	if data.GetStatus() == taskv1.Task_STATUS_UNSPECIFIED {
 		return fmt.Errorf("task status is required")
 	}
-	if err := validateInvokeTarget(data.GetInvokeTarget(), s.executorRegistry); err != nil {
+	if err := validateInvokeTarget(data.GetInvokeTarget(), s.runtimeRunner); err != nil {
 		return err
 	}
 	if err := validateCronExpression(data.GetCronExpression(), data.GetStatus()); err != nil {
 		return err
 	}
-	if err := validateTaskArgs(ctx, data, data.GetArgs(), s.executorRegistry); err != nil {
+	if err := validateTaskArgs(ctx, data, data.GetArgs(), s.runtimeRunner); err != nil {
 		return err
 	}
 
@@ -143,11 +143,11 @@ func (s *TaskService) stopScheduledTask(ctx context.Context, taskID uint64) erro
 	return s.scheduler.StopTask(ctx, taskID)
 }
 
-func validateInvokeTarget(target string, registry *taskruntime.Registry) error {
-	if registry == nil {
-		return fmt.Errorf("task executor registry is not configured")
+func validateInvokeTarget(target string, runner *taskruntime.Runner) error {
+	if runner == nil {
+		return fmt.Errorf("task runner is not configured")
 	}
-	if _, ok := registry.Get(target); !ok {
+	if !runner.SupportsInvokeTarget(target) {
 		return fmt.Errorf("unsupported task invoke target: %s", target)
 	}
 	return nil
@@ -168,11 +168,11 @@ func validateCronExpression(expr string, status taskv1.Task_Status) error {
 	return nil
 }
 
-func validateTaskArgs(ctx context.Context, taskItem *taskv1.Task, raw string, registry *taskruntime.Registry) error {
-	if registry == nil {
-		return fmt.Errorf("task executor registry is not configured")
+func validateTaskArgs(ctx context.Context, taskItem *taskv1.Task, raw string, runner *taskruntime.Runner) error {
+	if runner == nil {
+		return fmt.Errorf("task runner is not configured")
 	}
-	return registry.Validate(ctx, taskItem, raw)
+	return runner.ValidateTask(ctx, taskItem, raw)
 }
 
 var _ repo.TaskRepo

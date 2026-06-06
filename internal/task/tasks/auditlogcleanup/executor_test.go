@@ -1,16 +1,14 @@
-package task
+package auditlogcleanup
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	taskv1 "admin/api/gen/task/v1"
+	taskruntime "admin/internal/task/runtime"
 )
-
-var errTestValidation = errors.New("validation failed")
 
 type fakeAPIAuditLogCleaner struct {
 	affected int
@@ -44,16 +42,16 @@ func (f *fakePermissionAuditLogCleaner) CleanupPermissionAuditLogsBefore(_ conte
 }
 
 func TestCleanupAuditLogsExecutor_ValidateRejectsInvalidJSON(t *testing.T) {
-	executor := NewCleanupAuditLogsExecutor(RuntimeDeps{})
-	err := executor.Validate(context.Background(), ValidationRequest{Raw: "{bad json"})
+	executor := NewExecutor(nil)
+	err := executor.Validate(context.Background(), taskruntime.ValidationRequest{Raw: "{bad json"})
 	if err == nil || !strings.Contains(err.Error(), "invalid cleanup args") {
 		t.Fatalf("expected invalid cleanup args error, got %v", err)
 	}
 }
 
 func TestCleanupAuditLogsExecutor_ValidateRejectsUnsupportedTarget(t *testing.T) {
-	executor := NewCleanupAuditLogsExecutor(RuntimeDeps{})
-	err := executor.Validate(context.Background(), ValidationRequest{
+	executor := NewExecutor(nil)
+	err := executor.Validate(context.Background(), taskruntime.ValidationRequest{
 		Raw: `{"expireHours":24,"targets":["api","other"]}`,
 	})
 	if err == nil || !strings.Contains(err.Error(), "unsupported cleanup target") {
@@ -65,14 +63,14 @@ func TestCleanupAuditLogsExecutor_ExecuteReturnsAggregatedResult(t *testing.T) {
 	apiCleaner := &fakeAPIAuditLogCleaner{affected: 2}
 	loginCleaner := &fakeLoginAuditLogCleaner{affected: 3}
 	permissionCleaner := &fakePermissionAuditLogCleaner{affected: 5}
-	executor := NewCleanupAuditLogsExecutor(RuntimeDeps{
-		ApiAuditLogCleaner:        apiCleaner,
-		LoginAuditLogCleaner:      loginCleaner,
-		PermissionAuditLogCleaner: permissionCleaner,
-	})
+	executor := NewExecutor(NewAuditLogCleanupStore(
+		apiCleaner,
+		loginCleaner,
+		permissionCleaner,
+	))
 
 	tenantID := uint32(101)
-	result, err := executor.Execute(context.Background(), ExecuteRequest{
+	result, err := executor.Execute(context.Background(), taskruntime.ExecuteRequest{
 		Task: &taskv1.Task{
 			TenantId: &tenantID,
 			Args:     stringPtr(`{"expireHours":24,"targets":["api","login","permission"]}`),
@@ -93,7 +91,7 @@ func TestCleanupAuditLogsExecutor_ExecuteReturnsAggregatedResult(t *testing.T) {
 }
 
 func TestParseCleanupAuditLogInput(t *testing.T) {
-	payload, err := ParseCleanupAuditLogInput(`{"expireHours":12,"targets":["api"]}`)
+	payload, err := ParseInput(`{"expireHours":12,"targets":["api"]}`)
 	if err != nil {
 		t.Fatalf("ParseCleanupAuditLogInput failed: %v", err)
 	}

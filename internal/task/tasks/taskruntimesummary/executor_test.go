@@ -1,4 +1,4 @@
-package task
+package taskruntimesummary
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	taskv1 "admin/api/gen/task/v1"
+	taskruntime "admin/internal/task/runtime"
 )
 
 type fakeTaskSummaryProvider struct {
@@ -23,30 +24,28 @@ func TestTaskRuntimeSummaryExecutor_Execute(t *testing.T) {
 	apiType := taskv1.Task_API
 	tenantID := uint32(101)
 
-	executor := NewTaskRuntimeSummaryExecutor(RuntimeDeps{
-		TaskSummaryProvider: &fakeTaskSummaryProvider{
-			items: []*taskv1.Task{
-				{
-					Id:       uint64Ptr(10),
-					TaskName: stringPtr("Cleanup"),
-					Status:   &running,
-					TaskType: &functionType,
-					GroupId:  uint64Ptr(1501),
-					TenantId: &tenantID,
-				},
-				{
-					Id:       uint64Ptr(11),
-					TaskName: stringPtr("Sync API"),
-					Status:   &stopped,
-					TaskType: &apiType,
-					GroupId:  uint64Ptr(1502),
-					TenantId: &tenantID,
-				},
+	executor := NewExecutor(&fakeTaskSummaryProvider{
+		items: []*taskv1.Task{
+			{
+				Id:       uint64Ptr(10),
+				TaskName: stringPtr("Cleanup"),
+				Status:   &running,
+				TaskType: &functionType,
+				GroupId:  uint64Ptr(1501),
+				TenantId: &tenantID,
+			},
+			{
+				Id:       uint64Ptr(11),
+				TaskName: stringPtr("Sync API"),
+				Status:   &stopped,
+				TaskType: &apiType,
+				GroupId:  uint64Ptr(1502),
+				TenantId: &tenantID,
 			},
 		},
 	})
 
-	raw, err := executor.Execute(context.Background(), ExecuteRequest{
+	raw, err := executor.Execute(context.Background(), taskruntime.ExecuteRequest{
 		Task: &taskv1.Task{
 			TenantId: &tenantID,
 			Args:     stringPtr(`{"tenantScope":"current"}`),
@@ -56,7 +55,7 @@ func TestTaskRuntimeSummaryExecutor_Execute(t *testing.T) {
 		t.Fatalf("Execute returned error: %v", err)
 	}
 
-	var result TaskRuntimeSummaryResult
+	var result Result
 	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
@@ -72,5 +71,9 @@ func TestTaskRuntimeSummaryExecutor_Execute(t *testing.T) {
 }
 
 func uint64Ptr(value uint64) *uint64 {
+	return &value
+}
+
+func stringPtr(value string) *string {
 	return &value
 }

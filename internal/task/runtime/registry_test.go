@@ -1,12 +1,15 @@
-package task
+package taskruntime
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
 	taskv1 "admin/api/gen/task/v1"
 )
+
+var errTestValidation = errors.New("validation failed")
 
 type testExecutor struct {
 	target string
@@ -77,4 +80,8 @@ func TestRegistry_ValidateDelegatesToExecutor(t *testing.T) {
 	if err == nil || err != errTestValidation {
 		t.Fatalf("expected validation error, got %v", err)
 	}
+}
+
+func stringPtr(value string) *string {
+	return &value
 }

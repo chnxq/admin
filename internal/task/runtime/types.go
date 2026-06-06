@@ -1,37 +1,15 @@
-package task
+package taskruntime
 
 import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	taskv1 "admin/api/gen/task/v1"
 )
 
-const CleanupAuditLogsInvokeTarget = "system:cleanup:audit-logs"
-
-type ApiAuditLogCleaner interface {
-	CleanupApiAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error)
-}
-
-type LoginAuditLogCleaner interface {
-	CleanupLoginAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error)
-}
-
-type PermissionAuditLogCleaner interface {
-	CleanupPermissionAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error)
-}
-
-type TaskSummaryProvider interface {
-	ListTasksForRuntime(ctx context.Context, tenantID *uint32) ([]*taskv1.Task, error)
-}
-
-type RuntimeDeps struct {
-	ApiAuditLogCleaner        ApiAuditLogCleaner
-	LoginAuditLogCleaner      LoginAuditLogCleaner
-	PermissionAuditLogCleaner PermissionAuditLogCleaner
-	TaskSummaryProvider       TaskSummaryProvider
+type TaskLogWriter interface {
+	WriteTaskLog(ctx context.Context, data *taskv1.TaskLog) error
 }
 
 type ExecuteRequest struct {
@@ -44,16 +22,12 @@ type ValidationRequest struct {
 	Raw  string
 }
 
-// Executor defines a task invoke-target handler.
-// Validate should reject malformed input before scheduling or execution.
-// Execute should return a compact result string suitable for persistence into task_log.output.
 type Executor interface {
 	InvokeTarget() string
 	Validate(context.Context, ValidationRequest) error
 	Execute(context.Context, ExecuteRequest) (string, error)
 }
 
-// Registry maps invoke_target to concrete executor implementations.
 type Registry struct {
 	executors map[string]Executor
 }
@@ -84,7 +58,6 @@ func MustNewRegistry(executors ...Executor) *Registry {
 	return registry
 }
 
-// Get returns the executor for the given invoke target.
 func (r *Registry) Get(target string) (Executor, bool) {
 	if r == nil {
 		return nil, false
@@ -93,7 +66,6 @@ func (r *Registry) Get(target string) (Executor, bool) {
 	return executor, ok
 }
 
-// Validate delegates task argument validation to the matched executor.
 func (r *Registry) Validate(ctx context.Context, taskItem *taskv1.Task, raw string) error {
 	executor, ok := r.Get(taskInvokeTarget(taskItem))
 	if !ok {
@@ -105,7 +77,6 @@ func (r *Registry) Validate(ctx context.Context, taskItem *taskv1.Task, raw stri
 	})
 }
 
-// Execute delegates task execution to the matched executor.
 func (r *Registry) Execute(ctx context.Context, taskItem *taskv1.Task, raw string) (string, error) {
 	executor, ok := r.Get(taskInvokeTarget(taskItem))
 	if !ok {

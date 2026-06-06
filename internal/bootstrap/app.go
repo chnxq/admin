@@ -13,7 +13,6 @@ import (
 	"github.com/chnxq/xkitpkg/transport"
 
 	databootstrap "admin/internal/data/bootstrap"
-	"admin/internal/service"
 )
 
 type Options struct {
@@ -130,19 +129,10 @@ func newTransportServers(appCtx *app.AppCtx, cleanup *CleanupStack) ([]transport
 	if err != nil {
 		return nil, err
 	}
-	if cleanupTaskScheduler, err := service.RegisterTaskScheduler(
-		appCtx.AppContext(),
-		components.Services.Task,
-		components.Services.TaskGroup,
-		components.Data.TaskRepo,
-		components.Data.TaskLogRepo,
-		components.Data.ApiAuditLogRepo,
-		components.Data.LoginAuditLogRepo,
-		components.Data.PermissionAuditLogRepo,
-	); err != nil {
+	if cleanupTaskRuntime, err := registerTaskRuntime(appCtx.AppContext(), components); err != nil {
 		return nil, err
 	} else {
-		cleanup.Add(cleanupTaskScheduler)
+		cleanup.Add(cleanupTaskRuntime)
 	}
 
 	servers := make([]transport.Server, 0, len(generatedServers)+len(manualBundle.Servers))

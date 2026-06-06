@@ -1,14 +1,10 @@
-// Package task contains task executors and their registry.
+// Package task contains task-domain documentation only.
 //
 // Design rules:
-//  1. Service layer owns CRUD, scheduling, and execution log orchestration.
-//  2. This package owns invoke-target specific validation and execution logic.
-//  3. Every executor must provide a stable InvokeTarget, input validation, and
-//     a deterministic execution result string for task logs and diagnostics.
-//  4. New task types should be added by implementing Executor and registering
-//     it in NewDefaultRegistry, instead of extending service-layer switch logic.
-//  5. Example or experimental executors may live here without being registered
-//     into the default registry until their contract is ready for production use.
-//  6. See docs/task-executor-convention.md for the full runtime, SQL, and
-//     dependency-extension conventions.
+//  1. Service layer owns CRUD and coordinates scheduling/runtime injection.
+//  2. Package runtime contains generic runtime contracts and scheduler/runner.
+//  3. Package tasks/<name> owns one concrete task's contract, factory,
+//     executor, and registration.
+//  4. The root task package owns task-domain assembly helpers such as loader
+//     and store adapters.
 package task

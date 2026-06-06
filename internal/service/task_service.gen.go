@@ -8,7 +8,7 @@ import (
 	adminv1 "admin/api/gen/admin/v1"
 	v11 "admin/api/gen/task/v1"
 	"admin/internal/data/repo"
-	taskruntime "admin/internal/task"
+	taskruntime "admin/internal/task/runtime"
 	context "context"
 	v1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
 	"github.com/chnxq/xkitmod/log"
@@ -24,13 +24,9 @@ type TaskService struct {
 
 	taskRepo repo.TaskRepo
 
-	taskGroupRepo          repo.TaskGroupRepo
-	taskLogRepo            repo.TaskLogRepo
-	apiAuditLogRepo        repo.ApiAuditLogRepo
-	loginAuditLogRepo      repo.LoginAuditLogRepo
-	permissionAuditLogRepo repo.PermissionAuditLogRepo
-	scheduler              *taskScheduler
-	executorRegistry       *taskruntime.Registry
+	taskGroupRepo repo.TaskGroupRepo
+	scheduler     *taskruntime.Scheduler
+	runtimeRunner *taskruntime.Runner
 }
 
 func NewTaskService(ctx *app.AppCtx, taskRepo repo.TaskRepo) *TaskService {

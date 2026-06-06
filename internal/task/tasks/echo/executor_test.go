@@ -1,4 +1,4 @@
-package task
+package echo
 
 import (
 	"context"
@@ -6,11 +6,12 @@ import (
 	"testing"
 
 	taskv1 "admin/api/gen/task/v1"
+	taskruntime "admin/internal/task/runtime"
 )
 
 func TestEchoExecutor_ValidateRejectsEmptyMessage(t *testing.T) {
-	executor := NewEchoExecutor()
-	err := executor.Validate(context.Background(), ValidationRequest{
+	executor := NewExecutor()
+	err := executor.Validate(context.Background(), taskruntime.ValidationRequest{
 		Raw: `{"message":"   "}`,
 	})
 	if err == nil || !strings.Contains(err.Error(), "message must not be empty") {
@@ -19,8 +20,8 @@ func TestEchoExecutor_ValidateRejectsEmptyMessage(t *testing.T) {
 }
 
 func TestEchoExecutor_ExecuteReturnsMessagePayload(t *testing.T) {
-	executor := NewEchoExecutor()
-	result, err := executor.Execute(context.Background(), ExecuteRequest{
+	executor := NewExecutor()
+	result, err := executor.Execute(context.Background(), taskruntime.ExecuteRequest{
 		Task: &taskv1.Task{
 			Args: stringPtr(`{"message":"hello"}`),
 		},
@@ -37,7 +38,7 @@ func TestEchoExecutor_ExecuteReturnsMessagePayload(t *testing.T) {
 }
 
 func TestParseEchoInput_UsesTaskArgsFallback(t *testing.T) {
-	payload, err := ParseEchoInput("", &taskv1.Task{
+	payload, err := ParseInput("", &taskv1.Task{
 		Args: stringPtr(`{"message":"from-task"}`),
 	})
 	if err != nil {
@@ -46,4 +47,8 @@ func TestParseEchoInput_UsesTaskArgsFallback(t *testing.T) {
 	if payload.Message != "from-task" {
 		t.Fatalf("unexpected payload: %+v", payload)
 	}
+}
+
+func stringPtr(value string) *string {
+	return &value
 }
