@@ -23,10 +23,15 @@ type PermissionAuditLogCleaner interface {
 	CleanupPermissionAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error)
 }
 
+type TaskSummaryProvider interface {
+	ListTasksForRuntime(ctx context.Context, tenantID *uint32) ([]*taskv1.Task, error)
+}
+
 type RuntimeDeps struct {
 	ApiAuditLogCleaner        ApiAuditLogCleaner
 	LoginAuditLogCleaner      LoginAuditLogCleaner
 	PermissionAuditLogCleaner PermissionAuditLogCleaner
+	TaskSummaryProvider       TaskSummaryProvider
 }
 
 type ExecuteRequest struct {

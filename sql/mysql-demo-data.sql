@@ -178,32 +178,29 @@ INSERT INTO sys_task_groups(
     id, tenant_id, group_name, remark, created_at, updated_at, created_by, updated_by
 )
 VALUES
-    (1501, 0, '系统维护（测试）', '系统级周期维护任务', NOW(), NOW(), 0, 0),
-    (1502, 101, '东岳制造任务', '东岳制造租户示例任务分组', NOW(), NOW(), 0, 0),
-    (1503, 102, '星澜医疗任务', '星澜医疗租户示例任务分组', NOW(), NOW(), 0, 0),
-    (1504, 103, '远舟供应链任务', '远舟供应链租户示例任务分组', NOW(), NOW(), 0, 0);
+    (1501, 101, '系统维护（华东制造）', '租户 101 的运维任务分组，归属 EMFG-HQ / tenant_admin', NOW(), NOW(), 0, 0),
+    (1502, 102, '系统维护（星澜医疗）', '租户 102 的运维任务分组，归属 XLMED-HQ / medical_admin', NOW(), NOW(), 0, 0),
+    (1503, 103, '系统维护（远舟供应链）', '租户 103 的运维任务分组，归属 YZSC-HQ / supply_admin', NOW(), NOW(), 0, 0);
 ALTER TABLE sys_task_groups AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_task_groups);
 
 INSERT INTO sys_tasks(
     id, tenant_id, group_id, task_name, task_type, cron_expression, invoke_target, args, retry, concurrent, entry_id, status, remark, created_at, updated_at, created_by, updated_by
 )
 VALUES
-    (1601, 0, 1501, '删除过期日志', 'FUNCTION', '0 0 3 * * *', 'system:cleanup:audit-logs', 'expireHours=720,targets=api,login,permission', 1, false, NULL, 'STOPPED', '每天凌晨三点清理过期审计日志', NOW(), NOW(), 0, 0),
-    (1602, 0, 1501, '每周汇总统计', 'FUNCTION', '0 30 2 * * 1', 'system:metrics:weekly-summary', NULL, 0, false, NULL, 'DISABLED', '每周一凌晨生成统计摘要', NOW(), NOW(), 0, 0),
-    (1603, 101, 1502, '同步供应商目录', 'API', '0 0 */6 * * *', 'tenant:vendor:sync', 'mode=incremental', 2, true, NULL, 'RUNNING', '东岳制造租户示例同步任务', NOW(), NOW(), 0, 0),
-    (1604, 102, 1503, '生成门诊统计报表', 'FUNCTION', '0 15 1 * * *', 'medical:report:outpatient-summary', 'scope=daily', 1, false, NULL, 'STOPPED', '星澜医疗租户示例统计任务', NOW(), NOW(), 0, 0),
-    (1605, 103, 1504, '刷新库存预警', 'EXTERNAL', '0 */30 * * * *', 'supply:inventory:refresh', 'level=warning', 0, true, NULL, 'RUNNING', '远舟供应链租户示例库存任务', NOW(), NOW(), 0, 0);
+    (1601, 101, 1501, '删除过期日志', 'FUNCTION', '0 0 3 * * *', 'system:cleanup:audit-logs', '{"expireHours":720,"targets":["api","login","permission"]}', 0, false, NULL, 'STOPPED', '每天 03:00 清理 30 天前的 API / 登录 / 权限审计日志', NOW(), NOW(), 0, 0),
+    (1602, 101, 1501, '任务运行概览', 'FUNCTION', '0 0 8 * * 1', 'system:task:runtime-summary', '{"tenantScope":"current"}', 0, false, NULL, 'RUNNING', '每周一 08:00 汇总当前租户任务运行概览，作为执行器样例', NOW(), NOW(), 0, 0),
+    (1603, 102, 1502, '删除过期日志', 'FUNCTION', '0 30 2 * * *', 'system:cleanup:audit-logs', '{"expireHours":336,"targets":["api","login"]}', 0, false, NULL, 'STOPPED', '每天 02:30 清理 14 天前的 API / 登录审计日志', NOW(), NOW(), 0, 0),
+    (1604, 103, 1503, '任务运行概览', 'FUNCTION', '0 */30 * * * *', 'system:task:runtime-summary', '{"tenantScope":"current"}', 0, false, NULL, 'RUNNING', '每 30 分钟汇总一次当前租户任务运行状态', NOW(), NOW(), 0, 0);
 ALTER TABLE sys_tasks AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_tasks);
 
 INSERT INTO sys_task_logs(
     id, tenant_id, task_id, input, output, error, status, process_time, execute_time
 )
 VALUES
-    (1701, 0, 1601, 'expireHours=720,targets=api,login,permission', 'deleted api=18, login=6, permission=3', NULL, 'SUCCESS', 842, NOW() - INTERVAL 1 DAY),
-    (1702, 0, 1602, NULL, NULL, 'task disabled by administrator', 'FAILURE', 25, NOW() - INTERVAL 2 DAY),
-    (1703, 101, 1603, 'mode=incremental', 'synced suppliers=27', NULL, 'SUCCESS', 1265, NOW() - INTERVAL 6 HOUR),
-    (1704, 102, 1604, 'scope=daily', 'generated report count=14', NULL, 'SUCCESS', 933, NOW() - INTERVAL 12 HOUR),
-    (1705, 103, 1605, 'level=warning', NULL, 'upstream connector timeout', 'FAILURE', 3012, NOW() - INTERVAL 2 HOUR);
+    (1701, 101, 1601, '{"expireHours":720,"targets":["api","login","permission"]}', '{"expireHours":720,"deletedApi":18,"deletedLogin":6,"deletedPermission":3,"totalDeleted":27}', NULL, 'SUCCESS', 842, NOW() - INTERVAL 1 DAY),
+    (1702, 101, 1602, '{"tenantScope":"current"}', '{"tenantScope":"current","total":2,"byStatus":{"RUNNING":1,"STOPPED":1},"byType":{"FUNCTION":2},"tasks":[{"id":1601,"name":"删除过期日志","status":"STOPPED","type":"FUNCTION","groupId":1501},{"id":1602,"name":"任务运行概览","status":"RUNNING","type":"FUNCTION","groupId":1501}]}', NULL, 'SUCCESS', 135, NOW() - INTERVAL 6 HOUR),
+    (1703, 102, 1603, '{"expireHours":336,"targets":["api","login"]}', '{"expireHours":336,"deletedApi":9,"deletedLogin":4,"deletedPermission":0,"totalDeleted":13}', NULL, 'SUCCESS', 566, NOW() - INTERVAL 12 HOUR),
+    (1704, 103, 1604, '{"tenantScope":"current"}', '{"tenantScope":"current","total":1,"byStatus":{"RUNNING":1},"byType":{"FUNCTION":1},"tasks":[{"id":1604,"name":"任务运行概览","status":"RUNNING","type":"FUNCTION","groupId":1503}]}', NULL, 'SUCCESS', 121, NOW() - INTERVAL 2 HOUR);
 ALTER TABLE sys_task_logs AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_task_logs);
 INSERT INTO sys_login_policies(id, target_id, type, method, value, reason, created_at)
 VALUES

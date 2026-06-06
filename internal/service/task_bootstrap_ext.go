@@ -28,7 +28,7 @@ func RegisterTaskScheduler(
 		apiAuditLogRepo,
 		loginAuditLogRepo,
 		permissionAuditLogRepo,
-		newTaskExecutorRegistry(apiAuditLogRepo, loginAuditLogRepo, permissionAuditLogRepo),
+		newTaskExecutorRegistry(taskRepo, apiAuditLogRepo, loginAuditLogRepo, permissionAuditLogRepo),
 	)
 
 	taskService.scheduler = scheduler

@@ -9,4 +9,6 @@
 //     it in NewDefaultRegistry, instead of extending service-layer switch logic.
 //  5. Example or experimental executors may live here without being registered
 //     into the default registry until their contract is ready for production use.
+//  6. See docs/task-executor-convention.md for the full runtime, SQL, and
+//     dependency-extension conventions.
 package task

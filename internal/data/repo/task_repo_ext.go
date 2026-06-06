@@ -23,6 +23,7 @@ import (
 type TaskRuntimeRepo interface {
 	ListTasksByGroupID(ctx context.Context, groupID uint64) ([]*taskv1.Task, error)
 	ListRunnableTasks(ctx context.Context) ([]*taskv1.Task, error)
+	ListTasksForRuntime(ctx context.Context, tenantID *uint32) ([]*taskv1.Task, error)
 	UpdateTaskRuntimeState(ctx context.Context, taskID uint64, status taskv1.Task_Status, entryID *uint32) error
 }
 
@@ -55,6 +56,20 @@ func (r *taskRepo) ListRunnableTasks(ctx context.Context) ([]*taskv1.Task, error
 		All(ctx)
 	if err != nil {
 		r.log.Errorf("list runnable task failed: %s", err.Error())
+		return nil, err
+	}
+	return r.mapTaskEntitiesNoEnrich(entities), nil
+}
+
+func (r *taskRepo) ListTasksForRuntime(ctx context.Context, tenantID *uint32) ([]*taskv1.Task, error) {
+	ctx = withRuntimeViewerContext(ctx)
+	query := r.entClient.Client().Task.Query().Order(task.ByID())
+	if tenantID != nil && *tenantID > 0 {
+		query.Where(task.TenantIDEQ(*tenantID))
+	}
+	entities, err := query.All(ctx)
+	if err != nil {
+		r.log.Errorf("list task runtime summary failed: %s", err.Error())
 		return nil, err
 	}
 	return r.mapTaskEntitiesNoEnrich(entities), nil

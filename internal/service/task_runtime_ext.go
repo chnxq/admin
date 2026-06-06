@@ -25,7 +25,7 @@ func (s *TaskService) RegisterRuntimeDeps(
 	s.apiAuditLogRepo = apiAuditLogRepo
 	s.loginAuditLogRepo = loginAuditLogRepo
 	s.permissionAuditLogRepo = permissionAuditLogRepo
-	s.executorRegistry = newTaskExecutorRegistry(apiAuditLogRepo, loginAuditLogRepo, permissionAuditLogRepo)
+	s.executorRegistry = newTaskExecutorRegistry(s.taskRepo, apiAuditLogRepo, loginAuditLogRepo, permissionAuditLogRepo)
 }
 
 func (s *TaskGroupService) RegisterRuntimeDeps(
@@ -40,7 +40,7 @@ func (s *TaskGroupService) RegisterRuntimeDeps(
 	s.apiAuditLogRepo = apiAuditLogRepo
 	s.loginAuditLogRepo = loginAuditLogRepo
 	s.permissionAuditLogRepo = permissionAuditLogRepo
-	s.executorRegistry = newTaskExecutorRegistry(apiAuditLogRepo, loginAuditLogRepo, permissionAuditLogRepo)
+	s.executorRegistry = newTaskExecutorRegistry(taskRepo, apiAuditLogRepo, loginAuditLogRepo, permissionAuditLogRepo)
 }
 
 func (s *TaskService) start(ctx context.Context, req *taskv1.StartTaskRequest) (*emptypb.Empty, error) {
