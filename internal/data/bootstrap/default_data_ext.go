@@ -98,6 +98,10 @@ func (s *defaultDataSeed) run() error {
 		return err
 	}
 
+	if err := s.ensureTaskSeeds(ctx); err != nil {
+		return err
+	}
+
 	externalSeeded, err := s.hasExternalSeedData(ctx)
 	if err != nil {
 		return err
@@ -118,10 +122,6 @@ func (s *defaultDataSeed) run() error {
 
 	adminPosition, staffPosition, err := s.ensurePositions(ctx, tenantEntity.ID, deptOrg.ID)
 	if err != nil {
-		return err
-	}
-
-	if err := s.ensureTaskSeeds(ctx); err != nil {
 		return err
 	}
 
@@ -571,56 +571,101 @@ func (s *defaultDataSeed) ensureTaskSeeds(ctx context.Context) error {
 		return fmt.Errorf("query task group seed: %w", err)
 	}
 
-	args := `{"expireHours":720,"targets":["api","login","permission"]}`
+	groupID := uint64(groupEntity.ID)
+	if err := s.ensureTaskSeed(ctx, taskSeedSpec{
+		groupID:        groupID,
+		taskName:       "删除过期日志",
+		taskType:       enttask.TaskTypeFunction,
+		cronExpression: "0 0 3 * * *",
+		invokeTarget:   "system:cleanup:audit-logs",
+		args:           `{"expireHours":720,"targets":["api","login","permission"]}`,
+		retry:          0,
+		concurrent:     false,
+		status:         enttask.StatusStopped,
+		remark:         "按小时参数清理 API/登录/权限审计日志",
+	}); err != nil {
+		return err
+	}
+	if err := s.ensureTaskSeed(ctx, taskSeedSpec{
+		groupID:        groupID,
+		taskName:       "任务运行概览",
+		taskType:       enttask.TaskTypeFunction,
+		cronExpression: "0 0 8 * * 1",
+		invokeTarget:   "system:task:runtime-summary",
+		args:           `{"tenantScope":"global"}`,
+		retry:          0,
+		concurrent:     false,
+		status:         enttask.StatusStopped,
+		remark:         "每周汇总所有内置任务运行状态，作为内部执行器示例",
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+type taskSeedSpec struct {
+	groupID        uint64
+	taskName       string
+	taskType       enttask.TaskType
+	cronExpression string
+	invokeTarget   string
+	args           string
+	retry          uint32
+	concurrent     bool
+	status         enttask.Status
+	remark         string
+}
+
+func (s *defaultDataSeed) ensureTaskSeed(ctx context.Context, spec taskSeedSpec) error {
 	taskEntity, err := s.entClient.Client().Task.Query().
 		Where(
 			enttask.TenantIDEQ(platformTenantID),
-			enttask.GroupIDEQ(uint64(groupEntity.ID)),
-			enttask.TaskNameEQ("删除过期日志"),
+			enttask.GroupIDEQ(spec.groupID),
+			enttask.TaskNameEQ(spec.taskName),
 		).
 		Only(ctx)
 	if err == nil {
 		_, err = s.entClient.Client().Task.UpdateOneID(taskEntity.ID).
-			SetTaskName("删除过期日志").
-			SetGroupID(uint64(groupEntity.ID)).
-			SetTaskType(enttask.TaskTypeFunction).
-			SetCronExpression("0 0 3 * * *").
-			SetInvokeTarget("system:cleanup:audit-logs").
-			SetArgs(args).
-			SetRetry(0).
-			SetConcurrent(false).
-			SetStatus(enttask.StatusStopped).
-			SetRemark("按小时参数清理 API/登录/权限审计日志").
+			SetTaskName(spec.taskName).
+			SetGroupID(spec.groupID).
+			SetTaskType(spec.taskType).
+			SetCronExpression(spec.cronExpression).
+			SetInvokeTarget(spec.invokeTarget).
+			SetArgs(spec.args).
+			SetRetry(spec.retry).
+			SetConcurrent(spec.concurrent).
+			SetStatus(spec.status).
+			SetRemark(spec.remark).
 			SetUpdatedAt(s.now).
 			SetUpdatedBy(0).
 			Save(ctx)
 		if err != nil {
-			return fmt.Errorf("update task seed: %w", err)
+			return fmt.Errorf("update task seed %s: %w", spec.taskName, err)
 		}
 		return nil
 	}
 	if !ent.IsNotFound(err) {
-		return fmt.Errorf("query task seed: %w", err)
+		return fmt.Errorf("query task seed %s: %w", spec.taskName, err)
 	}
 
 	if _, err := s.entClient.Client().Task.Create().
 		SetTenantID(platformTenantID).
-		SetTaskName("删除过期日志").
-		SetGroupID(uint64(groupEntity.ID)).
-		SetTaskType(enttask.TaskTypeFunction).
-		SetCronExpression("0 0 3 * * *").
-		SetInvokeTarget("system:cleanup:audit-logs").
-		SetArgs(args).
-		SetRetry(0).
-		SetConcurrent(false).
-		SetStatus(enttask.StatusStopped).
-		SetRemark("按小时参数清理 API/登录/权限审计日志").
+		SetTaskName(spec.taskName).
+		SetGroupID(spec.groupID).
+		SetTaskType(spec.taskType).
+		SetCronExpression(spec.cronExpression).
+		SetInvokeTarget(spec.invokeTarget).
+		SetArgs(spec.args).
+		SetRetry(spec.retry).
+		SetConcurrent(spec.concurrent).
+		SetStatus(spec.status).
+		SetRemark(spec.remark).
 		SetCreatedAt(s.now).
 		SetCreatedBy(0).
 		SetUpdatedAt(s.now).
 		SetUpdatedBy(0).
 		Save(ctx); err != nil {
-		return fmt.Errorf("create task seed: %w", err)
+		return fmt.Errorf("create task seed %s: %w", spec.taskName, err)
 	}
 
 	return nil
