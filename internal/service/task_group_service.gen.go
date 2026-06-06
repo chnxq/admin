@@ -8,6 +8,7 @@ import (
 	adminv1 "admin/api/gen/admin/v1"
 	v11 "admin/api/gen/task/v1"
 	"admin/internal/data/repo"
+	taskruntime "admin/internal/task"
 	context "context"
 	v1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
 	"github.com/chnxq/xkitmod/log"
@@ -28,6 +29,8 @@ type TaskGroupService struct {
 	apiAuditLogRepo        repo.ApiAuditLogRepo
 	loginAuditLogRepo      repo.LoginAuditLogRepo
 	permissionAuditLogRepo repo.PermissionAuditLogRepo
+	scheduler              *taskScheduler
+	executorRegistry       *taskruntime.Registry
 }
 
 func NewTaskGroupService(ctx *app.AppCtx, taskGroupRepo repo.TaskGroupRepo) *TaskGroupService {
@@ -52,19 +55,19 @@ func (s *TaskGroupService) Get(ctx context.Context, req *v11.GetTaskGroupRequest
 // Create is generated from the source proto contract.
 // Classification: standard.
 func (s *TaskGroupService) Create(ctx context.Context, req *v11.CreateTaskGroupRequest) (*emptypb.Empty, error) {
-	return s.taskGroupRepo.Create(ctx, req)
+	return s.create(ctx, req)
 }
 
 // Update is generated from the source proto contract.
 // Classification: standard.
 func (s *TaskGroupService) Update(ctx context.Context, req *v11.UpdateTaskGroupRequest) (*emptypb.Empty, error) {
-	return s.taskGroupRepo.Update(ctx, req)
+	return s.update(ctx, req)
 }
 
 // Delete is generated from the source proto contract.
 // Classification: standard.
 func (s *TaskGroupService) Delete(ctx context.Context, req *v11.DeleteTaskGroupRequest) (*emptypb.Empty, error) {
-	return s.taskGroupRepo.Delete(ctx, req)
+	return s.delete(ctx, req)
 }
 
 // Start is generated from the source proto contract.

@@ -4,8 +4,78 @@
 
 package service
 
-// TODO: add TaskGroupService-specific hooks, helpers, and hand-written business logic here.
-// Add TaskGroupService-specific hooks and helpers here.
-// Tree resources and aggregate child resources should prefer being implemented here first,
-// then moved into generated config-backed methods once the contract stabilizes.
-// This file is created once and is never overwritten by xkit.
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	taskv1 "admin/api/gen/task/v1"
+	crudviewer "github.com/chnxq/x-crud/viewer"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+)
+
+func (s *TaskGroupService) create(ctx context.Context, req *taskv1.CreateTaskGroupRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+	if err := validateTaskGroupInput(ctx, req.Data, true); err != nil {
+		return nil, err
+	}
+	return s.taskGroupRepo.Create(ctx, req)
+}
+
+func (s *TaskGroupService) update(ctx context.Context, req *taskv1.UpdateTaskGroupRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil || req.GetId() == 0 {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+	if err := validateTaskGroupInput(ctx, req.Data, false); err != nil {
+		return nil, err
+	}
+	return s.taskGroupRepo.Update(ctx, req)
+}
+
+func (s *TaskGroupService) delete(ctx context.Context, req *taskv1.DeleteTaskGroupRequest) (*emptypb.Empty, error) {
+	if req == nil || len(req.GetIds()) == 0 {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+	for _, groupID := range req.GetIds() {
+		items, err := listTasksByGroup(ctx, s.taskRepo, groupID)
+		if err != nil {
+			return nil, err
+		}
+		if len(items) > 0 {
+			return nil, fmt.Errorf("task group %d still has tasks", groupID)
+		}
+	}
+	return s.taskGroupRepo.Delete(ctx, req)
+}
+
+func (s *TaskGroupService) syncTaskSchedule(ctx context.Context, taskItem *taskv1.Task) error {
+	if s.scheduler == nil {
+		return updateTaskRuntimeState(ctx, s.taskRepo, taskItem.GetId(), taskItem.GetStatus(), uint32Ptr(0))
+	}
+	return s.scheduler.SyncTask(ctx, taskItem)
+}
+
+func (s *TaskGroupService) stopScheduledTask(ctx context.Context, taskID uint64) error {
+	if s.scheduler == nil {
+		return nil
+	}
+	return s.scheduler.StopTask(ctx, taskID)
+}
+
+func validateTaskGroupInput(ctx context.Context, data *taskv1.TaskGroup, creating bool) error {
+	if data == nil {
+		return fmt.Errorf("task group data is required")
+	}
+	if strings.TrimSpace(data.GetGroupName()) == "" {
+		return fmt.Errorf("group name is required")
+	}
+	if creating && data.TenantId == nil {
+		if viewer, ok := crudviewer.FromContext(ctx); ok && viewer != nil && viewer.IsTenantContext() {
+			tenantID := uint32(viewer.TenantID())
+			data.TenantId = &tenantID
+		}
+	}
+	return nil
+}

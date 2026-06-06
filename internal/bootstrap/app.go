@@ -13,6 +13,7 @@ import (
 	"github.com/chnxq/xkitpkg/transport"
 
 	databootstrap "admin/internal/data/bootstrap"
+	"admin/internal/service"
 )
 
 type Options struct {
@@ -113,20 +114,39 @@ func initDataResources(appCtx *app.AppCtx, cleanup *CleanupStack) error {
 }
 
 func newTransportServers(appCtx *app.AppCtx, cleanup *CleanupStack) ([]transport.Server, error) {
-	generatedServers, generatedCleanup, err := NewGeneratedServers(appCtx)
+	components, generatedCleanup, err := NewGeneratedComponents(appCtx)
 	cleanup.Add(generatedCleanup)
 	if err != nil {
 		return nil, err
 	}
 
-	manualServers, manualCleanup, err := NewManualServers(appCtx)
-	cleanup.Add(manualCleanup)
+	generatedServers, err := components.Servers(appCtx)
 	if err != nil {
 		return nil, err
 	}
 
-	servers := make([]transport.Server, 0, len(generatedServers)+len(manualServers))
+	manualBundle, manualCleanup, err := NewManualServers(appCtx)
+	cleanup.Add(manualCleanup)
+	if err != nil {
+		return nil, err
+	}
+	if cleanupTaskScheduler, err := service.RegisterTaskScheduler(
+		appCtx.AppContext(),
+		components.Services.Task,
+		components.Services.TaskGroup,
+		components.Data.TaskRepo,
+		components.Data.TaskLogRepo,
+		components.Data.ApiAuditLogRepo,
+		components.Data.LoginAuditLogRepo,
+		components.Data.PermissionAuditLogRepo,
+	); err != nil {
+		return nil, err
+	} else {
+		cleanup.Add(cleanupTaskScheduler)
+	}
+
+	servers := make([]transport.Server, 0, len(generatedServers)+len(manualBundle.Servers))
 	servers = append(servers, generatedServers...)
-	servers = append(servers, manualServers...)
+	servers = append(servers, manualBundle.Servers...)
 	return servers, nil
 }

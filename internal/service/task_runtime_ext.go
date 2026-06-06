@@ -2,29 +2,16 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	taskv1 "admin/api/gen/task/v1"
 	"admin/internal/data/repo"
+	taskruntime "admin/internal/task"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
-
-type cleanupAuditLogInput struct {
-	ExpireHours uint32   `json:"expireHours"`
-	Targets     []string `json:"targets"`
-}
-
-type cleanupAuditLogResult struct {
-	ExpireHours       uint32 `json:"expireHours"`
-	DeletedAPI        int    `json:"deletedApi"`
-	DeletedLogin      int    `json:"deletedLogin"`
-	DeletedPermission int    `json:"deletedPermission"`
-	TotalDeleted      int    `json:"totalDeleted"`
-}
 
 func (s *TaskService) RegisterRuntimeDeps(
 	taskGroupRepo repo.TaskGroupRepo,
@@ -38,6 +25,7 @@ func (s *TaskService) RegisterRuntimeDeps(
 	s.apiAuditLogRepo = apiAuditLogRepo
 	s.loginAuditLogRepo = loginAuditLogRepo
 	s.permissionAuditLogRepo = permissionAuditLogRepo
+	s.executorRegistry = newTaskExecutorRegistry(apiAuditLogRepo, loginAuditLogRepo, permissionAuditLogRepo)
 }
 
 func (s *TaskGroupService) RegisterRuntimeDeps(
@@ -52,13 +40,23 @@ func (s *TaskGroupService) RegisterRuntimeDeps(
 	s.apiAuditLogRepo = apiAuditLogRepo
 	s.loginAuditLogRepo = loginAuditLogRepo
 	s.permissionAuditLogRepo = permissionAuditLogRepo
+	s.executorRegistry = newTaskExecutorRegistry(apiAuditLogRepo, loginAuditLogRepo, permissionAuditLogRepo)
 }
 
 func (s *TaskService) start(ctx context.Context, req *taskv1.StartTaskRequest) (*emptypb.Empty, error) {
 	if req == nil || req.GetId() == 0 {
 		return nil, fmt.Errorf("invalid parameter")
 	}
-	if err := updateTaskRuntimeState(ctx, s.taskRepo, req.GetId(), taskv1.Task_RUNNING, nil); err != nil {
+	taskItem, err := loadTask(ctx, s.taskRepo, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	status := taskv1.Task_RUNNING
+	taskItem.Status = &status
+	if err := validateCronExpression(taskItem.GetCronExpression(), taskItem.GetStatus()); err != nil {
+		return nil, err
+	}
+	if err := s.syncTaskSchedule(ctx, taskItem); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -68,7 +66,12 @@ func (s *TaskService) stop(ctx context.Context, req *taskv1.StopTaskRequest) (*e
 	if req == nil || req.GetId() == 0 {
 		return nil, fmt.Errorf("invalid parameter")
 	}
-	if err := updateTaskRuntimeState(ctx, s.taskRepo, req.GetId(), taskv1.Task_STOPPED, nil); err != nil {
+	if err := s.stopScheduledTask(ctx, req.GetId()); err != nil {
+		return nil, err
+	}
+	status := taskv1.Task_STOPPED
+	entryID := uint32(0)
+	if err := updateTaskRuntimeState(ctx, s.taskRepo, req.GetId(), status, &entryID); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -83,15 +86,13 @@ func (s *TaskService) runOnce(ctx context.Context, req *taskv1.RunTaskOnceReques
 	if err != nil {
 		return nil, err
 	}
-	if err := executeTaskOnce(
-		ctx,
-		taskItem,
-		req.GetInput(),
-		s.taskLogRepo,
-		s.apiAuditLogRepo,
-		s.loginAuditLogRepo,
-		s.permissionAuditLogRepo,
-	); err != nil {
+	if s.scheduler != nil {
+		if err := s.scheduler.RunTaskNow(ctx, taskItem, req.GetInput()); err != nil {
+			return nil, err
+		}
+		return &emptypb.Empty{}, nil
+	}
+	if err := executeTaskOnce(ctx, taskItem, req.GetInput(), s.taskLogRepo, s.apiAuditLogRepo, s.loginAuditLogRepo, s.permissionAuditLogRepo, s.executorRegistry); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -106,7 +107,9 @@ func (s *TaskGroupService) start(ctx context.Context, req *taskv1.StartTaskGroup
 		return nil, err
 	}
 	for _, item := range items {
-		if err := updateTaskRuntimeState(ctx, s.taskRepo, item.GetId(), taskv1.Task_RUNNING, nil); err != nil {
+		status := taskv1.Task_RUNNING
+		item.Status = &status
+		if err := s.syncTaskSchedule(ctx, item); err != nil {
 			return nil, err
 		}
 	}
@@ -122,7 +125,12 @@ func (s *TaskGroupService) stop(ctx context.Context, req *taskv1.StopTaskGroupRe
 		return nil, err
 	}
 	for _, item := range items {
-		if err := updateTaskRuntimeState(ctx, s.taskRepo, item.GetId(), taskv1.Task_STOPPED, nil); err != nil {
+		if err := s.stopScheduledTask(ctx, item.GetId()); err != nil {
+			return nil, err
+		}
+		status := taskv1.Task_STOPPED
+		entryID := uint32(0)
+		if err := updateTaskRuntimeState(ctx, s.taskRepo, item.GetId(), status, &entryID); err != nil {
 			return nil, err
 		}
 	}
@@ -138,15 +146,13 @@ func (s *TaskGroupService) runOnce(ctx context.Context, req *taskv1.RunTaskGroup
 		return nil, err
 	}
 	for _, item := range items {
-		if err := executeTaskOnce(
-			ctx,
-			item,
-			req.GetInput(),
-			s.taskLogRepo,
-			s.apiAuditLogRepo,
-			s.loginAuditLogRepo,
-			s.permissionAuditLogRepo,
-		); err != nil {
+		if s.scheduler != nil {
+			if err := s.scheduler.RunTaskNow(ctx, item, req.GetInput()); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		if err := executeTaskOnce(ctx, item, req.GetInput(), s.taskLogRepo, s.apiAuditLogRepo, s.loginAuditLogRepo, s.permissionAuditLogRepo, s.executorRegistry); err != nil {
 			return nil, err
 		}
 	}
@@ -186,6 +192,7 @@ func executeTaskOnce(
 	apiAuditLogRepo repo.ApiAuditLogRepo,
 	loginAuditLogRepo repo.LoginAuditLogRepo,
 	permissionAuditLogRepo repo.PermissionAuditLogRepo,
+	executorRegistry *taskruntime.Registry,
 ) error {
 	if taskItem == nil || taskItem.GetId() == 0 {
 		return fmt.Errorf("task not found")
@@ -201,9 +208,7 @@ func executeTaskOnce(
 		ctx,
 		taskItem,
 		input,
-		apiAuditLogRepo,
-		loginAuditLogRepo,
-		permissionAuditLogRepo,
+		executorRegistry,
 	)
 
 	writeErr := writeTaskExecutionLog(ctx, taskLogRepo, taskItem, input, resultText, execErr, startAt)
@@ -223,93 +228,12 @@ func dispatchTaskExecution(
 	ctx context.Context,
 	taskItem *taskv1.Task,
 	input string,
-	apiAuditLogRepo repo.ApiAuditLogRepo,
-	loginAuditLogRepo repo.LoginAuditLogRepo,
-	permissionAuditLogRepo repo.PermissionAuditLogRepo,
+	registry *taskruntime.Registry,
 ) (string, error) {
-	switch strings.TrimSpace(taskItem.GetInvokeTarget()) {
-	case "system:cleanup:audit-logs":
-		return executeCleanupAuditLogs(ctx, taskItem, input, apiAuditLogRepo, loginAuditLogRepo, permissionAuditLogRepo)
-	default:
-		return "", fmt.Errorf("unsupported task invoke target: %s", taskItem.GetInvokeTarget())
+	if registry == nil {
+		return "", fmt.Errorf("task executor registry is not configured")
 	}
-}
-
-func executeCleanupAuditLogs(
-	ctx context.Context,
-	taskItem *taskv1.Task,
-	input string,
-	apiAuditLogRepo repo.ApiAuditLogRepo,
-	loginAuditLogRepo repo.LoginAuditLogRepo,
-	permissionAuditLogRepo repo.PermissionAuditLogRepo,
-) (string, error) {
-	var payload cleanupAuditLogInput
-	if strings.TrimSpace(input) != "" {
-		if err := json.Unmarshal([]byte(input), &payload); err != nil {
-			return "", fmt.Errorf("parse task args failed: %w", err)
-		}
-	}
-	if payload.ExpireHours == 0 {
-		return "", fmt.Errorf("expireHours must be greater than 0")
-	}
-	if len(payload.Targets) == 0 {
-		payload.Targets = []string{"api", "login", "permission"}
-	}
-
-	before := time.Now().Add(-time.Duration(payload.ExpireHours) * time.Hour)
-	result := cleanupAuditLogResult{
-		ExpireHours: payload.ExpireHours,
-	}
-
-	var tenantID *uint32
-	if taskItem.TenantId != nil && taskItem.GetTenantId() > 0 {
-		value := taskItem.GetTenantId()
-		tenantID = &value
-	}
-
-	for _, target := range payload.Targets {
-		switch strings.ToLower(strings.TrimSpace(target)) {
-		case "api":
-			cleaner, ok := apiAuditLogRepo.(repo.ApiAuditLogCleaner)
-			if !ok {
-				return "", fmt.Errorf("api audit log cleaner is not configured")
-			}
-			affected, err := cleaner.CleanupApiAuditLogsBefore(ctx, tenantID, before)
-			if err != nil {
-				return "", err
-			}
-			result.DeletedAPI = affected
-		case "login":
-			cleaner, ok := loginAuditLogRepo.(repo.LoginAuditLogCleaner)
-			if !ok {
-				return "", fmt.Errorf("login audit log cleaner is not configured")
-			}
-			affected, err := cleaner.CleanupLoginAuditLogsBefore(ctx, tenantID, before)
-			if err != nil {
-				return "", err
-			}
-			result.DeletedLogin = affected
-		case "permission":
-			cleaner, ok := permissionAuditLogRepo.(repo.PermissionAuditLogCleaner)
-			if !ok {
-				return "", fmt.Errorf("permission audit log cleaner is not configured")
-			}
-			affected, err := cleaner.CleanupPermissionAuditLogsBefore(ctx, tenantID, before)
-			if err != nil {
-				return "", err
-			}
-			result.DeletedPermission = affected
-		default:
-			return "", fmt.Errorf("unsupported cleanup target: %s", target)
-		}
-	}
-
-	result.TotalDeleted = result.DeletedAPI + result.DeletedLogin + result.DeletedPermission
-	raw, err := json.Marshal(result)
-	if err != nil {
-		return "", err
-	}
-	return string(raw), nil
+	return registry.Execute(ctx, taskItem, input)
 }
 
 func writeTaskExecutionLog(

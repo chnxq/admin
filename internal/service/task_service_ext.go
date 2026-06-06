@@ -4,6 +4,175 @@
 
 package service
 
-// TODO: add TaskService-specific hooks, helpers, and hand-written business logic here.
-// Add TaskService-specific hooks and helpers here.
-// This file is created once and is never overwritten by xkit.
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	taskv1 "admin/api/gen/task/v1"
+	"admin/internal/data/repo"
+	taskruntime "admin/internal/task"
+	crudviewer "github.com/chnxq/x-crud/viewer"
+	"github.com/robfig/cron/v3"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+)
+
+func (s *TaskService) create(ctx context.Context, req *taskv1.CreateTaskRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+	if err := s.validateTaskInput(ctx, req.Data, true); err != nil {
+		return nil, err
+	}
+	if _, err := s.taskRepo.Create(ctx, req); err != nil {
+		return nil, err
+	}
+	taskItem, err := s.loadTaskByName(ctx, req.Data.GetTaskName())
+	if err != nil {
+		return nil, err
+	}
+	if err := s.syncTaskSchedule(ctx, taskItem); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (s *TaskService) update(ctx context.Context, req *taskv1.UpdateTaskRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil || req.GetId() == 0 {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+	if err := s.validateTaskInput(ctx, req.Data, false); err != nil {
+		return nil, err
+	}
+	if _, err := s.taskRepo.Update(ctx, req); err != nil {
+		return nil, err
+	}
+	taskItem, err := loadTask(ctx, s.taskRepo, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	if err := s.syncTaskSchedule(ctx, taskItem); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (s *TaskService) delete(ctx context.Context, req *taskv1.DeleteTaskRequest) (*emptypb.Empty, error) {
+	if req == nil || len(req.GetIds()) == 0 {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+	for _, id := range req.GetIds() {
+		if err := s.stopScheduledTask(ctx, id); err != nil {
+			return nil, err
+		}
+	}
+	return s.taskRepo.Delete(ctx, req)
+}
+
+func (s *TaskService) validateTaskInput(ctx context.Context, data *taskv1.Task, creating bool) error {
+	if data == nil {
+		return fmt.Errorf("task data is required")
+	}
+	if strings.TrimSpace(data.GetTaskName()) == "" {
+		return fmt.Errorf("task name is required")
+	}
+	if data.GetGroupId() == 0 {
+		return fmt.Errorf("group id is required")
+	}
+	if err := s.ensureTaskGroupExists(ctx, data.GetGroupId()); err != nil {
+		return err
+	}
+	if data.GetTaskType() == taskv1.Task_TASK_TYPE_UNSPECIFIED {
+		return fmt.Errorf("task type is required")
+	}
+	if data.GetRetry() > 5 {
+		return fmt.Errorf("retry must be between 0 and 5")
+	}
+	if data.GetStatus() == taskv1.Task_STATUS_UNSPECIFIED {
+		return fmt.Errorf("task status is required")
+	}
+	if err := validateInvokeTarget(data.GetInvokeTarget(), s.executorRegistry); err != nil {
+		return err
+	}
+	if err := validateCronExpression(data.GetCronExpression(), data.GetStatus()); err != nil {
+		return err
+	}
+	if err := validateTaskArgs(ctx, data, data.GetArgs(), s.executorRegistry); err != nil {
+		return err
+	}
+
+	if creating && data.TenantId == nil {
+		if viewer, ok := crudviewer.FromContext(ctx); ok && viewer != nil && viewer.IsTenantContext() {
+			tenantID := uint32(viewer.TenantID())
+			data.TenantId = &tenantID
+		}
+	}
+	return nil
+}
+
+func (s *TaskService) ensureTaskGroupExists(ctx context.Context, groupID uint64) error {
+	if s.taskGroupRepo == nil {
+		return fmt.Errorf("task group repo is not configured")
+	}
+	_, err := s.taskGroupRepo.Get(ctx, &taskv1.GetTaskGroupRequest{
+		QueryBy: &taskv1.GetTaskGroupRequest_Id{Id: groupID},
+	})
+	return err
+}
+
+func (s *TaskService) loadTaskByName(ctx context.Context, taskName string) (*taskv1.Task, error) {
+	if finder, ok := s.taskRepo.(interface {
+		FindTaskByName(context.Context, string) (*taskv1.Task, error)
+	}); ok {
+		return finder.FindTaskByName(ctx, taskName)
+	}
+	return nil, fmt.Errorf("task repo finder is not configured")
+}
+
+func (s *TaskService) syncTaskSchedule(ctx context.Context, taskItem *taskv1.Task) error {
+	if s.scheduler == nil {
+		return nil
+	}
+	return s.scheduler.SyncTask(ctx, taskItem)
+}
+
+func (s *TaskService) stopScheduledTask(ctx context.Context, taskID uint64) error {
+	if s.scheduler == nil {
+		return nil
+	}
+	return s.scheduler.StopTask(ctx, taskID)
+}
+
+func validateInvokeTarget(target string, registry *taskruntime.Registry) error {
+	if registry == nil {
+		return fmt.Errorf("task executor registry is not configured")
+	}
+	if _, ok := registry.Get(target); !ok {
+		return fmt.Errorf("unsupported task invoke target: %s", target)
+	}
+	return nil
+}
+
+func validateCronExpression(expr string, status taskv1.Task_Status) error {
+	expr = strings.TrimSpace(expr)
+	if expr == "" {
+		if status == taskv1.Task_RUNNING {
+			return fmt.Errorf("cron expression is required when task is running")
+		}
+		return nil
+	}
+	parser := cron.NewParser(cron.Second | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
+	if _, err := parser.Parse(expr); err != nil {
+		return fmt.Errorf("invalid cron expression: %w", err)
+	}
+	return nil
+}
+
+func validateTaskArgs(ctx context.Context, taskItem *taskv1.Task, raw string, registry *taskruntime.Registry) error {
+	if registry == nil {
+		return fmt.Errorf("task executor registry is not configured")
+	}
+	return registry.Validate(ctx, taskItem, raw)
+}
+
+var _ repo.TaskRepo
