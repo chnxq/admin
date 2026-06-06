@@ -32,6 +32,11 @@ func (s *runtimeStore) GetTask(ctx context.Context, taskID uint64) (*taskv1.Task
 	if s == nil || s.taskRepo == nil {
 		return nil, fmt.Errorf("task repo is not configured")
 	}
+	if runtimeRepo, ok := s.runtimeRepo.(interface {
+		GetTaskByIDForRuntime(context.Context, uint64) (*taskv1.Task, error)
+	}); ok {
+		return runtimeRepo.GetTaskByIDForRuntime(ctx, taskID)
+	}
 	return s.taskRepo.Get(ctx, &taskv1.GetTaskRequest{
 		QueryBy: &taskv1.GetTaskRequest_Id{Id: taskID},
 	})

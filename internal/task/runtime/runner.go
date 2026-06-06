@@ -73,6 +73,21 @@ func (r *Runner) RunTask(ctx context.Context, taskItem *taskv1.Task, overrideInp
 	return nil
 }
 
+func (r *Runner) RecordTaskFailure(ctx context.Context, taskItem *taskv1.Task, overrideInput string, execErr error) error {
+	if taskItem == nil || taskItem.GetId() == 0 {
+		return fmt.Errorf("task not found")
+	}
+	if execErr == nil {
+		return nil
+	}
+
+	input := strings.TrimSpace(taskItem.GetArgs())
+	if strings.TrimSpace(overrideInput) != "" {
+		input = strings.TrimSpace(overrideInput)
+	}
+	return r.writeTaskExecutionLog(ctx, taskItem, input, "", execErr, time.Now())
+}
+
 func (r *Runner) writeTaskExecutionLog(
 	ctx context.Context,
 	taskItem *taskv1.Task,

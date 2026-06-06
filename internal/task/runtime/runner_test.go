@@ -75,3 +75,28 @@ func TestRunner_RunTaskReturnsExecAndLogError(t *testing.T) {
 		t.Fatalf("expected combined execution and log error, got %v", err)
 	}
 }
+
+func TestRunner_RecordTaskFailureWritesFailureLog(t *testing.T) {
+	writer := &testLogWriter{}
+	runner := NewRunner(MustNewRegistry(testExecutor{target: "demo:task"}), writer)
+
+	taskID := uint64(1003)
+	taskName := "demo"
+	err := runner.RecordTaskFailure(context.Background(), &taskv1.Task{
+		Id:       &taskID,
+		TaskName: &taskName,
+		Args:     stringPtr("payload"),
+	}, "", errors.New("reload failed"))
+	if err != nil {
+		t.Fatalf("RecordTaskFailure failed: %v", err)
+	}
+	if len(writer.logs) != 1 {
+		t.Fatalf("expected 1 task log, got %d", len(writer.logs))
+	}
+	if writer.logs[0].GetStatus() != taskv1.TaskLog_FAILURE {
+		t.Fatalf("expected failure log status, got %v", writer.logs[0].GetStatus())
+	}
+	if writer.logs[0].GetError() != "reload failed" {
+		t.Fatalf("unexpected failure log error: %q", writer.logs[0].GetError())
+	}
+}

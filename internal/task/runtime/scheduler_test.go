@@ -127,6 +127,47 @@ func TestScheduler_RunTaskNowRequiresRunner(t *testing.T) {
 	}
 }
 
+func TestScheduler_ScheduledReloadFailureWritesTaskLog(t *testing.T) {
+	writer := &testLogWriter{}
+	runner := NewRunner(MustNewRegistry(testExecutor{target: "demo:task"}), writer)
+	taskID := uint64(2006)
+	status := taskv1.Task_RUNNING
+	target := "demo:task"
+	store := &fakeRuntimeStore{
+		getTaskFunc: func(context.Context, uint64) (*taskv1.Task, error) {
+			return nil, errors.New("reload failed")
+		},
+	}
+	scheduler := NewScheduler(store, runner)
+
+	taskItem := &taskv1.Task{
+		Id:             &taskID,
+		Status:         &status,
+		InvokeTarget:   &target,
+		TaskName:       schedulerStringPtr("reload-task"),
+		CronExpression: schedulerStringPtr("0 * * * * *"),
+	}
+	if err := scheduler.SyncTask(context.Background(), taskItem); err != nil {
+		t.Fatalf("SyncTask failed: %v", err)
+	}
+
+	entry := scheduler.cronRunner.Entry(scheduler.entries[taskID])
+	if entry.Job == nil {
+		t.Fatalf("expected scheduled job to exist")
+	}
+	entry.Job.Run()
+
+	if len(writer.logs) != 1 {
+		t.Fatalf("expected 1 task log, got %d", len(writer.logs))
+	}
+	if writer.logs[0].GetStatus() != taskv1.TaskLog_FAILURE {
+		t.Fatalf("expected failure task log status, got %v", writer.logs[0].GetStatus())
+	}
+	if writer.logs[0].GetError() != "reload failed" {
+		t.Fatalf("unexpected task log error: %q", writer.logs[0].GetError())
+	}
+}
+
 func TestTaskRestoreError_Error(t *testing.T) {
 	err := (&TaskRestoreError{Failed: []*TaskSyncError{{TaskID: 1, Cause: errors.New("boom")}}}).Error()
 	if !strings.Contains(err, "restore 1 runnable tasks failed") {

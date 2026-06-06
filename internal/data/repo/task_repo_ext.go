@@ -21,10 +21,26 @@ import (
 // This file is created once and is never overwritten by xkit.
 
 type TaskRuntimeRepo interface {
+	GetTaskByIDForRuntime(ctx context.Context, taskID uint64) (*taskv1.Task, error)
 	ListTasksByGroupID(ctx context.Context, groupID uint64) ([]*taskv1.Task, error)
 	ListRunnableTasks(ctx context.Context) ([]*taskv1.Task, error)
 	ListTasksForRuntime(ctx context.Context, tenantID *uint32) ([]*taskv1.Task, error)
 	UpdateTaskRuntimeState(ctx context.Context, taskID uint64, status taskv1.Task_Status, entryID *uint32) error
+}
+
+func (r *taskRepo) GetTaskByIDForRuntime(ctx context.Context, taskID uint64) (*taskv1.Task, error) {
+	if taskID == 0 {
+		return nil, fmt.Errorf("invalid task id")
+	}
+	ctx = withRuntimeViewerContext(ctx)
+	entity, err := r.entClient.Client().Task.Query().
+		Where(task.IDEQ(taskID)).
+		Only(ctx)
+	if err != nil {
+		r.log.Errorf("get task by runtime failed: %s", err.Error())
+		return nil, err
+	}
+	return r.mapper.ToDTO(entity), nil
 }
 
 func (r *taskRepo) ListTasksByGroupID(ctx context.Context, groupID uint64) ([]*taskv1.Task, error) {

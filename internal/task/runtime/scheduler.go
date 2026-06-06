@@ -90,7 +90,13 @@ func (s *Scheduler) SyncTask(ctx context.Context, taskItem *taskv1.Task) error {
 			defer cancel()
 
 			reloadedTask, err := s.store.GetTask(runCtx, taskItem.GetId())
-			if err != nil || reloadedTask == nil || reloadedTask.GetStatus() != taskv1.Task_RUNNING {
+			if err != nil {
+				if s.runner != nil {
+					_ = s.runner.RecordTaskFailure(runCtx, taskItem, "", err)
+				}
+				return
+			}
+			if reloadedTask == nil || reloadedTask.GetStatus() != taskv1.Task_RUNNING {
 				return
 			}
 			_ = s.runner.RunTask(runCtx, reloadedTask, "")

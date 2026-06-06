@@ -13,6 +13,7 @@ import (
 
 type fakeTaskRepo struct {
 	getFunc           func(context.Context, *taskv1.GetTaskRequest) (*taskv1.Task, error)
+	getRuntimeFunc    func(context.Context, uint64) (*taskv1.Task, error)
 	listRunnableFunc  func(context.Context) ([]*taskv1.Task, error)
 	updateRuntimeFunc func(context.Context, uint64, taskv1.Task_Status, *uint32) error
 }
@@ -23,6 +24,13 @@ func (f *fakeTaskRepo) List(context.Context, *paginationv1.PagingRequest) (*task
 
 func (f *fakeTaskRepo) Get(ctx context.Context, req *taskv1.GetTaskRequest) (*taskv1.Task, error) {
 	return f.getFunc(ctx, req)
+}
+
+func (f *fakeTaskRepo) GetTaskByIDForRuntime(ctx context.Context, taskID uint64) (*taskv1.Task, error) {
+	if f.getRuntimeFunc != nil {
+		return f.getRuntimeFunc(ctx, taskID)
+	}
+	return nil, nil
 }
 
 func (f *fakeTaskRepo) Create(context.Context, *taskv1.CreateTaskRequest) (*emptypb.Empty, error) {
@@ -72,6 +80,10 @@ func TestRuntimeStore_DelegatesToRepo(t *testing.T) {
 	repo := &fakeTaskRepo{
 		getFunc: func(_ context.Context, req *taskv1.GetTaskRequest) (*taskv1.Task, error) {
 			calledGet = true
+			return &taskv1.Task{Id: &taskID}, nil
+		},
+		getRuntimeFunc: func(_ context.Context, gotTaskID uint64) (*taskv1.Task, error) {
+			calledGet = gotTaskID == taskID
 			return &taskv1.Task{Id: &taskID}, nil
 		},
 		listRunnableFunc: func(context.Context) ([]*taskv1.Task, error) {
