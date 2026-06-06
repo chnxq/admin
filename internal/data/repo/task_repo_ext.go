@@ -10,6 +10,7 @@ import (
 
 	taskv1 "admin/api/gen/task/v1"
 	"admin/internal/data/ent/task"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // Add TaskRepo-specific query helpers and hand-written data access code here.
@@ -61,4 +62,64 @@ func (r *taskRepo) UpdateTaskRuntimeState(ctx context.Context, taskID uint64, st
 		return err
 	}
 	return nil
+}
+
+func (r *taskRepo) taskCustomUpdate(ctx context.Context, req *taskv1.UpdateTaskRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	current, err := r.entClient.Client().Task.Query().Where(task.IDEQ(req.GetId())).Only(ctx)
+	if err != nil {
+		r.log.Errorf("load task failed: %s", err.Error())
+		return nil, err
+	}
+	if err := ensureHybridTenantAccessible(ctx, current.TenantID); err != nil {
+		return nil, err
+	}
+
+	builder := r.entClient.Client().Task.UpdateOneID(req.GetId())
+	now, viewer := r.generatedAuditContext(ctx)
+	builder.SetTaskName(req.Data.GetTaskName())
+	builder.SetGroupID(req.Data.GetGroupId())
+	builder.SetTaskType(task.TaskType(req.Data.GetTaskType().String()))
+	if req.Data.CronExpression != nil {
+		builder.SetNillableCronExpression(req.Data.CronExpression)
+	} else if req.GetUpdateMask() != nil && taskFieldMaskContains(req.GetUpdateMask().GetPaths(), "cron_expression", "cronExpression") {
+		builder.ClearCronExpression()
+	}
+	if req.Data.InvokeTarget != nil {
+		builder.SetNillableInvokeTarget(req.Data.InvokeTarget)
+	} else if req.GetUpdateMask() != nil && taskFieldMaskContains(req.GetUpdateMask().GetPaths(), "invoke_target", "invokeTarget") {
+		builder.ClearInvokeTarget()
+	}
+	if req.Data.Args != nil {
+		builder.SetNillableArgs(req.Data.Args)
+	} else if req.GetUpdateMask() != nil && taskFieldMaskContains(req.GetUpdateMask().GetPaths(), "args") {
+		builder.ClearArgs()
+	}
+	builder.SetRetry(req.Data.GetRetry())
+	builder.SetConcurrent(req.Data.GetConcurrent())
+	if req.Data.EntryId != nil {
+		builder.SetNillableEntryID(req.Data.EntryId)
+	} else if req.GetUpdateMask() != nil && taskFieldMaskContains(req.GetUpdateMask().GetPaths(), "entry_id", "entryId") {
+		builder.ClearEntryID()
+	}
+	builder.SetStatus(task.Status(req.Data.GetStatus().String()))
+	if req.Data.Remark != nil {
+		builder.SetNillableRemark(req.Data.Remark)
+	} else if req.GetUpdateMask() != nil && taskFieldMaskContains(req.GetUpdateMask().GetPaths(), "remark") {
+		builder.ClearRemark()
+	}
+	builder.SetUpdatedAt(now)
+	builder.SetUpdatedBy(uint32(viewer.UserID()))
+
+	entity, err := builder.Save(ctx)
+	if err != nil {
+		r.log.Errorf("update task failed: %s", err.Error())
+		return nil, err
+	}
+
+	_ = entity
+	return &emptypb.Empty{}, nil
 }
