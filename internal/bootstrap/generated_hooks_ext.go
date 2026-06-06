@@ -13,7 +13,6 @@ func (data *GeneratedData) afterInit() {
 	if data == nil {
 		return
 	}
-	data.WrapAuditLogRepos()
 }
 
 func (services *GeneratedServices) afterInit(data *GeneratedData) {
