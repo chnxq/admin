@@ -4,5 +4,234 @@
 
 package repo
 
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	taskv1 "admin/api/gen/task/v1"
+	"admin/internal/data/ent"
+	"admin/internal/data/ent/task"
+	crudviewer "github.com/chnxq/x-crud/viewer"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+)
+
 // Add TaskRepo-specific query helpers and hand-written data access code here.
 // This file is created once and is never overwritten by xkit.
+
+type TaskRuntimeRepo interface {
+	GetTaskByIDForRuntime(ctx context.Context, taskID uint64) (*taskv1.Task, error)
+	ListTasksByGroupID(ctx context.Context, groupID uint64) ([]*taskv1.Task, error)
+	ListRunnableTasks(ctx context.Context) ([]*taskv1.Task, error)
+	ListTasksForRuntime(ctx context.Context, tenantID *uint32) ([]*taskv1.Task, error)
+	UpdateTaskRuntimeState(ctx context.Context, taskID uint64, status taskv1.Task_Status, entryID *uint32) error
+}
+
+func (r *taskRepo) GetTaskByIDForRuntime(ctx context.Context, taskID uint64) (*taskv1.Task, error) {
+	if taskID == 0 {
+		return nil, fmt.Errorf("invalid task id")
+	}
+	ctx = withRuntimeViewerContext(ctx)
+	entity, err := r.entClient.Client().Task.Query().
+		Where(task.IDEQ(taskID)).
+		Only(ctx)
+	if err != nil {
+		r.log.Errorf("get task by runtime failed: %s", err.Error())
+		return nil, err
+	}
+	return r.mapper.ToDTO(entity), nil
+}
+
+func (r *taskRepo) ListTasksByGroupID(ctx context.Context, groupID uint64) ([]*taskv1.Task, error) {
+	ctx = withRuntimeViewerContext(ctx)
+	entities, err := r.entClient.Client().Task.Query().
+		Where(task.GroupIDEQ(groupID)).
+		Order(task.ByID()).
+		All(ctx)
+	if err != nil {
+		r.log.Errorf("list task by group failed: %s", err.Error())
+		return nil, err
+	}
+
+	items := make([]*taskv1.Task, 0, len(entities))
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		items = append(items, r.mapper.ToDTO(entity))
+	}
+	return items, nil
+}
+
+func (r *taskRepo) ListRunnableTasks(ctx context.Context) ([]*taskv1.Task, error) {
+	ctx = withRuntimeViewerContext(ctx)
+	entities, err := r.entClient.Client().Task.Query().
+		Where(task.StatusEQ(task.Status(taskv1.Task_RUNNING.String()))).
+		Order(task.ByID()).
+		All(ctx)
+	if err != nil {
+		r.log.Errorf("list runnable task failed: %s", err.Error())
+		return nil, err
+	}
+	return r.mapTaskEntitiesNoEnrich(entities), nil
+}
+
+func (r *taskRepo) ListTasksForRuntime(ctx context.Context, tenantID *uint32) ([]*taskv1.Task, error) {
+	ctx = withRuntimeViewerContext(ctx)
+	query := r.entClient.Client().Task.Query().Order(task.ByID())
+	if tenantID != nil && *tenantID > 0 {
+		query.Where(task.TenantIDEQ(*tenantID))
+	}
+	entities, err := query.All(ctx)
+	if err != nil {
+		r.log.Errorf("list task runtime summary failed: %s", err.Error())
+		return nil, err
+	}
+	return r.mapTaskEntitiesNoEnrich(entities), nil
+}
+
+func (r *taskRepo) UpdateTaskRuntimeState(ctx context.Context, taskID uint64, status taskv1.Task_Status, entryID *uint32) error {
+	if taskID == 0 {
+		return fmt.Errorf("invalid task id")
+	}
+
+	ctx = withRuntimeViewerContext(ctx)
+	builder := r.entClient.Client().Task.UpdateOneID(taskID).
+		SetStatus(task.Status(status.String()))
+	if entryID == nil || *entryID == 0 {
+		builder.ClearEntryID()
+	} else {
+		builder.SetEntryID(*entryID)
+	}
+
+	now := time.Now()
+	builder.SetUpdatedAt(now)
+	if viewer, ok := crudviewer.FromContext(ctx); ok && viewer != nil {
+		builder.SetUpdatedBy(uint32(viewer.UserID()))
+	}
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("update task runtime state failed: %s", err.Error())
+		return err
+	}
+	return nil
+}
+
+func (r *taskRepo) mapTaskEntities(ctx context.Context, entities []*ent.Task) ([]*taskv1.Task, error) {
+	items := make([]*taskv1.Task, 0, len(entities))
+	if custom, ok := any(r).(interface {
+		taskEnrichListDTOs(context.Context, []*ent.Task) ([]*taskv1.Task, error)
+	}); ok {
+		return custom.taskEnrichListDTOs(ctx, entities)
+	}
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		items = append(items, r.mapper.ToDTO(entity))
+	}
+	return items, nil
+}
+
+func (r *taskRepo) mapTaskEntitiesNoEnrich(entities []*ent.Task) []*taskv1.Task {
+	items := make([]*taskv1.Task, 0, len(entities))
+	for _, entity := range entities {
+		if entity == nil {
+			continue
+		}
+		items = append(items, r.mapper.ToDTO(entity))
+	}
+	return items
+}
+
+func (r *taskRepo) ListTasksByIDs(ctx context.Context, ids []uint64) ([]*taskv1.Task, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	ctx = withRuntimeViewerContext(ctx)
+	entities, err := r.entClient.Client().Task.Query().
+		Where(task.IDIn(ids...)).
+		Order(task.ByID()).
+		All(ctx)
+	if err != nil {
+		r.log.Errorf("list task by ids failed: %s", err.Error())
+		return nil, err
+	}
+	return r.mapTaskEntities(ctx, entities)
+}
+
+func (r *taskRepo) FindTaskByName(ctx context.Context, taskName string) (*taskv1.Task, error) {
+	taskName = strings.TrimSpace(taskName)
+	if taskName == "" {
+		return nil, fmt.Errorf("task name is required")
+	}
+	ctx = withRuntimeViewerContext(ctx)
+	entity, err := r.entClient.Client().Task.Query().
+		Where(task.TaskNameEQ(taskName)).
+		Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return r.mapper.ToDTO(entity), nil
+}
+
+func (r *taskRepo) taskCustomUpdate(ctx context.Context, req *taskv1.UpdateTaskRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+
+	current, err := r.entClient.Client().Task.Query().Where(task.IDEQ(req.GetId())).Only(ctx)
+	if err != nil {
+		r.log.Errorf("load task failed: %s", err.Error())
+		return nil, err
+	}
+	if err := ensureHybridTenantAccessible(ctx, current.TenantID); err != nil {
+		return nil, err
+	}
+
+	builder := r.entClient.Client().Task.UpdateOneID(req.GetId())
+	now, viewer := r.generatedAuditContext(ctx)
+	builder.SetTaskName(req.Data.GetTaskName())
+	builder.SetGroupID(req.Data.GetGroupId())
+	builder.SetTaskType(task.TaskType(req.Data.GetTaskType().String()))
+	if req.Data.CronExpression != nil {
+		builder.SetNillableCronExpression(req.Data.CronExpression)
+	} else if req.GetUpdateMask() != nil && taskFieldMaskContains(req.GetUpdateMask().GetPaths(), "cron_expression", "cronExpression") {
+		builder.ClearCronExpression()
+	}
+	if req.Data.InvokeTarget != nil {
+		builder.SetNillableInvokeTarget(req.Data.InvokeTarget)
+	} else if req.GetUpdateMask() != nil && taskFieldMaskContains(req.GetUpdateMask().GetPaths(), "invoke_target", "invokeTarget") {
+		builder.ClearInvokeTarget()
+	}
+	if req.Data.Args != nil {
+		builder.SetNillableArgs(req.Data.Args)
+	} else if req.GetUpdateMask() != nil && taskFieldMaskContains(req.GetUpdateMask().GetPaths(), "args") {
+		builder.ClearArgs()
+	}
+	builder.SetRetry(req.Data.GetRetry())
+	builder.SetConcurrent(req.Data.GetConcurrent())
+	if req.Data.EntryId != nil {
+		builder.SetNillableEntryID(req.Data.EntryId)
+	} else if req.GetUpdateMask() != nil && taskFieldMaskContains(req.GetUpdateMask().GetPaths(), "entry_id", "entryId") {
+		builder.ClearEntryID()
+	}
+	builder.SetStatus(task.Status(req.Data.GetStatus().String()))
+	if req.Data.Remark != nil {
+		builder.SetNillableRemark(req.Data.Remark)
+	} else if req.GetUpdateMask() != nil && taskFieldMaskContains(req.GetUpdateMask().GetPaths(), "remark") {
+		builder.ClearRemark()
+	}
+	builder.SetUpdatedAt(now)
+	builder.SetUpdatedBy(uint32(viewer.UserID()))
+
+	entity, err := builder.Save(ctx)
+	if err != nil {
+		r.log.Errorf("update task failed: %s", err.Error())
+		return nil, err
+	}
+
+	_ = entity
+	return &emptypb.Empty{}, nil
+}

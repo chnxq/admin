@@ -9,6 +9,7 @@ import (
 	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
 	entCrud "github.com/chnxq/x-crud/entgo"
 	crudviewer "github.com/chnxq/x-crud/viewer"
+	"github.com/chnxq/xkitmod/log"
 	"github.com/chnxq/xkitpkg/app"
 
 	"admin/internal/data/ent"
@@ -20,6 +21,8 @@ import (
 	"admin/internal/data/ent/position"
 	"admin/internal/data/ent/role"
 	"admin/internal/data/ent/rolepermission"
+	enttask "admin/internal/data/ent/task"
+	enttaskgroup "admin/internal/data/ent/taskgroup"
 	"admin/internal/data/ent/tenant"
 	"admin/internal/data/ent/user"
 	"admin/internal/data/ent/usercredential"
@@ -46,6 +49,7 @@ type defaultDataSeed struct {
 	appCtx    *app.AppCtx
 	entClient *entCrud.EntClient[*ent.Client]
 	now       time.Time
+	log       *log.Helper
 }
 
 type seedViewerContext struct{}
@@ -86,6 +90,8 @@ func ensureDefaultData(appCtx *app.AppCtx, entClient *entCrud.EntClient[*ent.Cli
 		entClient: entClient,
 		now:       time.Now(),
 	}
+	seed.log = appCtx.NewLoggerHelper("data/DefaultData")
+
 	return seed.run()
 }
 
@@ -96,12 +102,19 @@ func (s *defaultDataSeed) run() error {
 		return err
 	}
 
-	externalSeeded, err := s.hasExternalSeedData(ctx)
+	shouldSeed, err := s.shouldSeedDefaultData(ctx)
 	if err != nil {
 		return err
 	}
-	if externalSeeded {
-		return s.reconcileExistingSeedData(ctx)
+	if !shouldSeed {
+		if s.log != nil {
+			s.log.Infof("Skip default data seed: existing seed domain data detected")
+		}
+		return nil
+	}
+
+	if err := s.ensureTaskSeeds(ctx); err != nil {
+		return err
 	}
 
 	tenantEntity, err := s.ensureDefaultTenant(ctx)
@@ -121,9 +134,6 @@ func (s *defaultDataSeed) run() error {
 
 	permissionIDs, err := s.collectDefaultAdminPermissionIDs(ctx)
 	if err != nil {
-		return err
-	}
-	if _, err := s.ensurePlatformSuperRole(ctx, permissionIDs); err != nil {
 		return err
 	}
 	normalPermissionIDs, err := s.collectNormalUserPermissionIDs(ctx)
@@ -226,148 +236,74 @@ func (s *defaultDataSeed) run() error {
 	return nil
 }
 
-func (s *defaultDataSeed) hasExternalSeedData(ctx context.Context) (bool, error) {
-	tenants, err := s.entClient.Client().Tenant.Query().
-		Order(tenant.ByID()).
-		All(ctx)
-	if err != nil {
-		return false, fmt.Errorf("list tenants for external seed detection: %w", err)
-	}
-	for _, item := range tenants {
-		if item == nil {
-			continue
-		}
-		if code := normalizeString(item.Code); code != "" && !strings.EqualFold(code, defaultTenantCode) {
-			return true, nil
-		}
+func (s *defaultDataSeed) shouldSeedDefaultData(ctx context.Context) (bool, error) {
+	type countCheck struct {
+		name  string
+		count func(context.Context) (int, error)
 	}
 
-	users, err := s.entClient.Client().User.Query().
-		Order(user.ByID()).
-		All(ctx)
-	if err != nil {
-		return false, fmt.Errorf("list users for external seed detection: %w", err)
-	}
-	for _, item := range users {
-		if item == nil {
-			continue
-		}
-		username := normalizeString(item.Username)
-		if username == "" {
-			continue
-		}
-		if !strings.EqualFold(username, adminUsername) &&
-			!strings.EqualFold(username, normalUsername) &&
-			!strings.EqualFold(username, platformUsername) {
-			return true, nil
-		}
+	checks := []countCheck{
+		{
+			name: "tenant",
+			count: func(ctx context.Context) (int, error) {
+				return s.entClient.Client().Tenant.Query().Count(ctx)
+			},
+		},
+		{
+			name: "org_unit",
+			count: func(ctx context.Context) (int, error) {
+				return s.entClient.Client().OrgUnit.Query().Count(ctx)
+			},
+		},
+		{
+			name: "position",
+			count: func(ctx context.Context) (int, error) {
+				return s.entClient.Client().Position.Query().Count(ctx)
+			},
+		},
+		{
+			name: "role",
+			count: func(ctx context.Context) (int, error) {
+				return s.entClient.Client().Role.Query().Count(ctx)
+			},
+		},
+		{
+			name: "user",
+			count: func(ctx context.Context) (int, error) {
+				return s.entClient.Client().User.Query().Count(ctx)
+			},
+		},
+		{
+			name: "membership",
+			count: func(ctx context.Context) (int, error) {
+				return s.entClient.Client().Membership.Query().Count(ctx)
+			},
+		},
+		{
+			name: "task_group",
+			count: func(ctx context.Context) (int, error) {
+				return s.entClient.Client().TaskGroup.Query().Count(ctx)
+			},
+		},
+		{
+			name: "task",
+			count: func(ctx context.Context) (int, error) {
+				return s.entClient.Client().Task.Query().Count(ctx)
+			},
+		},
 	}
 
-	return false, nil
-}
-
-func (s *defaultDataSeed) reconcileExistingSeedData(ctx context.Context) error {
-	tenants, err := s.entClient.Client().Tenant.Query().
-		Order(tenant.ByID()).
-		All(ctx)
-	if err != nil {
-		return fmt.Errorf("list existing tenants: %w", err)
-	}
-	if len(tenants) == 0 {
-		return nil
-	}
-
-	permissionIDs, err := s.collectDefaultAdminPermissionIDs(ctx)
-	if err != nil {
-		return err
-	}
-	normalPermissionIDs, err := s.collectNormalUserPermissionIDs(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, tenantEntity := range tenants {
-		if tenantEntity == nil {
-			continue
-		}
-
-		superRole, normalRole, err := s.ensureRoles(ctx, tenantEntity.ID, permissionIDs, normalPermissionIDs)
+	for _, check := range checks {
+		total, err := check.count(ctx)
 		if err != nil {
-			return err
+			return false, fmt.Errorf("count %s for default seed detection: %w", check.name, err)
 		}
-
-		users, err := s.entClient.Client().User.Query().
-			Where(user.TenantIDEQ(tenantEntity.ID)).
-			Order(user.ByID()).
-			All(ctx)
-		if err != nil {
-			return fmt.Errorf("list users for tenant %d: %w", tenantEntity.ID, err)
-		}
-
-		for _, userEntity := range users {
-			if userEntity == nil {
-				continue
-			}
-
-			primaryRoleID := normalRole.ID
-			if s.isTenantAdminUser(tenantEntity, userEntity) {
-				primaryRoleID = superRole.ID
-			}
-
-			if err := s.replaceUserRoles(ctx, tenantEntity.ID, userEntity.ID, []uint32{primaryRoleID}); err != nil {
-				return err
-			}
-			if err := s.reconcileMembershipRole(ctx, tenantEntity.ID, userEntity.ID, primaryRoleID); err != nil {
-				return err
-			}
+		if total > 0 {
+			return false, nil
 		}
 	}
 
-	return nil
-}
-
-func (s *defaultDataSeed) reconcileMembershipRole(ctx context.Context, tenantID, userID, primaryRoleID uint32) error {
-	entity, err := s.entClient.Client().Membership.Query().
-		Where(
-			membership.TenantIDEQ(tenantID),
-			membership.UserIDEQ(userID),
-		).
-		Only(ctx)
-	if ent.IsNotFound(err) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("query membership user=%d tenant=%d: %w", userID, tenantID, err)
-	}
-
-	builder := s.entClient.Client().Membership.UpdateOneID(entity.ID).
-		SetRoleID(primaryRoleID).
-		SetIsPrimary(true).
-		SetStatus(membership.StatusActive).
-		SetAssignedAt(s.now).
-		SetAssignedBy(0).
-		SetUpdatedAt(s.now).
-		SetUpdatedBy(0)
-	if _, err := builder.Save(ctx); err != nil {
-		return fmt.Errorf("update membership role user=%d tenant=%d: %w", userID, tenantID, err)
-	}
-
-	return s.replaceMembershipRoles(ctx, tenantID, entity.ID, []uint32{primaryRoleID})
-}
-
-func (s *defaultDataSeed) isTenantAdminUser(tenantEntity *ent.Tenant, userEntity *ent.User) bool {
-	if tenantEntity == nil || userEntity == nil {
-		return false
-	}
-	if tenantEntity.AdminUserID != nil && *tenantEntity.AdminUserID == userEntity.ID {
-		return true
-	}
-
-	username := strings.ToLower(normalizeString(userEntity.Username))
-	if username == "" {
-		return false
-	}
-	return strings.Contains(username, "admin")
+	return true, nil
 }
 
 func (s *defaultDataSeed) syncResources(ctx context.Context) error {
@@ -406,13 +342,18 @@ func (s *defaultDataSeed) ensureDefaultTenant(ctx context.Context) (*ent.Tenant,
 			SetSubscriptionPlan("default").
 			SetUpdatedAt(s.now).
 			SetUpdatedBy(0)
-		return updated.Save(ctx)
+		entity, err = updated.Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		s.log.Debugf("Update Tenant ID=%d Code=%s", entity.ID, defaultTenantCode)
+		return entity, nil
 	}
 	if !ent.IsNotFound(err) {
 		return nil, fmt.Errorf("query default tenant: %w", err)
 	}
 
-	return s.entClient.Client().Tenant.Create().
+	entity, err = s.entClient.Client().Tenant.Create().
 		SetName("默认租户").
 		SetCode(defaultTenantCode).
 		SetType(tenant.TypePaid).
@@ -424,6 +365,11 @@ func (s *defaultDataSeed) ensureDefaultTenant(ctx context.Context) (*ent.Tenant,
 		SetUpdatedAt(s.now).
 		SetUpdatedBy(0).
 		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.log.Debugf("Create Tenant ID=%d Code=%s", entity.ID, defaultTenantCode)
+	return entity, nil
 }
 
 func (s *defaultDataSeed) ensureOrgUnits(ctx context.Context, tenantID uint32) (*ent.OrgUnit, *ent.OrgUnit, error) {
@@ -458,7 +404,12 @@ func (s *defaultDataSeed) ensureOrgUnit(ctx context.Context, tenantID uint32, pa
 		} else {
 			builder.ClearParentID()
 		}
-		return builder.Save(ctx)
+		entity, err = builder.Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		s.log.Debugf("Update OrgUnit ID=%d Code=%s", entity.ID, code)
+		return entity, nil
 	}
 	if !ent.IsNotFound(err) {
 		return nil, fmt.Errorf("query org unit %s: %w", code, err)
@@ -479,7 +430,12 @@ func (s *defaultDataSeed) ensureOrgUnit(ctx context.Context, tenantID uint32, pa
 	if parentID != nil {
 		builder.SetParentID(*parentID)
 	}
-	return builder.Save(ctx)
+	entity, err = builder.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.log.Debugf("Create OrgUnit ID=%d Code=%s", entity.ID, code)
+	return entity, nil
 }
 
 func (s *defaultDataSeed) ensurePositions(ctx context.Context, tenantID, deptOrgID uint32) (*ent.Position, *ent.Position, error) {
@@ -499,7 +455,7 @@ func (s *defaultDataSeed) ensurePosition(ctx context.Context, tenantID, orgUnitI
 		Where(position.TenantIDEQ(tenantID), position.CodeEQ(code)).
 		Only(ctx)
 	if err == nil {
-		return s.entClient.Client().Position.UpdateOneID(entity.ID).
+		entity, err = s.entClient.Client().Position.UpdateOneID(entity.ID).
 			SetName(name).
 			SetCode(code).
 			SetOrgUnitID(orgUnitID).
@@ -510,12 +466,17 @@ func (s *defaultDataSeed) ensurePosition(ctx context.Context, tenantID, orgUnitI
 			SetUpdatedAt(s.now).
 			SetUpdatedBy(0).
 			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		s.log.Debugf("Update Position ID=%d Code=%s", entity.ID, code)
+		return entity, nil
 	}
 	if !ent.IsNotFound(err) {
 		return nil, fmt.Errorf("query position %s: %w", code, err)
 	}
 
-	return s.entClient.Client().Position.Create().
+	entity, err = s.entClient.Client().Position.Create().
 		SetTenantID(tenantID).
 		SetName(name).
 		SetCode(code).
@@ -529,6 +490,150 @@ func (s *defaultDataSeed) ensurePosition(ctx context.Context, tenantID, orgUnitI
 		SetUpdatedAt(s.now).
 		SetUpdatedBy(0).
 		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.log.Debugf("Create Position ID=%d Code=%s", entity.ID, code)
+	return entity, nil
+}
+
+func (s *defaultDataSeed) ensureTaskSeeds(ctx context.Context) error {
+	groupEntity, err := s.entClient.Client().TaskGroup.Query().
+		Where(
+			enttaskgroup.TenantIDEQ(platformTenantID),
+			enttaskgroup.GroupNameEQ("系统维护"),
+		).
+		Only(ctx)
+	if err == nil {
+		groupEntity, err = s.entClient.Client().TaskGroup.UpdateOneID(groupEntity.ID).
+			SetGroupName("系统维护").
+			SetRemark("系统内置维护任务").
+			SetUpdatedAt(s.now).
+			SetUpdatedBy(0).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("update task group seed: %w", err)
+		}
+		s.log.Debugf("Update TaskGroup ID=%d Name=%s", groupEntity.ID, groupEntity.GroupName)
+	} else if ent.IsNotFound(err) {
+		groupEntity, err = s.entClient.Client().TaskGroup.Create().
+			SetTenantID(platformTenantID).
+			SetGroupName("系统维护").
+			SetRemark("系统内置维护任务").
+			SetCreatedAt(s.now).
+			SetCreatedBy(0).
+			SetUpdatedAt(s.now).
+			SetUpdatedBy(0).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("create task group seed: %w", err)
+		}
+		s.log.Debugf("Create TaskGroup ID=%d Name=%s", groupEntity.ID, groupEntity.GroupName)
+	} else {
+		return fmt.Errorf("query task group seed: %w", err)
+	}
+
+	groupID := uint64(groupEntity.ID)
+	if err := s.ensureTaskSeed(ctx, taskSeedSpec{
+		groupID:        groupID,
+		taskName:       "删除过期日志",
+		taskType:       enttask.TaskTypeFunction,
+		cronExpression: "0 0 3 * * *",
+		invokeTarget:   "system:cleanup:audit-logs",
+		args:           `{"expireHours":720,"targets":["api","login","permission"]}`,
+		retry:          0,
+		concurrent:     false,
+		status:         enttask.StatusStopped,
+		remark:         "按小时参数清理 API/登录/权限审计日志",
+	}); err != nil {
+		return err
+	}
+	if err := s.ensureTaskSeed(ctx, taskSeedSpec{
+		groupID:        groupID,
+		taskName:       "任务运行概览",
+		taskType:       enttask.TaskTypeFunction,
+		cronExpression: "0 0 8 * * 1",
+		invokeTarget:   "system:task:runtime-summary",
+		args:           `{"tenantScope":"global"}`,
+		retry:          0,
+		concurrent:     false,
+		status:         enttask.StatusStopped,
+		remark:         "每周汇总所有内置任务运行状态，作为内部执行器示例",
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+type taskSeedSpec struct {
+	groupID        uint64
+	taskName       string
+	taskType       enttask.TaskType
+	cronExpression string
+	invokeTarget   string
+	args           string
+	retry          uint32
+	concurrent     bool
+	status         enttask.Status
+	remark         string
+}
+
+func (s *defaultDataSeed) ensureTaskSeed(ctx context.Context, spec taskSeedSpec) error {
+	taskEntity, err := s.entClient.Client().Task.Query().
+		Where(
+			enttask.TenantIDEQ(platformTenantID),
+			enttask.GroupIDEQ(spec.groupID),
+			enttask.TaskNameEQ(spec.taskName),
+		).
+		Only(ctx)
+	if err == nil {
+		taskEntity, err = s.entClient.Client().Task.UpdateOneID(taskEntity.ID).
+			SetTaskName(spec.taskName).
+			SetGroupID(spec.groupID).
+			SetTaskType(spec.taskType).
+			SetCronExpression(spec.cronExpression).
+			SetInvokeTarget(spec.invokeTarget).
+			SetArgs(spec.args).
+			SetRetry(spec.retry).
+			SetConcurrent(spec.concurrent).
+			SetStatus(spec.status).
+			SetRemark(spec.remark).
+			SetUpdatedAt(s.now).
+			SetUpdatedBy(0).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("update task seed %s: %w", spec.taskName, err)
+		}
+		s.log.Debugf("Update Task ID=%d Name=%s", taskEntity.ID, spec.taskName)
+		return nil
+	}
+	if !ent.IsNotFound(err) {
+		return fmt.Errorf("query task seed %s: %w", spec.taskName, err)
+	}
+
+	taskEntity, err = s.entClient.Client().Task.Create().
+		SetTenantID(platformTenantID).
+		SetTaskName(spec.taskName).
+		SetGroupID(spec.groupID).
+		SetTaskType(spec.taskType).
+		SetCronExpression(spec.cronExpression).
+		SetInvokeTarget(spec.invokeTarget).
+		SetArgs(spec.args).
+		SetRetry(spec.retry).
+		SetConcurrent(spec.concurrent).
+		SetStatus(spec.status).
+		SetRemark(spec.remark).
+		SetCreatedAt(s.now).
+		SetCreatedBy(0).
+		SetUpdatedAt(s.now).
+		SetUpdatedBy(0).
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("create task seed %s: %w", spec.taskName, err)
+	}
+	s.log.Debugf("Create Task ID=%d Name=%s", taskEntity.ID, spec.taskName)
+
+	return nil
 }
 
 func (s *defaultDataSeed) collectPermissionIDs(ctx context.Context) ([]uint32, error) {
@@ -591,6 +696,11 @@ func (s *defaultDataSeed) collectDefaultAdminPermissionIDs(ctx context.Context) 
 	}
 	if exportGroupID != 0 {
 		targetGroupIDs[exportGroupID] = struct{}{}
+		for groupID, parentID := range groupParentByID {
+			if parentID == exportGroupID {
+				targetGroupIDs[groupID] = struct{}{}
+			}
+		}
 	}
 	if len(targetGroupIDs) == 0 {
 		return nil, nil
@@ -737,6 +847,7 @@ func (s *defaultDataSeed) ensureRole(ctx context.Context, tenantID uint32, spec 
 		if err != nil {
 			return nil, fmt.Errorf("update role %s: %w", spec.code, err)
 		}
+		s.log.Debugf("Update Role ID=%d Code=%s", entity.ID, spec.code)
 	} else if ent.IsNotFound(err) {
 		entity, err = s.entClient.Client().Role.Create().
 			SetTenantID(tenantID).
@@ -755,6 +866,7 @@ func (s *defaultDataSeed) ensureRole(ctx context.Context, tenantID uint32, spec 
 		if err != nil {
 			return nil, fmt.Errorf("create role %s: %w", spec.code, err)
 		}
+		s.log.Debugf("Create Role ID=%d Code=%s", entity.ID, spec.code)
 	} else {
 		return nil, fmt.Errorf("query role %s: %w", spec.code, err)
 	}
@@ -816,6 +928,7 @@ func (s *defaultDataSeed) ensureUser(ctx context.Context, spec seedUserSpec) (*e
 		if err != nil {
 			return nil, fmt.Errorf("update user %s: %w", spec.username, err)
 		}
+		s.log.Debugf("Update User ID=%d Name=%s", entity.ID, spec.username)
 	} else if ent.IsNotFound(err) {
 		entity, err = s.entClient.Client().User.Create().
 			SetTenantID(spec.tenantID).
@@ -836,6 +949,7 @@ func (s *defaultDataSeed) ensureUser(ctx context.Context, spec seedUserSpec) (*e
 		if err != nil {
 			return nil, fmt.Errorf("create user %s: %w", spec.username, err)
 		}
+		s.log.Debugf("Create User ID=%d Name=%s", entity.ID, spec.username)
 	} else {
 		return nil, fmt.Errorf("query user %s: %w", spec.username, err)
 	}
@@ -869,6 +983,7 @@ func (s *defaultDataSeed) ensureUserCredential(ctx context.Context, tenantID, us
 		if err != nil {
 			return fmt.Errorf("update credential for %s: %w", username, err)
 		}
+		s.log.Debugf("Update UserCredential ID=%d Name=%s", entity.ID, username)
 		return nil
 	}
 	if !ent.IsNotFound(err) {
@@ -889,6 +1004,7 @@ func (s *defaultDataSeed) ensureUserCredential(ctx context.Context, tenantID, us
 		Save(ctx); err != nil {
 		return fmt.Errorf("create credential for %s: %w", username, err)
 	}
+	s.log.Debugf("Create UserCredential ID=%d Name=%s", userID, username)
 	return nil
 }
 
@@ -1010,6 +1126,7 @@ func (s *defaultDataSeed) ensureMembership(ctx context.Context, tenantID, userID
 		if err != nil {
 			return fmt.Errorf("update membership user=%d: %w", userID, err)
 		}
+		s.log.Debugf("Update Membership ID=%d %s", entity.ID, fmt.Sprintf("tenant=%d user=%d", tenantID, userID))
 	} else if ent.IsNotFound(err) {
 		entity, err = s.entClient.Client().Membership.Create().
 			SetTenantID(tenantID).
@@ -1030,6 +1147,7 @@ func (s *defaultDataSeed) ensureMembership(ctx context.Context, tenantID, userID
 		if err != nil {
 			return fmt.Errorf("create membership user=%d: %w", userID, err)
 		}
+		s.log.Debugf("Create Membership ID=%d %s", entity.ID, fmt.Sprintf("tenant=%d user=%d", tenantID, userID))
 	} else {
 		return fmt.Errorf("query membership user=%d: %w", userID, err)
 	}

@@ -11,9 +11,13 @@ func (data *GeneratedData) afterInit() {
 	if data == nil {
 		return
 	}
-	data.WrapAuditLogRepos()
 }
 
 func (services *GeneratedServices) afterInit(data *GeneratedData) {
-	_, _ = services, data
+	if services == nil || data == nil {
+		return
+	}
+	if err := configureTaskRuntime(services, data); err != nil {
+		panic(err)
+	}
 }

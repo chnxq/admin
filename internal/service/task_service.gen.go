@@ -8,6 +8,7 @@ import (
 	adminv1 "admin/api/gen/admin/v1"
 	v11 "admin/api/gen/task/v1"
 	"admin/internal/data/repo"
+	taskruntime "admin/internal/task/runtime"
 	context "context"
 	v1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
 	"github.com/chnxq/xkitmod/log"
@@ -22,6 +23,10 @@ type TaskService struct {
 	log *log.Helper
 
 	taskRepo repo.TaskRepo
+
+	taskGroupRepo repo.TaskGroupRepo
+	scheduler     *taskruntime.Scheduler
+	runtimeRunner *taskruntime.Runner
 }
 
 func NewTaskService(ctx *app.AppCtx, taskRepo repo.TaskRepo) *TaskService {
@@ -46,47 +51,35 @@ func (s *TaskService) Get(ctx context.Context, req *v11.GetTaskRequest) (*v11.Ta
 // Create is generated from the source proto contract.
 // Classification: standard.
 func (s *TaskService) Create(ctx context.Context, req *v11.CreateTaskRequest) (*emptypb.Empty, error) {
-	return s.taskRepo.Create(ctx, req)
+	return s.create(ctx, req)
 }
 
 // Update is generated from the source proto contract.
 // Classification: standard.
 func (s *TaskService) Update(ctx context.Context, req *v11.UpdateTaskRequest) (*emptypb.Empty, error) {
-	return s.taskRepo.Update(ctx, req)
+	return s.update(ctx, req)
 }
 
 // Delete is generated from the source proto contract.
 // Classification: standard.
 func (s *TaskService) Delete(ctx context.Context, req *v11.DeleteTaskRequest) (*emptypb.Empty, error) {
-	return s.taskRepo.Delete(ctx, req)
+	return s.delete(ctx, req)
 }
 
 // Start is generated from the source proto contract.
 // Classification: special.
 func (s *TaskService) Start(ctx context.Context, req *v11.StartTaskRequest) (*emptypb.Empty, error) {
-	_ = ctx
-	_ = req
-
-	// TODO: implement TaskService.Start business logic manually or move it to a manual extension.
-	return &emptypb.Empty{}, nil
+	return s.start(ctx, req)
 }
 
 // Stop is generated from the source proto contract.
 // Classification: special.
 func (s *TaskService) Stop(ctx context.Context, req *v11.StopTaskRequest) (*emptypb.Empty, error) {
-	_ = ctx
-	_ = req
-
-	// TODO: implement TaskService.Stop business logic manually or move it to a manual extension.
-	return &emptypb.Empty{}, nil
+	return s.stop(ctx, req)
 }
 
 // RunOnce is generated from the source proto contract.
 // Classification: special.
 func (s *TaskService) RunOnce(ctx context.Context, req *v11.RunTaskOnceRequest) (*emptypb.Empty, error) {
-	_ = ctx
-	_ = req
-
-	// TODO: implement TaskService.RunOnce business logic manually or move it to a manual extension.
-	return &emptypb.Empty{}, nil
+	return s.runOnce(ctx, req)
 }

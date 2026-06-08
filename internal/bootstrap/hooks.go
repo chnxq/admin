@@ -10,15 +10,21 @@ import (
 	"admin/internal/server"
 )
 
-func NewManualServers(appCtx *app.AppCtx) ([]transport.Server, func(), error) {
-	servers := make([]transport.Server, 0, 2)
+type ManualServers struct {
+	Servers []transport.Server
+	Asynq   any
+}
+
+func NewManualServers(appCtx *app.AppCtx) (*ManualServers, func(), error) {
+	bundle := &ManualServers{Servers: make([]transport.Server, 0, 2)}
 
 	asynqServer, err := server.NewAsynqServer(appCtx)
 	if err != nil {
 		return nil, func() {}, err
 	}
 	if asynqServer != nil {
-		servers = append(servers, asynqServer)
+		bundle.Servers = append(bundle.Servers, asynqServer)
+		bundle.Asynq = asynqServer
 	}
 
 	sseServer, err := server.NewSSEServer(appCtx)
@@ -26,8 +32,8 @@ func NewManualServers(appCtx *app.AppCtx) ([]transport.Server, func(), error) {
 		return nil, func() {}, err
 	}
 	if sseServer != nil {
-		servers = append(servers, sseServer)
+		bundle.Servers = append(bundle.Servers, sseServer)
 	}
 
-	return servers, func() {}, nil
+	return bundle, func() {}, nil
 }

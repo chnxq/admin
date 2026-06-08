@@ -1194,6 +1194,9 @@ var defaultMenuTitleDisplayNames = map[string]string{
 	"menu.system.orgUnit":                  "组织管理",
 	"menu.system.position":                 "岗位管理",
 	"menu.permission.permission":           "权限点管理",
+	"menu.task.moduleName":                 "任务调度",
+	"menu.task.task":                       "任务管理",
+	"menu.task.log":                        "任务执行日志",
 	"menu.log.moduleName":                  "日志管理",
 	"menu.log.loginAuditLog":               "登录审计日志",
 	"menu.log.apiAuditLog":                 "API审计日志",
@@ -1379,6 +1382,11 @@ func (s *PermissionService) reconcileDefaultRolePermissions(ctx context.Context)
 	}
 	if exportGroupID != 0 {
 		defaultAdminGroupIDs[exportGroupID] = struct{}{}
+		for groupID, parentID := range groupParentByID {
+			if parentID == exportGroupID {
+				defaultAdminGroupIDs[groupID] = struct{}{}
+			}
+		}
 	}
 
 	permissionResp, err := s.permissionRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})

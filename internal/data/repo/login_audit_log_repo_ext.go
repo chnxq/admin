@@ -19,6 +19,10 @@ type LoginAuditLogWriter interface {
 	WriteLoginAuditLog(ctx context.Context, data *auditv1.LoginAuditLog) error
 }
 
+type LoginAuditLogCleaner interface {
+	CleanupLoginAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error)
+}
+
 func (r *loginAuditLogRepo) WriteLoginAuditLog(ctx context.Context, data *auditv1.LoginAuditLog) error {
 	if data == nil {
 		return nil
@@ -73,4 +77,20 @@ func (r *loginAuditLogRepo) WriteLoginAuditLog(ctx context.Context, data *auditv
 		return err
 	}
 	return nil
+}
+
+func (r *loginAuditLogRepo) CleanupLoginAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error) {
+	ctx = withRuntimeViewerContext(ctx)
+	query := r.entClient.Client().LoginAuditLog.Delete().
+		Where(loginauditlog.CreatedAtLT(before))
+	if tenantID != nil && *tenantID > 0 {
+		query.Where(loginauditlog.TenantIDEQ(*tenantID))
+	}
+
+	affected, err := query.Exec(ctx)
+	if err != nil {
+		r.log.Errorf("cleanup login audit logs failed: %s", err.Error())
+		return 0, err
+	}
+	return affected, nil
 }
