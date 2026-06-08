@@ -52,6 +52,7 @@ func (r *permissionAuditLogRepo) WritePermissionAuditLog(ctx context.Context, da
 }
 
 func (r *permissionAuditLogRepo) CleanupPermissionAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error) {
+	ctx = withRuntimeViewerContext(ctx)
 	query := r.entClient.Client().PermissionAuditLog.Delete().
 		Where(permissionauditlog.CreatedAtLT(before))
 	if tenantID != nil && *tenantID > 0 {

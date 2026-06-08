@@ -25,6 +25,7 @@ func (r *taskLogRepo) WriteTaskLog(ctx context.Context, data *taskv1.TaskLog) er
 	if data == nil {
 		return nil
 	}
+	ctx = withRuntimeViewerContext(ctx)
 
 	executeAt := time.Now()
 	if data.GetExecuteTime() != nil {

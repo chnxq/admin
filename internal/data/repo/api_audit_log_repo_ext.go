@@ -111,6 +111,7 @@ func (r *apiAuditLogRepo) WriteApiAuditLog(ctx context.Context, data *auditv1.Ap
 }
 
 func (r *apiAuditLogRepo) CleanupApiAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error) {
+	ctx = withRuntimeViewerContext(ctx)
 	query := r.entClient.Client().ApiAuditLog.Delete().
 		Where(apiauditlog.CreatedAtLT(before))
 	if tenantID != nil && *tenantID > 0 {

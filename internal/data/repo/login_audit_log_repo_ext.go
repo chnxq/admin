@@ -80,6 +80,7 @@ func (r *loginAuditLogRepo) WriteLoginAuditLog(ctx context.Context, data *auditv
 }
 
 func (r *loginAuditLogRepo) CleanupLoginAuditLogsBefore(ctx context.Context, tenantID *uint32, before time.Time) (int, error) {
+	ctx = withRuntimeViewerContext(ctx)
 	query := r.entClient.Client().LoginAuditLog.Delete().
 		Where(loginauditlog.CreatedAtLT(before))
 	if tenantID != nil && *tenantID > 0 {
