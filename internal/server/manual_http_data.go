@@ -19,6 +19,7 @@ import (
 	authenticationv1 "admin/api/gen/authentication/v1"
 	identityv1 "admin/api/gen/identity/v1"
 	resourcev1 "admin/api/gen/resource/v1"
+	conf "github.com/chnxq/xkitpkg/conf/v1"
 	"admin/internal/data/repo"
 )
 
@@ -43,6 +44,7 @@ type manualAuthenticationService struct {
 	userCredentialRepo repo.UserCredentialRepo
 	credentialFinder   userCredentialFinder
 	auth               *authConfig
+	tokenStore         *tokenStore
 }
 
 func newManualAuthenticationService(appCtx *app.AppCtx, data GeneratedData) *manualAuthenticationService {
@@ -59,6 +61,9 @@ func newManualAuthenticationService(appCtx *app.AppCtx, data GeneratedData) *man
 	auth, err := loadAuthConfig(appCtx)
 	if err == nil {
 		service.auth = auth
+	}
+	if store, err := newTokenStore(loadDataConfig(appCtx)); err == nil {
+		service.tokenStore = store
 	}
 	return service
 }
@@ -96,10 +101,24 @@ func (s *manualAuthenticationService) Login(ctx context.Context, req *authentica
 	if err != nil || userDTO == nil {
 		return nil, authenticationv1.ErrorUnauthorized("failed to load user profile")
 	}
-	return buildLoginResponse(userDTO, req, s.auth)
+	return issueLoginResponse(userDTO, req, s.auth, s.tokenStore)
 }
 
-func (s *manualAuthenticationService) Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+func (s *manualAuthenticationService) Logout(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	if s.tokenStore == nil || s.auth == nil {
+		return &emptypb.Empty{}, nil
+	}
+	token := parseBearerToken(ctx)
+	if token == "" {
+		return &emptypb.Empty{}, nil
+	}
+	claims, err := parseAndValidateToken(token, s.auth, tokenCategoryAccess)
+	if err != nil {
+		return &emptypb.Empty{}, nil
+	}
+	if err := s.tokenStore.RevokeTokenPairByJTI(claims.ID); err != nil {
+		return nil, authenticationv1.ErrorInternalServerError("failed to revoke token pair")
+	}
 	return &emptypb.Empty{}, nil
 }
 
@@ -110,20 +129,92 @@ func (s *manualAuthenticationService) RefreshToken(ctx context.Context, req *aut
 	if req.GetRefreshToken() == "" {
 		return nil, authenticationv1.ErrorBadRequest("refresh_token is required")
 	}
-	if s.auth == nil || s.userRepo == nil {
+	if s.auth == nil || s.userRepo == nil || s.tokenStore == nil {
 		return nil, authenticationv1.ErrorInternalServerError("authentication service is unavailable")
 	}
-	claims, err := parseAndValidateToken(req.GetRefreshToken(), s.auth, tokenCategoryRefresh)
+	refreshRecord, err := s.tokenStore.ResolveRefreshToken(req.GetRefreshToken())
 	if err != nil {
 		return nil, err
 	}
 	userDTO, err := s.userRepo.Get(ensureDefaultViewerContext(ctx), &identityv1.GetUserRequest{
-		QueryBy: &identityv1.GetUserRequest_Id{Id: claims.UserID},
+		QueryBy: &identityv1.GetUserRequest_Id{Id: refreshRecord.UserID},
 	})
 	if err != nil || userDTO == nil {
 		return nil, authenticationv1.ErrorUserNotFound("user not found")
 	}
-	return buildLoginResponse(userDTO, req, s.auth)
+	if err := isUserDTOAllowedToLogin(userDTO); err != nil {
+		return nil, err
+	}
+	refreshReq := cloneRefreshLoginRequest(req, refreshRecord)
+	resp, err := issueLoginResponse(userDTO, refreshReq, s.auth, s.tokenStore)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.tokenStore.RevokeTokenPair(req.GetRefreshToken(), refreshRecord.JTI); err != nil {
+		return nil, authenticationv1.ErrorInternalServerError("failed to rotate token pair")
+	}
+	return resp, nil
+}
+
+func loadDataConfig(appCtx *app.AppCtx) *conf.Data {
+	if appCtx == nil {
+		return nil
+	}
+	cfg := appCtx.GetConfig()
+	if cfg == nil {
+		return nil
+	}
+	return cfg.GetData()
+}
+
+func cloneRefreshLoginRequest(req *authenticationv1.LoginRequest, record *refreshTokenRecord) *authenticationv1.LoginRequest {
+	clone := &authenticationv1.LoginRequest{
+		GrantType: authenticationv1.GrantType_refresh_token,
+	}
+	if req != nil {
+		if req.ClientType != nil {
+			clientType := req.GetClientType()
+			clone.ClientType = &clientType
+		}
+		if req.DeviceId != nil {
+			deviceID := req.GetDeviceId()
+			clone.DeviceId = &deviceID
+		}
+		if req.ClientId != nil {
+			clientID := req.GetClientId()
+			clone.ClientId = &clientID
+		}
+	}
+	if record != nil {
+		if strings.TrimSpace(record.ClientID) != "" {
+			clientID := record.ClientID
+			clone.ClientId = &clientID
+		}
+		if strings.TrimSpace(record.DeviceID) != "" {
+			deviceID := record.DeviceID
+			clone.DeviceId = &deviceID
+		}
+		jti := record.JTI
+		clone.Jti = &jti
+	}
+	return clone
+}
+
+func isUserDTOAllowedToLogin(userDTO *identityv1.User) error {
+	if userDTO == nil {
+		return nil
+	}
+	status := userDTO.GetStatus()
+	switch status {
+	case identityv1.User_DISABLED, identityv1.User_CLOSED:
+		return authenticationv1.ErrorForbidden("user is disabled")
+	case identityv1.User_LOCKED:
+		return authenticationv1.ErrorUserFreeze("user is locked")
+	case identityv1.User_EXPIRED:
+		return authenticationv1.ErrorForbidden("user is expired")
+	default:
+		return nil
+	}
 }
 
 type manualAdminPortalService struct {

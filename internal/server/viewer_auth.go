@@ -26,6 +26,10 @@ type viewerDataSource interface {
 	PermissionRepoProvider() repo.PermissionRepo
 }
 
+type tokenStoreProvider interface {
+	TokenStoreProvider() *tokenStore
+}
+
 func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 	source, ok := data.(viewerDataSource)
 	if !ok {
@@ -39,6 +43,8 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 		return nil
 	}
 	auth, authErr := loadAuthConfigFromGeneratedData(data)
+	tokenStore, tokenStoreErr := loadTokenStoreFromGeneratedData(data)
+	skipTokenCheck := shouldSkipAccessTokenStoreCheck(data)
 
 	return func(next middleware.Handler) middleware.Handler {
 		return func(ctx context.Context, req any) (any, error) {
@@ -63,6 +69,14 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 					return nil, err
 				}
 				return nil, err
+			}
+			if !skipTokenCheck {
+				if tokenStoreErr != nil {
+					return nil, authenticationv1.ErrorInternalServerError("token store is unavailable")
+				}
+				if err := tokenStore.ValidateAccessToken(token, claims); err != nil {
+					return nil, err
+				}
 			}
 			lookupCtx := ensureDefaultViewerContext(ctx)
 			user, err := userRepo.Get(lookupCtx, &identityv1.GetUserRequest{
@@ -103,6 +117,34 @@ func loadAuthConfigFromGeneratedData(data GeneratedData) (*authConfig, error) {
 		return loadAuthConfig(provider.GetAppCtx())
 	}
 	return nil, kerrors.InternalServer("AUTH_CONFIG", "app context is unavailable")
+}
+
+func loadTokenStoreFromGeneratedData(data GeneratedData) (*tokenStore, error) {
+	if provider, ok := data.(tokenStoreProvider); ok {
+		if store := provider.TokenStoreProvider(); store != nil {
+			return store, nil
+		}
+	}
+	if provider, ok := data.(interface{ GetAppCtx() *app.AppCtx }); ok {
+		return newTokenStore(loadDataConfig(provider.GetAppCtx()))
+	}
+	return nil, kerrors.InternalServer("TOKEN_STORE", "app context is unavailable")
+}
+
+func shouldSkipAccessTokenStoreCheck(data GeneratedData) bool {
+	provider, ok := data.(interface{ GetAppCtx() *app.AppCtx })
+	if !ok {
+		return false
+	}
+	appCtx := provider.GetAppCtx()
+	if appCtx == nil || appCtx.GetConfig() == nil || appCtx.GetConfig().GetServer() == nil {
+		return false
+	}
+	restCfg := appCtx.GetConfig().GetServer().GetRest()
+	if restCfg == nil {
+		return false
+	}
+	return restCfg.GetSkipRedisTokenCheck()
 }
 
 type userViewerContext struct {

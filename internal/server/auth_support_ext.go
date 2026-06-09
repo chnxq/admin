@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -23,7 +25,6 @@ const (
 	refreshTokenTTL = 7 * 24 * time.Hour
 
 	tokenCategoryAccess  = "access"
-	tokenCategoryRefresh = "refresh"
 	tokenIssuer          = "admin"
 )
 
@@ -142,14 +143,10 @@ func parseAndValidateToken(tokenString string, auth *authConfig, wantCategory st
 		return nil, authenticationv1.ErrorUnauthorized("invalid token")
 	}
 	if wantCategory != "" && claims.Category != wantCategory {
-		switch wantCategory {
-		case tokenCategoryAccess:
+		if wantCategory == tokenCategoryAccess {
 			return nil, authenticationv1.ErrorIncorrectAccessToken("unexpected token category")
-		case tokenCategoryRefresh:
-			return nil, authenticationv1.ErrorIncorrectRefreshToken("unexpected token category")
-		default:
-			return nil, authenticationv1.ErrorUnauthorized("unexpected token category")
 		}
+		return nil, authenticationv1.ErrorUnauthorized("unexpected token category")
 	}
 	if strings.TrimSpace(claims.Username) == "" || claims.UserID == 0 {
 		return nil, authenticationv1.ErrorUnauthorized("token payload is incomplete")
@@ -201,18 +198,17 @@ func newJWTID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
-func buildLoginResponse(userDTO *identityv1.User, req *authenticationv1.LoginRequest, auth *authConfig) (*authenticationv1.LoginResponse, error) {
+func buildAccessToken(userDTO *identityv1.User, req *authenticationv1.LoginRequest, auth *authConfig) (string, *authTokenClaims, error) {
 	now := time.Now()
 	accessClaims := buildTokenClaims(userDTO, tokenCategoryAccess, req, now, accessTokenTTL)
 	accessToken, err := signToken(accessClaims, auth)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	refreshClaims := buildTokenClaims(userDTO, tokenCategoryRefresh, req, now, refreshTokenTTL)
-	refreshToken, err := signToken(refreshClaims, auth)
-	if err != nil {
-		return nil, err
-	}
+	return accessToken, accessClaims, nil
+}
+
+func buildLoginResponse(accessToken string, refreshToken string) (*authenticationv1.LoginResponse, error) {
 	refreshExpiresIn := int64(refreshTokenTTL / time.Second)
 	return &authenticationv1.LoginResponse{
 		TokenType:        authenticationv1.TokenType_bearer,
@@ -221,6 +217,60 @@ func buildLoginResponse(userDTO *identityv1.User, req *authenticationv1.LoginReq
 		RefreshToken:     &refreshToken,
 		RefreshExpiresIn: &refreshExpiresIn,
 	}, nil
+}
+
+func buildRefreshTokenRecord(userDTO *identityv1.User, req *authenticationv1.LoginRequest, accessClaims *authTokenClaims) *refreshTokenRecord {
+	if userDTO == nil || accessClaims == nil {
+		return nil
+	}
+	record := &refreshTokenRecord{
+		UserID:    userDTO.GetId(),
+		TenantID:  userDTO.GetTenantId(),
+		OrgUnitID: userDTO.GetOrgUnitId(),
+		Username:  userDTO.GetUsername(),
+		ClientID:  normalizedClientType(accessClaims.ClientID),
+		DeviceID:  accessClaims.DeviceID,
+		JTI:       accessClaims.ID,
+	}
+	if req != nil {
+		if clientID := strings.TrimSpace(req.GetClientId()); clientID != "" {
+			record.ClientID = clientID
+		}
+		if deviceID := strings.TrimSpace(req.GetDeviceId()); deviceID != "" {
+			record.DeviceID = deviceID
+		}
+	}
+	return record
+}
+
+func issueLoginResponse(userDTO *identityv1.User, req *authenticationv1.LoginRequest, auth *authConfig, store *tokenStore) (*authenticationv1.LoginResponse, error) {
+	if userDTO == nil {
+		return nil, authenticationv1.ErrorUserNotFound("user not found")
+	}
+	if auth == nil || store == nil {
+		return nil, authenticationv1.ErrorInternalServerError("authentication service is unavailable")
+	}
+	accessToken, accessClaims, err := buildAccessToken(userDTO, req, auth)
+	if err != nil {
+		return nil, err
+	}
+	refreshToken, err := generateRefreshToken()
+	if err != nil {
+		return nil, err
+	}
+	refreshRecord := buildRefreshTokenRecord(userDTO, req, accessClaims)
+	if err := store.StoreTokenPair(accessToken, accessClaims, refreshToken, refreshRecord); err != nil {
+		return nil, authenticationv1.ErrorInternalServerError("failed to persist token pair")
+	}
+	return buildLoginResponse(accessToken, refreshToken)
+}
+
+func generateRefreshToken() (string, error) {
+	randomBytes := make([]byte, 32)
+	if _, err := rand.Read(randomBytes); err != nil {
+		return "", err
+	}
+	return "rt_" + hex.EncodeToString(randomBytes), nil
 }
 
 func isUserAllowedToLogin(userEntity *ent.User) error {

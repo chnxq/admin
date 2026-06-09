@@ -10,6 +10,7 @@ import (
 	adminv1 "admin/api/gen/admin/v1"
 	authenticationv1 "admin/api/gen/authentication/v1"
 	identityv1 "admin/api/gen/identity/v1"
+	permissionv1 "admin/api/gen/permission/v1"
 	resourcev1 "admin/api/gen/resource/v1"
 	"admin/internal/data/ent"
 	"admin/internal/data/ent/user"
@@ -418,11 +419,13 @@ func TestManualAuthenticationServiceLoginUpgradesLegacyPlainPassword(t *testing.
 					Id:       ptr(uint32(1)),
 					Username: ptr("admin"),
 					Roles:    []string{"SUPER_ADMIN"},
+					Status:   identityv1.User_NORMAL.Enum(),
 				},
 			},
 		},
 		credentialFinder: credentialRepo,
 		auth:             testAuthConfig(t),
+		tokenStore:       mustNewTestTokenStore(t),
 	}
 
 	resp, err := service.Login(context.Background(), &authenticationv1.LoginRequest{
@@ -442,6 +445,139 @@ func TestManualAuthenticationServiceLoginUpgradesLegacyPlainPassword(t *testing.
 	}
 	if credentialRepo.lastUpgradeID != 11 || credentialRepo.lastUpgradePwd != "123456" {
 		t.Fatalf("expected legacy password upgrade, got id=%d pwd=%q", credentialRepo.lastUpgradeID, credentialRepo.lastUpgradePwd)
+	}
+}
+
+func TestManualAuthenticationServiceRefreshTokenRotatesTokenPair(t *testing.T) {
+	captchaID, captchaCode := mustGenerateCaptcha(t)
+	service := newTestAuthenticationService(t)
+
+	loginResp, err := service.Login(context.Background(), &authenticationv1.LoginRequest{
+		GrantType: authenticationv1.GrantType_password,
+		ClientId:  ptr(captchaID),
+		Code:      ptr(captchaCode),
+		Identifier: &authenticationv1.LoginRequest_Username{
+			Username: "admin",
+		},
+		Password: ptr("123456"),
+	})
+	if err != nil {
+		t.Fatalf("login failed: %v", err)
+	}
+	refreshToken := loginResp.GetRefreshToken()
+
+	refreshResp, err := service.RefreshToken(context.Background(), &authenticationv1.LoginRequest{
+		GrantType:    authenticationv1.GrantType_refresh_token,
+		RefreshToken: &refreshToken,
+	})
+	if err != nil {
+		t.Fatalf("refresh failed: %v", err)
+	}
+	if refreshResp.GetAccessToken() == "" || refreshResp.GetRefreshToken() == "" {
+		t.Fatalf("expected rotated tokens, got %+v", refreshResp)
+	}
+	if refreshResp.GetRefreshToken() == refreshToken {
+		t.Fatalf("expected refresh token rotation")
+	}
+
+	_, err = service.RefreshToken(context.Background(), &authenticationv1.LoginRequest{
+		GrantType:    authenticationv1.GrantType_refresh_token,
+		RefreshToken: &refreshToken,
+	})
+	if err == nil || !authenticationv1.IsRefreshTokenNotFound(err) {
+		t.Fatalf("expected old refresh token rejected, got %v", err)
+	}
+}
+
+func TestAuthViewerMiddlewareRejectsRotatedAccessToken(t *testing.T) {
+	captchaID, captchaCode := mustGenerateCaptcha(t)
+	service := newTestAuthenticationService(t)
+
+	loginResp, err := service.Login(context.Background(), &authenticationv1.LoginRequest{
+		GrantType: authenticationv1.GrantType_password,
+		ClientId:  ptr(captchaID),
+		Code:      ptr(captchaCode),
+		Identifier: &authenticationv1.LoginRequest_Username{
+			Username: "admin",
+		},
+		Password: ptr("123456"),
+	})
+	if err != nil {
+		t.Fatalf("login failed: %v", err)
+	}
+	oldAccessToken := loginResp.GetAccessToken()
+	refreshToken := loginResp.GetRefreshToken()
+
+	_, err = service.RefreshToken(context.Background(), &authenticationv1.LoginRequest{
+		GrantType:    authenticationv1.GrantType_refresh_token,
+		RefreshToken: &refreshToken,
+	})
+	if err != nil {
+		t.Fatalf("refresh failed: %v", err)
+	}
+
+	data := &testGeneratedData{
+		appCtx:     testAppCtx(),
+		userRepo:   service.userRepo,
+		roleRepo:   testRoleRepo{},
+		permRepo:   testPermissionRepo{},
+		credential: nil,
+		tokenStore: service.tokenStore,
+	}
+	handler := authViewerMiddleware(data)(func(ctx context.Context, req any) (any, error) {
+		return &emptypb.Empty{}, nil
+	})
+	req, err := http.NewRequest(http.MethodGet, "http://localhost/admin/v1/me", nil)
+	if err != nil {
+		t.Fatalf("new request failed: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+oldAccessToken)
+	ctx := transport.NewServerContext(context.Background(), &testHTTPTransport{
+		req:          req,
+		pathTemplate: "/admin/v1/me",
+	})
+	_, err = handler(ctx, nil)
+	if err == nil || !authenticationv1.IsUnauthorized(err) {
+		t.Fatalf("expected revoked access token rejected, got %v", err)
+	}
+}
+
+func TestManualAuthenticationServiceLogoutRevokesCurrentTokenPair(t *testing.T) {
+	captchaID, captchaCode := mustGenerateCaptcha(t)
+	service := newTestAuthenticationService(t)
+
+	loginResp, err := service.Login(context.Background(), &authenticationv1.LoginRequest{
+		GrantType: authenticationv1.GrantType_password,
+		ClientId:  ptr(captchaID),
+		Code:      ptr(captchaCode),
+		Identifier: &authenticationv1.LoginRequest_Username{
+			Username: "admin",
+		},
+		Password: ptr("123456"),
+	})
+	if err != nil {
+		t.Fatalf("login failed: %v", err)
+	}
+	req, err := http.NewRequest(http.MethodPost, "http://localhost/admin/v1/logout", nil)
+	if err != nil {
+		t.Fatalf("new request failed: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+loginResp.GetAccessToken())
+	ctx := transport.NewServerContext(context.Background(), &testHTTPTransport{
+		req:          req,
+		pathTemplate: "/admin/v1/logout",
+	})
+
+	if _, err := service.Logout(ctx, &emptypb.Empty{}); err != nil {
+		t.Fatalf("logout failed: %v", err)
+	}
+	refreshToken := loginResp.GetRefreshToken()
+	_, err = service.RefreshToken(context.Background(), &authenticationv1.LoginRequest{
+		GrantType:    authenticationv1.GrantType_refresh_token,
+		RefreshToken: &refreshToken,
+	})
+	if err == nil || !authenticationv1.IsRefreshTokenNotFound(err) {
+		t.Fatalf("expected logout revoked refresh token, got %v", err)
 	}
 }
 
@@ -528,6 +664,10 @@ func testAuthConfig(t *testing.T) *authConfig {
 
 func testAppCtx() *app.AppCtx {
 	return app.NewAppCtx(context.Background(), &conf.AppInfo{Name: "test"}, &conf.ServerConfig{
+		Server: &conf.Server{
+			Rest: &conf.Server_REST{},
+		},
+		Data: &conf.Data{},
 		Authn: &conf.Authentication{
 			Type: "jwt",
 			Jwt: &conf.Authentication_Jwt{
@@ -536,6 +676,108 @@ func testAppCtx() *app.AppCtx {
 			},
 		},
 	}, nil, nil)
+}
+
+func mustNewTestTokenStore(t *testing.T) *tokenStore {
+	t.Helper()
+	store, err := newStandaloneTokenStore(&conf.Data{})
+	if err != nil {
+		t.Fatalf("new token store failed: %v", err)
+	}
+	return store
+}
+
+func newTestAuthenticationService(t *testing.T) *manualAuthenticationService {
+	t.Helper()
+	credentialRepo := &stubUserCredentialRepo{
+		record: &repo.UserCredentialWithUser{
+			Credential: &ent.UserCredential{
+				ID:         11,
+				Credential: ptr("123456"),
+			},
+			User: &ent.User{
+				ID:       1,
+				Username: ptr("admin"),
+				Status:   ptr(user.StatusNormal),
+			},
+		},
+	}
+	return &manualAuthenticationService{
+		userRepo: stubAuthUserRepo{
+			users: map[uint32]*identityv1.User{
+				1: {
+					Id:       ptr(uint32(1)),
+					Username: ptr("admin"),
+					Roles:    []string{"SUPER_ADMIN"},
+					Status:   identityv1.User_NORMAL.Enum(),
+				},
+			},
+		},
+		credentialFinder: credentialRepo,
+		auth:             testAuthConfig(t),
+		tokenStore:       mustNewTestTokenStore(t),
+	}
+}
+
+type testGeneratedData struct {
+	appCtx     *app.AppCtx
+	userRepo   repo.UserRepo
+	roleRepo   repo.RoleRepo
+	permRepo   repo.PermissionRepo
+	credential repo.UserCredentialRepo
+	tokenStore *tokenStore
+}
+
+func (d *testGeneratedData) GetAppCtx() *app.AppCtx                             { return d.appCtx }
+func (d *testGeneratedData) UserRepoProvider() repo.UserRepo                     { return d.userRepo }
+func (d *testGeneratedData) RoleRepoProvider() repo.RoleRepo                     { return d.roleRepo }
+func (d *testGeneratedData) PermissionRepoProvider() repo.PermissionRepo         { return d.permRepo }
+func (d *testGeneratedData) UserCredentialRepoProvider() repo.UserCredentialRepo { return d.credential }
+func (d *testGeneratedData) TokenStoreProvider() *tokenStore                     { return d.tokenStore }
+
+type testRoleRepo struct{}
+
+func (testRoleRepo) List(context.Context, *paginationv1.PagingRequest) (*permissionv1.ListRoleResponse, error) {
+	return nil, nil
+}
+func (testRoleRepo) Get(context.Context, *permissionv1.GetRoleRequest) (*permissionv1.Role, error) {
+	return nil, nil
+}
+func (testRoleRepo) Create(context.Context, *permissionv1.CreateRoleRequest) (*emptypb.Empty, error) {
+	return nil, nil
+}
+func (testRoleRepo) Update(context.Context, *permissionv1.UpdateRoleRequest) (*emptypb.Empty, error) {
+	return nil, nil
+}
+func (testRoleRepo) Delete(context.Context, *permissionv1.DeleteRoleRequest) (*emptypb.Empty, error) {
+	return nil, nil
+}
+func (testRoleRepo) ListPermissionIDsByRoleIDs(context.Context, []uint32) ([]uint32, error) {
+	return nil, nil
+}
+func (testRoleRepo) GetRolesPermissionMenuIDs(context.Context, []uint32) ([]uint32, error) {
+	return nil, nil
+}
+
+type testPermissionRepo struct{}
+
+func (testPermissionRepo) List(context.Context, *paginationv1.PagingRequest) (*permissionv1.ListPermissionResponse, error) {
+	return nil, nil
+}
+func (testPermissionRepo) Get(context.Context, *permissionv1.GetPermissionRequest) (*permissionv1.Permission, error) {
+	return nil, nil
+}
+func (testPermissionRepo) Create(context.Context, *permissionv1.CreatePermissionRequest) (*emptypb.Empty, error) {
+	return nil, nil
+}
+func (testPermissionRepo) Update(context.Context, *permissionv1.UpdatePermissionRequest) (*emptypb.Empty, error) {
+	return nil, nil
+}
+func (testPermissionRepo) Delete(context.Context, *permissionv1.DeletePermissionRequest) (*emptypb.Empty, error) {
+	return nil, nil
+}
+func (testPermissionRepo) GetPermissionCodesByIDs(context.Context, []uint32) ([]string, error) {
+	return nil, nil
 }
 
 var _ = adminv1.ListRouteResponse{}
