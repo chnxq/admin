@@ -150,7 +150,7 @@ func (s *manualAuthenticationService) RefreshToken(ctx context.Context, req *aut
 	if err != nil {
 		return nil, err
 	}
-	if err := s.tokenStore.RevokeTokenPair(req.GetRefreshToken(), refreshRecord.JTI); err != nil {
+	if err := s.tokenStore.RevokeTokenPairWithAccessGrace(req.GetRefreshToken(), refreshRecord.JTI, accessTokenRefreshGraceTTL); err != nil {
 		return nil, authenticationv1.ErrorInternalServerError("failed to rotate token pair")
 	}
 	return resp, nil

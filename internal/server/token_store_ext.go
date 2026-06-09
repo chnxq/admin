@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	authenticationv1 "admin/api/gen/authentication/v1"
 	cachepkg "github.com/chnxq/xkitpkg/cache"
@@ -176,11 +177,35 @@ func (s *tokenStore) RevokeAccessTokenByJTI(jti string) error {
 	return s.cache.Del(accessTokenMetaKey(jti))
 }
 
+func (s *tokenStore) RevokeAccessTokenByJTIWithGrace(jti string, grace time.Duration) error {
+	if s == nil || s.cache == nil {
+		return nil
+	}
+	jti = strings.TrimSpace(jti)
+	if jti == "" {
+		return nil
+	}
+	if grace <= 0 {
+		return s.RevokeAccessTokenByJTI(jti)
+	}
+	if err := s.cache.Expire(accessTokenKey(jti), grace); err != nil {
+		return err
+	}
+	return s.cache.Expire(accessTokenMetaKey(jti), grace)
+}
+
 func (s *tokenStore) RevokeTokenPair(refreshToken string, jti string) error {
 	if err := s.RevokeRefreshToken(refreshToken); err != nil {
 		return err
 	}
 	return s.RevokeAccessTokenByJTI(jti)
+}
+
+func (s *tokenStore) RevokeTokenPairWithAccessGrace(refreshToken string, jti string, grace time.Duration) error {
+	if err := s.RevokeRefreshToken(refreshToken); err != nil {
+		return err
+	}
+	return s.RevokeAccessTokenByJTIWithGrace(jti, grace)
 }
 
 func (s *tokenStore) RevokeTokenPairByJTI(jti string) error {

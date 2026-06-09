@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/mojocn/base64Captcha"
 
@@ -537,8 +538,14 @@ func TestAuthViewerMiddlewareRejectsRotatedAccessToken(t *testing.T) {
 		pathTemplate: "/admin/v1/me",
 	})
 	_, err = handler(ctx, nil)
+	if err != nil {
+		t.Fatalf("expected rotated access token accepted during grace period, got %v", err)
+	}
+
+	time.Sleep(accessTokenRefreshGraceTTL + 20*time.Millisecond)
+	_, err = handler(ctx, nil)
 	if err == nil || !authenticationv1.IsUnauthorized(err) {
-		t.Fatalf("expected revoked access token rejected, got %v", err)
+		t.Fatalf("expected rotated access token rejected after grace period, got %v", err)
 	}
 }
 

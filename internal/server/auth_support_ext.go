@@ -23,6 +23,7 @@ import (
 const (
 	accessTokenTTL  = 2 * time.Hour
 	refreshTokenTTL = 7 * 24 * time.Hour
+	accessTokenRefreshGraceTTL = 30 * time.Second
 
 	tokenCategoryAccess  = "access"
 	tokenIssuer          = "admin"
