@@ -11,7 +11,6 @@ import (
 	identityv1 "admin/api/gen/identity/v1"
 	"admin/internal/data/repo"
 	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
-	crudviewer "github.com/chnxq/x-crud/viewer"
 	"github.com/chnxq/xkitmod/log"
 	"github.com/chnxq/xkitpkg/app"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -31,10 +30,14 @@ type manualSocialAuthService struct {
 	userRepo           repo.UserRepo
 	userCredentialRepo repo.UserCredentialRepo
 	tenantRepo         repo.TenantRepo
+	roleRepo           repo.RoleRepo
+	orgUnitRepo        repo.OrgUnitRepo
+	positionRepo       repo.PositionRepo
 	credentialFinder   userCredentialFinder
 	authFlowStore      *authFlowStore
 	auth               *authConfig
 	tokenStore         *tokenStore
+	registration       *registrationDefaultsResolver
 	log                *log.Helper
 }
 
@@ -54,6 +57,15 @@ func newManualSocialAuthService(appCtx *app.AppCtx, data GeneratedData) *manualS
 	if provider, ok := data.(generatedDataWithTenantRepo); ok {
 		service.tenantRepo = provider.TenantRepoProvider()
 	}
+	if provider, ok := data.(generatedDataWithRoleRepo); ok {
+		service.roleRepo = provider.RoleRepoProvider()
+	}
+	if provider, ok := data.(generatedDataWithOrgUnitRepo); ok {
+		service.orgUnitRepo = provider.OrgUnitRepoProvider()
+	}
+	if provider, ok := data.(generatedDataWithPositionRepo); ok {
+		service.positionRepo = provider.PositionRepoProvider()
+	}
 	if store, err := newAuthFlowStore(loadDataConfig(appCtx)); err == nil {
 		service.authFlowStore = store
 	} else {
@@ -69,6 +81,7 @@ func newManualSocialAuthService(appCtx *app.AppCtx, data GeneratedData) *manualS
 	} else {
 		service.log.Errorf("chain=manual_social_auth.init init token store failed: %s", err.Error())
 	}
+	service.registration = newRegistrationDefaultsResolver(appCtx, data)
 	return service
 }
 
@@ -507,18 +520,25 @@ func (s *manualSocialAuthService) registerUser(ctx context.Context, req *authent
 		}); err == nil && existsResp != nil && existsResp.GetExist() {
 			return nil, authenticationv1.ErrorConflict("username already exists")
 		}
-		tenantID, err := s.resolveRegisterTenantID(ctx, req.GetTenantCode(), defaultTenantID)
+		requestTenantCode := req.GetTenantCode()
+		if strings.TrimSpace(requestTenantCode) == "" && defaultTenantID > 0 {
+			requestTenantCode = ""
+		}
+		assignment, err := s.resolveRegistrationAssignment(ctx, requestTenantCode, defaultTenantID)
 		if err != nil {
 			return nil, err
 		}
 		status := identityv1.User_NORMAL
 		createReq := &identityv1.CreateUserRequest{
 			Data: &identityv1.User{
-				Username: &username,
-				Email:    payload.ByUsername.Email,
-				Mobile:   payload.ByUsername.Mobile,
-				TenantId: tenantID,
-				Status:   &status,
+				Username:    &username,
+				Email:       payload.ByUsername.Email,
+				Mobile:      payload.ByUsername.Mobile,
+				TenantId:    uint32Ptr(assignment.TenantID),
+				RoleIds:     assignment.RoleIDs,
+				OrgUnitIds:  assignment.OrgUnitIDs,
+				PositionIds: assignment.PositionIDs,
+				Status:      &status,
 			},
 			Password: &password,
 		}
@@ -548,26 +568,14 @@ func (s *manualSocialAuthService) registerUser(ctx context.Context, req *authent
 	}
 }
 
-func (s *manualSocialAuthService) resolveRegisterTenantID(ctx context.Context, tenantCode string, defaultTenantID uint32) (*uint32, error) {
-	tenantCode = strings.TrimSpace(tenantCode)
-	if tenantCode != "" && s.tenantRepo != nil {
-		tenantDTO, err := s.tenantRepo.Get(ensureDefaultViewerContext(ctx), &identityv1.GetTenantRequest{
-			QueryBy: &identityv1.GetTenantRequest_Code{Code: tenantCode},
-		})
-		if err != nil {
-			return nil, err
-		}
-		if tenantDTO != nil {
-			return uint32Ptr(tenantDTO.GetId()), nil
-		}
+func (s *manualSocialAuthService) resolveRegistrationAssignment(ctx context.Context, tenantCode string, defaultTenantID uint32) (*registrationAssignment, error) {
+	if s.registration == nil {
+		return &registrationAssignment{TenantID: defaultTenantID}, nil
 	}
 	if defaultTenantID > 0 {
-		return uint32Ptr(defaultTenantID), nil
+		return s.registration.resolveRegistrationAssignmentForTenantID(ensureDefaultViewerContext(ctx), defaultTenantID)
 	}
-	if viewer, ok := crudviewer.FromContext(ctx); ok && viewer != nil && viewer.IsTenantContext() {
-		return uint32Ptr(uint32(viewer.TenantID())), nil
-	}
-	return nil, nil
+	return s.registration.resolveRegistrationAssignment(ensureDefaultViewerContext(ctx), tenantCode)
 }
 
 func buildAuthSessionQRCodeURL(sessionID, sessionToken, providerKey string) string {
@@ -699,4 +707,11 @@ func firstNonZero(values ...uint32) uint32 {
 		}
 	}
 	return 0
+}
+
+func uint32Value(value *uint32) uint32 {
+	if value == nil {
+		return 0
+	}
+	return *value
 }

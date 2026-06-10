@@ -4,6 +4,8 @@
 
 package bootstrap
 
+import "admin/internal/server"
+
 // Add GeneratedData/GeneratedServices bootstrap hooks here.
 // This file is created once and is never overwritten by xkit.
 
@@ -11,6 +13,7 @@ func (data *GeneratedData) afterInit() {
 	if data == nil {
 		return
 	}
+	_ = server.WarmTenantOptionsCache(data.GetAppCtx(), data.TenantRepo)
 }
 
 func (services *GeneratedServices) afterInit(data *GeneratedData) {

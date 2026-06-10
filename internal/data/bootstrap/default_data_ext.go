@@ -101,6 +101,9 @@ func (s *defaultDataSeed) run() error {
 	if err := s.syncResources(ctx); err != nil {
 		return err
 	}
+	if err := s.ensureTenantRegistrationDefaultsForExistingTenants(ctx); err != nil {
+		return err
+	}
 
 	shouldSeed, err := s.shouldSeedDefaultData(ctx)
 	if err != nil {
@@ -119,6 +122,9 @@ func (s *defaultDataSeed) run() error {
 
 	tenantEntity, err := s.ensureDefaultTenant(ctx)
 	if err != nil {
+		return err
+	}
+	if _, err := repo.EnsureTenantRegistrationDefaults(ctx, s.entClient.Client(), s.now, 0, tenantEntity.ID); err != nil {
 		return err
 	}
 
@@ -233,6 +239,24 @@ func (s *defaultDataSeed) run() error {
 		}
 	}
 
+	return nil
+}
+
+// ensureTenantRegistrationDefaultsForExistingTenants backfills the registration
+// defaults for tenants that already exist before this feature was introduced.
+func (s *defaultDataSeed) ensureTenantRegistrationDefaultsForExistingTenants(ctx context.Context) error {
+	tenants, err := s.entClient.Client().Tenant.Query().All(ctx)
+	if err != nil {
+		return fmt.Errorf("list tenants for registration defaults: %w", err)
+	}
+	for _, tenantEntity := range tenants {
+		if tenantEntity == nil || tenantEntity.ID == platformTenantID {
+			continue
+		}
+		if _, err := repo.EnsureTenantRegistrationDefaults(ctx, s.entClient.Client(), s.now, 0, tenantEntity.ID); err != nil {
+			return fmt.Errorf("ensure registration defaults for tenant %d: %w", tenantEntity.ID, err)
+		}
+	}
 	return nil
 }
 

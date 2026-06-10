@@ -15,6 +15,13 @@ authn:
       - "key1"
       - "key2"
 
+  registration:
+    default_tenant_id: 1
+    default_tenant_code: "default"
+    default_role_code: "GUEST"
+    default_org_unit_code: "UNDEFINED"
+    default_position_code: "UNDEFINED"
+
 authz:
   type: "casbin" # casbin, opa, zanzibar, noop
 

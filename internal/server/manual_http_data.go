@@ -35,7 +35,9 @@ func RegisterManualHTTPServicesWithData(srv *httptransport.Server, appCtx *app.A
 	adminv1.RegisterAuthFlowServiceHTTPServer(srv, newManualAuthFlowServiceWithStore(appCtx))
 	adminv1.RegisterSocialAuthServiceHTTPServer(srv, newManualSocialAuthService(appCtx, data))
 	adminv1.RegisterAdminPortalServiceHTTPServer(srv, newManualAdminPortalService(data))
-	adminv1.RegisterUserProfileServiceHTTPServer(srv, newManualUserProfileService(data))
+	profileService := newManualUserProfileService(appCtx, data)
+	adminv1.RegisterUserProfileServiceHTTPServer(srv, profileService)
+	registerManualUserProfileHTTP(srv, profileService)
 	registerManualMenuSyncHTTP(srv, data)
 	registerManualFileHTTP(srv, data)
 }
@@ -48,9 +50,13 @@ type manualAuthenticationService struct {
 	userRepo           repo.UserRepo
 	userCredentialRepo repo.UserCredentialRepo
 	tenantRepo         repo.TenantRepo
+	roleRepo           repo.RoleRepo
+	orgUnitRepo        repo.OrgUnitRepo
+	positionRepo       repo.PositionRepo
 	credentialFinder   userCredentialFinder
 	auth               *authConfig
 	tokenStore         *tokenStore
+	registration       *registrationDefaultsResolver
 	log                *log.Helper
 }
 
@@ -75,6 +81,15 @@ func newManualAuthenticationService(appCtx *app.AppCtx, data GeneratedData) *man
 	if dataWithTenantRepo, ok := data.(generatedDataWithTenantRepo); ok {
 		service.tenantRepo = dataWithTenantRepo.TenantRepoProvider()
 	}
+	if dataWithRoleRepo, ok := data.(generatedDataWithRoleRepo); ok {
+		service.roleRepo = dataWithRoleRepo.RoleRepoProvider()
+	}
+	if dataWithOrgUnitRepo, ok := data.(generatedDataWithOrgUnitRepo); ok {
+		service.orgUnitRepo = dataWithOrgUnitRepo.OrgUnitRepoProvider()
+	}
+	if dataWithPositionRepo, ok := data.(generatedDataWithPositionRepo); ok {
+		service.positionRepo = dataWithPositionRepo.PositionRepoProvider()
+	}
 	service.log = log.NewHelper(log.With(log.GetLogger(), "module", "authentication/server"))
 	auth, err := loadAuthConfig(appCtx)
 	if err == nil {
@@ -87,6 +102,7 @@ func newManualAuthenticationService(appCtx *app.AppCtx, data GeneratedData) *man
 	} else {
 		service.log.Errorf("chain=manual_auth.init init token store failed: %s", err.Error())
 	}
+	service.registration = newRegistrationDefaultsResolver(appCtx, data)
 	return service
 }
 
@@ -214,9 +230,13 @@ func (s *manualAuthenticationService) RegisterUser(ctx context.Context, req *aut
 		userRepo:           s.userRepo,
 		userCredentialRepo: s.userCredentialRepo,
 		tenantRepo:         s.tenantRepo,
+		roleRepo:           s.roleRepo,
+		orgUnitRepo:        s.orgUnitRepo,
+		positionRepo:       s.positionRepo,
 		credentialFinder:   s.credentialFinder,
 		auth:               s.auth,
 		tokenStore:         s.tokenStore,
+		registration:       s.registration,
 		log:                s.log,
 	}
 	return socialService.registerUser(ctx, req, 0)
@@ -414,7 +434,7 @@ func (s *manualAdminPortalService) GetNavigation(ctx context.Context, _ *emptypb
 		return nil, err
 	}
 	if len(items) == 0 {
-		return defaultNavigationRoutes(), nil
+		return &adminv1.ListRouteResponse{Items: nil}, nil
 	}
 	return &adminv1.ListRouteResponse{Items: items}, nil
 }
@@ -728,11 +748,17 @@ func (s *manualAdminPortalService) GetAnalyticsDashboard(ctx context.Context, _ 
 type manualUserProfileService struct {
 	userRepo           repo.UserRepo
 	userCredentialRepo repo.UserCredentialRepo
+	tenantRepo         repo.TenantRepo
+	roleRepo           repo.RoleRepo
+	orgUnitRepo        repo.OrgUnitRepo
+	positionRepo       repo.PositionRepo
 	credentialFinder   userCredentialFinder
+	registration       *registrationDefaultsResolver
+	tenantOptions      *tenantOptionsStore
 	log                *log.Helper
 }
 
-func newManualUserProfileService(data GeneratedData) *manualUserProfileService {
+func newManualUserProfileService(appCtx *app.AppCtx, data GeneratedData) *manualUserProfileService {
 	service := &manualUserProfileService{
 		log: log.NewHelper(log.With(log.GetLogger(), "module", "user_profile/server")),
 	}
@@ -744,6 +770,25 @@ func newManualUserProfileService(data GeneratedData) *manualUserProfileService {
 		if finder, ok := service.userCredentialRepo.(userCredentialFinder); ok {
 			service.credentialFinder = finder
 		}
+	}
+	if dataWithTenantRepo, ok := data.(generatedDataWithTenantRepo); ok {
+		service.tenantRepo = dataWithTenantRepo.TenantRepoProvider()
+	}
+	if dataWithRoleRepo, ok := data.(generatedDataWithRoleRepo); ok {
+		service.roleRepo = dataWithRoleRepo.RoleRepoProvider()
+	}
+	if dataWithOrgUnitRepo, ok := data.(generatedDataWithOrgUnitRepo); ok {
+		service.orgUnitRepo = dataWithOrgUnitRepo.OrgUnitRepoProvider()
+	}
+	if dataWithPositionRepo, ok := data.(generatedDataWithPositionRepo); ok {
+		service.positionRepo = dataWithPositionRepo.PositionRepoProvider()
+	}
+	service.registration = newRegistrationDefaultsResolver(appCtx, data)
+	tenantOptions, err := newTenantOptionsStore(loadDataConfig(appCtx))
+	if err != nil {
+		service.log.Errorf("chain=manual_user_profile.init init tenant options store failed: %s", err.Error())
+	} else {
+		service.tenantOptions = tenantOptions
 	}
 	return service
 }
@@ -798,6 +843,19 @@ func (s *manualUserProfileService) UpdateUser(ctx context.Context, req *identity
 		updateReq.Data.Description = data.Description
 		updateReq.Data.Address = data.Address
 		updateReq.Data.Region = data.Region
+		updateReq.Data.TenantId = data.TenantId
+	}
+	if tenantID := updateReq.Data.GetTenantId(); tenantID > 0 && s.registration != nil {
+		targetAssignment, err := s.registration.resolveRegistrationAssignmentForTenantID(crudviewer.WithContext(ctx, defaultViewerContext{}), tenantID)
+		if err != nil {
+			s.log.Errorf("chain=manual_user_profile.update operation=/admin.service.v1.UserProfileService/Update user_id=%d resolve target tenant defaults failed: %s", viewer.UserID(), err.Error())
+			return nil, err
+		}
+		if targetAssignment != nil && targetAssignment.TenantID == tenantID {
+			updateReq.Data.RoleIds = targetAssignment.RoleIDs
+			updateReq.Data.OrgUnitIds = targetAssignment.OrgUnitIDs
+			updateReq.Data.PositionIds = targetAssignment.PositionIDs
+		}
 	}
 
 	resp, err := s.userRepo.Update(ctx, updateReq)
@@ -866,6 +924,59 @@ func (s *manualUserProfileService) ChangePassword(ctx context.Context, req *iden
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func registerManualUserProfileHTTP(srv *httptransport.Server, profile *manualUserProfileService) {
+	if srv == nil || profile == nil {
+		return
+	}
+
+	r := srv.Route("/")
+	r.GET("/admin/v1/me/tenant-options", func(ctx httptransport.Context) error {
+		httptransport.SetOperation(ctx, "/admin.service.v1.UserProfileService/ListTenantOptions")
+		h := ctx.Middleware(func(inner context.Context, _ interface{}) (interface{}, error) {
+			return profile.ListTenantOptions(inner, &emptypb.Empty{})
+		})
+		out, err := h(ctx, &emptypb.Empty{})
+		if err != nil {
+			return err
+		}
+		return ctx.Result(200, out.(*identityv1.ListTenantResponse))
+	})
+}
+
+func (s *manualUserProfileService) ListTenantOptions(ctx context.Context, _ *emptypb.Empty) (*identityv1.ListTenantResponse, error) {
+	if s == nil {
+		return nil, authenticationv1.ErrorInternalServerError("user profile service is unavailable")
+	}
+	viewer, ok := crudviewer.FromContext(ctx)
+	if !ok || viewer.UserID() == 0 {
+		return nil, authenticationv1.ErrorUnauthorized("user is not authenticated")
+	}
+
+	if s.tenantOptions != nil {
+		resp, err := s.tenantOptions.Load()
+		if err == nil {
+			return filterTenantOptions(resp), nil
+		}
+		if s.tenantRepo != nil {
+			refreshed, refreshErr := s.tenantOptions.Refresh(ctx, s.tenantRepo)
+			if refreshErr == nil {
+				return refreshed, nil
+			}
+			s.log.Errorf("chain=manual_user_profile.list_tenant_options operation=/admin.service.v1.UserProfileService/ListTenantOptions user_id=%d refresh tenant options cache failed: %s", viewer.UserID(), refreshErr.Error())
+		}
+		s.log.Errorf("chain=manual_user_profile.list_tenant_options operation=/admin.service.v1.UserProfileService/ListTenantOptions user_id=%d load tenant options cache failed: %s", viewer.UserID(), err.Error())
+	}
+	if s.tenantRepo == nil {
+		return nil, authenticationv1.ErrorInternalServerError("tenant service is unavailable")
+	}
+	resp, err := loadTenantOptionsFromRepo(ctx, s.tenantRepo)
+	if err != nil {
+		s.log.Errorf("chain=manual_user_profile.list_tenant_options operation=/admin.service.v1.UserProfileService/ListTenantOptions user_id=%d list tenant options failed: %s", viewer.UserID(), err.Error())
+		return nil, err
+	}
+	return resp, nil
 }
 
 func (s *manualUserProfileService) UploadAvatar(_ context.Context, req *identityv1.UploadAvatarRequest) (*identityv1.UploadAvatarResponse, error) {

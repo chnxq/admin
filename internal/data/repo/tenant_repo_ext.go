@@ -7,11 +7,26 @@ package repo
 import (
 	"context"
 	"fmt"
+	"time"
 
 	identityv1 "admin/api/gen/identity/v1"
+	"admin/internal/data/ent"
+	"admin/internal/data/ent/orgunit"
+	"admin/internal/data/ent/position"
+	"admin/internal/data/ent/role"
+	"admin/internal/data/ent/rolepermission"
 	"admin/internal/data/ent/tenant"
 
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+)
+
+const (
+	DefaultRegistrationRoleCode     = "GUEST"
+	DefaultRegistrationRoleName     = "游客"
+	DefaultRegistrationOrgUnitCode  = "UNDEFINED"
+	DefaultRegistrationOrgUnitName  = "未定义"
+	DefaultRegistrationPositionCode = "UNDEFINED"
+	DefaultRegistrationPositionName = "未定义"
 )
 
 func (r *tenantRepo) tenantCustomCreate(ctx context.Context, req *identityv1.CreateTenantRequest) (*emptypb.Empty, error) {
@@ -22,8 +37,19 @@ func (r *tenantRepo) tenantCustomCreate(ctx context.Context, req *identityv1.Cre
 		return nil, fmt.Errorf("invalid parameter")
 	}
 
-	builder := r.entClient.Client().Tenant.Create()
 	now, viewer := r.generatedAuditContext(ctx)
+	tx, err := r.entClient.Client().Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	builder := tx.Client().Tenant.Create()
 	builder.SetNillableName(req.Data.Name)
 	builder.SetNillableCode(req.Data.Code)
 	builder.SetNillableLogoURL(req.Data.LogoUrl)
@@ -41,10 +67,19 @@ func (r *tenantRepo) tenantCustomCreate(ctx context.Context, req *identityv1.Cre
 	builder.SetCreatedAt(now)
 	builder.SetCreatedBy(uint32(viewer.UserID()))
 
-	if _, err := builder.Save(ctx); err != nil {
+	entity, err := builder.Save(ctx)
+	if err != nil {
 		r.log.Errorf("insert tenant failed: %s", err.Error())
 		return nil, err
 	}
+	if _, err := EnsureTenantRegistrationDefaults(ctx, tx.Client(), now, uint32(viewer.UserID()), entity.ID); err != nil {
+		r.log.Errorf("ensure registration defaults failed: tenant_id=%d: %s", entity.ID, err.Error())
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	committed = true
 	return &emptypb.Empty{}, nil
 }
 
@@ -161,4 +196,146 @@ func (r *tenantRepo) tenantCustomDelete(ctx context.Context, req *identityv1.Del
 		return nil, fmt.Errorf("invalid delete request: missing id or ids")
 	}
 	return &emptypb.Empty{}, nil
+}
+
+type TenantRegistrationDefaults struct {
+	OrgUnitID  uint32
+	PositionID uint32
+	RoleID     uint32
+}
+
+// EnsureTenantRegistrationDefaults only creates the registration defaults that
+// are missing for a tenant. Existing resources are preserved as-is.
+func EnsureTenantRegistrationDefaults(ctx context.Context, client *ent.Client, now time.Time, actorID uint32, tenantID uint32) (*TenantRegistrationDefaults, error) {
+	if client == nil || tenantID == 0 {
+		return nil, nil
+	}
+
+	orgUnitEntity, err := ensureRegistrationOrgUnit(ctx, client, now, actorID, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	positionEntity, err := ensureRegistrationPosition(ctx, client, now, actorID, tenantID, orgUnitEntity.ID)
+	if err != nil {
+		return nil, err
+	}
+	roleEntity, err := ensureRegistrationRole(ctx, client, now, actorID, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TenantRegistrationDefaults{
+		OrgUnitID:  orgUnitEntity.ID,
+		PositionID: positionEntity.ID,
+		RoleID:     roleEntity.ID,
+	}, nil
+}
+
+func ensureRegistrationOrgUnit(ctx context.Context, client *ent.Client, now time.Time, actorID uint32, tenantID uint32) (*ent.OrgUnit, error) {
+	entity, err := client.OrgUnit.Query().
+		Where(
+			orgunit.TenantIDEQ(tenantID),
+			orgunit.CodeEQ(DefaultRegistrationOrgUnitCode),
+		).
+		Only(ctx)
+	if err == nil {
+		return entity, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, fmt.Errorf("query registration org unit tenant=%d: %w", tenantID, err)
+	}
+
+	return client.OrgUnit.Create().
+		SetTenantID(tenantID).
+		SetName(DefaultRegistrationOrgUnitName).
+		SetCode(DefaultRegistrationOrgUnitCode).
+		SetType(orgunit.TypeDepartment).
+		SetStatus(orgunit.StatusOn).
+		SetSortOrder(9999).
+		SetDescription("注册用户默认归属部门").
+		SetCreatedAt(now).
+		SetCreatedBy(actorID).
+		SetUpdatedAt(now).
+		SetUpdatedBy(actorID).
+		Save(ctx)
+}
+
+func ensureRegistrationPosition(ctx context.Context, client *ent.Client, now time.Time, actorID uint32, tenantID uint32, orgUnitID uint32) (*ent.Position, error) {
+	entity, err := client.Position.Query().
+		Where(
+			position.TenantIDEQ(tenantID),
+			position.CodeEQ(DefaultRegistrationPositionCode),
+		).
+		Only(ctx)
+	if err == nil {
+		return entity, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, fmt.Errorf("query registration position tenant=%d: %w", tenantID, err)
+	}
+
+	return client.Position.Create().
+		SetTenantID(tenantID).
+		SetName(DefaultRegistrationPositionName).
+		SetCode(DefaultRegistrationPositionCode).
+		SetOrgUnitID(orgUnitID).
+		SetType(position.TypeRegular).
+		SetStatus(position.StatusOn).
+		SetSortOrder(9999).
+		SetDescription("注册用户默认岗位").
+		SetCreatedAt(now).
+		SetCreatedBy(actorID).
+		SetUpdatedAt(now).
+		SetUpdatedBy(actorID).
+		Save(ctx)
+}
+
+func ensureRegistrationRole(ctx context.Context, client *ent.Client, now time.Time, actorID uint32, tenantID uint32) (*ent.Role, error) {
+	entity, err := client.Role.Query().
+		Where(
+			role.TenantIDEQ(tenantID),
+			role.CodeEQ(DefaultRegistrationRoleCode),
+		).
+		Only(ctx)
+	if err == nil {
+		return entity, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, fmt.Errorf("query registration role tenant=%d: %w", tenantID, err)
+	}
+
+	entity, err = client.Role.Create().
+		SetTenantID(tenantID).
+		SetCode(DefaultRegistrationRoleCode).
+		SetName(DefaultRegistrationRoleName).
+		SetDescription("注册用户默认角色").
+		SetIsProtected(true).
+		SetType(role.TypeTenant).
+		SetStatus(role.StatusOn).
+		SetSortOrder(9999).
+		SetCreatedAt(now).
+		SetCreatedBy(actorID).
+		SetUpdatedAt(now).
+		SetUpdatedBy(actorID).
+		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ensureRegistrationRoleHasNoPermissions(ctx, client, entity.ID); err != nil {
+		return nil, err
+	}
+	return entity, nil
+}
+
+func ensureRegistrationRoleHasNoPermissions(ctx context.Context, client *ent.Client, roleID uint32) error {
+	if roleID == 0 {
+		return nil
+	}
+	if _, err := client.RolePermission.Delete().
+		Where(rolepermission.RoleIDEQ(roleID)).
+		Exec(ctx); err != nil {
+		return fmt.Errorf("clear registration role permissions role=%d: %w", roleID, err)
+	}
+	return nil
 }
