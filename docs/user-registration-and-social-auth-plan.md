@@ -42,6 +42,11 @@
    - `LinkOAuth`
    - `UnlinkOAuth`
    - `ListLinkedAccounts`
+5. 当前登录/刷新令牌链路已经完成基于 `xkitpkg/cache` 的 token store 改造：
+   - access token / refresh token 的服务端有效性校验不再依赖数据库会话表
+   - 单节点默认可走 memory cache
+   - 多节点可切到 Redis / Redis Cluster
+   这说明后续扫码登录、授权确认、小程序短期流程态继续落在 cache 上是符合当前系统演进方向的。
 
 结论：后端应优先扩展现有 `authentication + user_credential + oauth`，而不是再造一套独立的“社交登录表”和“社交登录服务”。
 
@@ -233,9 +238,24 @@
 2. 它只负责短期、可过期、可丢弃的流程态。
 3. 是否持久审计，交由审计日志体系处理，而不是依赖 cache 本身。
 
+补充边界：
+
+1. 当前系统已经存在一套 `token store`，用于 access token / refresh token 的服务端撤销与校验。
+2. 本规划新增的是 `auth flow store`，用于承载扫码登录、授权确认、首次绑定/注册选择、小程序 code 交换等短期流程态。
+3. 两者都可以复用 `xkitpkg/cache.AdapterCache`，但 key 前缀、数据结构、生命周期、调用入口应严格分离，避免把“登录令牌状态”和“认证流程状态”混成一套记录。
+
 ## 5. Provider 标准化建议
 
-建议先明确 provider 语义，避免后续混乱：
+建议先明确 provider 语义，避免后续混乱。这里区分两层：
+
+1. `存储层 / 领域层`
+   使用稳定字符串，如 `github`、`wechat_web`、`wechat_miniapp`。
+2. `传输层 / proto 层`
+   可以保留现有 `oauth.proto` 中的 `OAuthProvider` 枚举，但需要在 service 层维护“枚举 <-> 稳定字符串 provider key”的映射。
+
+也就是说，数据库与业务主流程不要直接依赖 proto enum 的字面值。
+
+建议先明确 provider 语义：
 
 | provider | 场景 | 主标识建议 |
 | --- | --- | --- |
@@ -391,11 +411,16 @@
 
 当前不建议把所有能力都塞进 `AuthenticationService.Login`。
 
-建议分成四组服务。
+建议分成四组服务，但要注意“首期可先在现有服务内增量演进，后续再视规模独立拆分 proto/service”。
 
 ### 7.1 注册服务
 
-新增建议：
+从长期看，注册能力可以独立为 `RegistrationService`；但结合当前已有 `AuthenticationService.RegisterUser`，首期更实际的做法是：
+
+1. 先扩展 `AuthenticationService` 内的注册能力与请求模型。
+2. 当邮箱/手机号/邀请码/激活确认等流程明显膨胀后，再拆出独立注册服务。
+
+如果拆分，新增建议：
 
 1. `RegisterByUsername`
 2. `RegisterByEmail`
@@ -429,6 +454,12 @@
 4. `ConfirmBindOrRegister`
    在 `UNBOUND` 场景下完成“绑定已有账号”或“注册新账号”。
 
+说明：
+
+1. 这组服务建议作为“新增服务族”优先落地，因为它和现有 `AuthenticationService.Login/RefreshToken` 不是同一类请求。
+2. `CompleteSocialLogin` 与 `ExchangeMiniAppCode` 完成的是“识别外部身份 + 返回绑定结果 / 未绑定状态”，不是直接等价于“本系统登录成功”。
+3. 真正签发本系统 access/refresh token 的动作，应在绑定成功或识别到已绑定用户之后，由统一认证链完成。
+
 ### 7.3 第三方绑定管理服务
 
 现有 `oauth.proto` 已有基础，可继续扩展：
@@ -444,7 +475,13 @@
 1. `SyncLinkedProfile`
 2. `SetPrimaryLoginMethod`
 
-### 7.4 二维码/授权流程状态服务
+说明：
+
+1. `oauth.proto` 更适合承载“已登录用户对外部账号的管理与绑定”。
+2. `第三方首次登录`、`扫码登录`、`小程序 code 交换` 这类“未建立本地用户会话前”的流程，不建议继续硬塞进 `oauth.proto`。
+3. 因此建议保留 `oauth.proto` 作为“账号绑定管理”边界，新建一组更偏认证入口的 social auth proto/service。
+
+### 7.4 认证流程状态服务
 
 建议新增统一会话接口：
 
@@ -457,6 +494,11 @@
 这组接口将来既可服务扫码登录，也可服务绑定确认。
 
 其底层状态建议放在 cache 中，而不是数据库表中。
+
+命名建议：
+
+1. 对外 API 可以继续使用 `AuthSession` 这类易理解名称。
+2. 但实现与文档内部应统一理解为 `cache-based auth flow store`，避免被误解成数据库会话表，或与现有 token store 混淆。
 
 ## 8. 登录页与前端交互规划
 
@@ -636,14 +678,12 @@
 新增：
 
 1. `sys_user_oauth_profiles`
-2. 可选 `sys_user_bind_operations`
-   用于记录绑定过程中的一次性操作状态
 
 说明：
 
 1. 认证流程短期状态不建议建表。
 2. 这部分优先通过 cache 承载。
-3. 只有当后续明确出现“需要长期追踪某类绑定操作实体”的业务需求时，才考虑补专门持久化表。
+3. 只有当后续明确出现“需要长期追踪某类绑定操作实体”的业务需求时，才考虑补专门持久化表，而不在首期预设 `sys_user_bind_operations`。
 
 ## 12. 推荐的实施顺序
 
@@ -652,13 +692,16 @@
 1. 明确 provider 枚举与命名规范
 2. 梳理 `user_credential` 在登录/绑定/注册中的职责
 3. 明确是否新增 `user_oauth_profiles`，以及认证流程状态在 cache 中的承载结构
+4. 明确 `token store` 与 `auth flow store` 的边界、key 命名规范、TTL 策略
+5. 明确 `oauth.proto` 与后续 social auth proto 的职责边界
 
 ### 阶段二：打通 GitHub 登录与绑定
 
 1. 新增 GitHub provider 配置
-2. 完成网页登录
-3. 完成首次登录落地页
-4. 完成已登录用户绑定 GitHub
+2. 落地 `auth flow store`
+3. 完成 GitHub 网页登录入口与回调
+4. 完成首次登录落地页
+5. 完成已登录用户绑定 GitHub
 
 原因：
 
@@ -672,6 +715,7 @@
 2. 打开第三方登录区域
 3. 打开二维码登录入口
 4. 接入“未绑定时的补充流程页”
+5. 将登录页交互与第二阶段的 GitHub/social auth 实际链路接通
 
 ### 阶段四：接入微信网页登录
 
@@ -771,8 +815,10 @@
 1. 后端以 `sys_user_credentials` 为核心继续演进，不另起一套用户认证主模型。
 2. 第三方绑定关系放在 `user_credential`，第三方资料和 token 元数据建议拆到单独 profile 表。
 3. 登录、注册、绑定三条流程统一收敛到“用户主体 + 多凭据”模型。
-4. 前端登录页基于现有 Vben 认证页面体系增量改造。
-5. 技术实施顺序建议先 GitHub，再微信网页登录，再微信/支付宝小程序。
+4. 认证流程短期状态采用 `cache-based auth flow store`，并与现有 token store 分层复用同一套 `xkitpkg/cache` 抽象。
+5. `oauth.proto` 主要承载“已登录用户的第三方绑定管理”，而“第三方首次登录 / 扫码登录 / 小程序 code 交换”建议新建更偏认证入口的服务族。
+6. 前端登录页基于现有 Vben 认证页面体系增量改造。
+7. 技术实施顺序建议先 GitHub，再微信网页登录，再微信/支付宝小程序。
 
 ## 17. 参考资料
 
