@@ -30,11 +30,19 @@ const (
 )
 
 var publicHTTPPaths = map[string]struct{}{
-	"/admin/v1/captcha":       {},
-	"/admin/v1/login":         {},
-	"/admin/v1/logout":        {},
-	"/admin/v1/refresh-token": {},
-	"/docs":                   {},
+	"/admin/v1/captcha":                                 {},
+	"/admin/v1/login":                                   {},
+	"/admin/v1/logout":                                  {},
+	"/admin/v1/register":                                {},
+	"/admin/v1/refresh-token":                           {},
+	"/admin/v1/auth-sessions":                           {},
+	"/admin/v1/auth-sessions/{session_id}":              {},
+	"/admin/v1/auth-sessions/{session_id}/poll":         {},
+	"/admin/v1/social-auth:start":                       {},
+	"/admin/v1/social-auth:complete":                    {},
+	"/admin/v1/social-auth/miniapp:exchange-code":       {},
+	"/admin/v1/social-auth:confirm-bind-or-register":    {},
+	"/docs":                                             {},
 }
 
 type authConfig struct {
@@ -302,9 +310,10 @@ func isProtectedServerRequest(ctx context.Context) bool {
 	if !ok || httpTr.Request() == nil {
 		return false
 	}
-	path := strings.TrimSpace(httpTr.Request().URL.Path)
+	pathTemplate := strings.TrimSpace(httpTr.PathTemplate())
+	path := pathTemplate
 	if path == "" {
-		path = strings.TrimSpace(httpTr.PathTemplate())
+		path = strings.TrimSpace(httpTr.Request().URL.Path)
 	}
 	if path == "" {
 		return false

@@ -660,6 +660,51 @@ func TestIsProtectedServerRequestAllowsPublicLogout(t *testing.T) {
 	}
 }
 
+func TestIsProtectedServerRequestAllowsPublicRegister(t *testing.T) {
+	req, err := http.NewRequest(http.MethodPost, "http://localhost/admin/v1/register", nil)
+	if err != nil {
+		t.Fatalf("new request failed: %v", err)
+	}
+	tr := &testHTTPTransport{
+		req:          req,
+		pathTemplate: "/admin/v1/register",
+	}
+	ctx := transport.NewServerContext(context.Background(), tr)
+	if isProtectedServerRequest(ctx) {
+		t.Fatalf("expected /admin/v1/register to be public")
+	}
+}
+
+func TestIsProtectedServerRequestAllowsPublicSocialAuthStart(t *testing.T) {
+	req, err := http.NewRequest(http.MethodPost, "http://localhost/admin/v1/social-auth:start", nil)
+	if err != nil {
+		t.Fatalf("new request failed: %v", err)
+	}
+	tr := &testHTTPTransport{
+		req:          req,
+		pathTemplate: "/admin/v1/social-auth:start",
+	}
+	ctx := transport.NewServerContext(context.Background(), tr)
+	if isProtectedServerRequest(ctx) {
+		t.Fatalf("expected /admin/v1/social-auth:start to be public")
+	}
+}
+
+func TestIsProtectedServerRequestAllowsPublicAuthSessionPollByPathTemplate(t *testing.T) {
+	req, err := http.NewRequest(http.MethodGet, "http://localhost/admin/v1/auth-sessions/session-1/poll", nil)
+	if err != nil {
+		t.Fatalf("new request failed: %v", err)
+	}
+	tr := &testHTTPTransport{
+		req:          req,
+		pathTemplate: "/admin/v1/auth-sessions/{session_id}/poll",
+	}
+	ctx := transport.NewServerContext(context.Background(), tr)
+	if isProtectedServerRequest(ctx) {
+		t.Fatalf("expected auth session poll path template to be public")
+	}
+}
+
 func testAuthConfig(t *testing.T) *authConfig {
 	t.Helper()
 	cfg, err := loadAuthConfig(testAppCtx())

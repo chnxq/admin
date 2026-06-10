@@ -32,6 +32,8 @@ func RegisterManualHTTPServicesWithData(srv *httptransport.Server, appCtx *app.A
 	}
 
 	adminv1.RegisterAuthenticationServiceHTTPServer(srv, newManualAuthenticationService(appCtx, data))
+	adminv1.RegisterAuthFlowServiceHTTPServer(srv, newManualAuthFlowServiceWithStore(appCtx))
+	adminv1.RegisterSocialAuthServiceHTTPServer(srv, newManualSocialAuthService(appCtx, data))
 	adminv1.RegisterAdminPortalServiceHTTPServer(srv, newManualAdminPortalService(data))
 	adminv1.RegisterUserProfileServiceHTTPServer(srv, newManualUserProfileService(data))
 	registerManualMenuSyncHTTP(srv, data)
@@ -45,6 +47,7 @@ type generatedDataWithUserCredentialRepo interface {
 type manualAuthenticationService struct {
 	userRepo           repo.UserRepo
 	userCredentialRepo repo.UserCredentialRepo
+	tenantRepo         repo.TenantRepo
 	credentialFinder   userCredentialFinder
 	auth               *authConfig
 	tokenStore         *tokenStore
@@ -68,6 +71,9 @@ func newManualAuthenticationService(appCtx *app.AppCtx, data GeneratedData) *man
 		if finder, ok := service.userCredentialRepo.(userCredentialFinder); ok {
 			service.credentialFinder = finder
 		}
+	}
+	if dataWithTenantRepo, ok := data.(generatedDataWithTenantRepo); ok {
+		service.tenantRepo = dataWithTenantRepo.TenantRepoProvider()
 	}
 	service.log = log.NewHelper(log.With(log.GetLogger(), "module", "authentication/server"))
 	auth, err := loadAuthConfig(appCtx)
@@ -204,9 +210,16 @@ func (s *manualAuthenticationService) RefreshToken(ctx context.Context, req *aut
 }
 
 func (s *manualAuthenticationService) RegisterUser(ctx context.Context, req *authenticationv1.RegisterUserRequest) (*authenticationv1.RegisterUserResponse, error) {
-	_ = ctx
-	_ = req
-	return nil, authenticationv1.ErrorNotImplemented("register user is not implemented yet")
+	socialService := &manualSocialAuthService{
+		userRepo:           s.userRepo,
+		userCredentialRepo: s.userCredentialRepo,
+		tenantRepo:         s.tenantRepo,
+		credentialFinder:   s.credentialFinder,
+		auth:               s.auth,
+		tokenStore:         s.tokenStore,
+		log:                s.log,
+	}
+	return socialService.registerUser(ctx, req, 0)
 }
 
 func authRequestLogPrefix(ctx context.Context, chain string) string {
