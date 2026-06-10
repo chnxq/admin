@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	AuthenticationService_Login_FullMethodName        = "/admin.service.v1.AuthenticationService/Login"
 	AuthenticationService_Logout_FullMethodName       = "/admin.service.v1.AuthenticationService/Logout"
+	AuthenticationService_RegisterUser_FullMethodName = "/admin.service.v1.AuthenticationService/RegisterUser"
 	AuthenticationService_RefreshToken_FullMethodName = "/admin.service.v1.AuthenticationService/RefreshToken"
 )
 
@@ -36,6 +37,8 @@ type AuthenticationServiceClient interface {
 	Login(ctx context.Context, in *v1.LoginRequest, opts ...grpc.CallOption) (*v1.LoginResponse, error)
 	// 登出
 	Logout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// 注册用户
+	RegisterUser(ctx context.Context, in *v1.RegisterUserRequest, opts ...grpc.CallOption) (*v1.RegisterUserResponse, error)
 	// 刷新认证令牌
 	RefreshToken(ctx context.Context, in *v1.LoginRequest, opts ...grpc.CallOption) (*v1.LoginResponse, error)
 }
@@ -68,6 +71,16 @@ func (c *authenticationServiceClient) Logout(ctx context.Context, in *emptypb.Em
 	return out, nil
 }
 
+func (c *authenticationServiceClient) RegisterUser(ctx context.Context, in *v1.RegisterUserRequest, opts ...grpc.CallOption) (*v1.RegisterUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(v1.RegisterUserResponse)
+	err := c.cc.Invoke(ctx, AuthenticationService_RegisterUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *authenticationServiceClient) RefreshToken(ctx context.Context, in *v1.LoginRequest, opts ...grpc.CallOption) (*v1.LoginResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(v1.LoginResponse)
@@ -88,6 +101,8 @@ type AuthenticationServiceServer interface {
 	Login(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error)
 	// 登出
 	Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	// 注册用户
+	RegisterUser(context.Context, *v1.RegisterUserRequest) (*v1.RegisterUserResponse, error)
 	// 刷新认证令牌
 	RefreshToken(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error)
 	mustEmbedUnimplementedAuthenticationServiceServer()
@@ -105,6 +120,9 @@ func (UnimplementedAuthenticationServiceServer) Login(context.Context, *v1.Login
 }
 func (UnimplementedAuthenticationServiceServer) Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Logout not implemented")
+}
+func (UnimplementedAuthenticationServiceServer) RegisterUser(context.Context, *v1.RegisterUserRequest) (*v1.RegisterUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RegisterUser not implemented")
 }
 func (UnimplementedAuthenticationServiceServer) RefreshToken(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RefreshToken not implemented")
@@ -166,6 +184,24 @@ func _AuthenticationService_Logout_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthenticationService_RegisterUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.RegisterUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthenticationServiceServer).RegisterUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthenticationService_RegisterUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthenticationServiceServer).RegisterUser(ctx, req.(*v1.RegisterUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AuthenticationService_RefreshToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(v1.LoginRequest)
 	if err := dec(in); err != nil {
@@ -198,6 +234,10 @@ var AuthenticationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Logout",
 			Handler:    _AuthenticationService_Logout_Handler,
+		},
+		{
+			MethodName: "RegisterUser",
+			Handler:    _AuthenticationService_RegisterUser_Handler,
 		},
 		{
 			MethodName: "RefreshToken",

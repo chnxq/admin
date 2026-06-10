@@ -1,0 +1,244 @@
+syntax = "proto3";
+
+package authentication.service.v1;
+
+import "gnostic/openapi/v3/annotations.proto";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+import "authentication/v1/authentication.proto";
+import "authentication/v1/oauth.proto";
+
+// 认证流程状态服务
+service AuthFlowService {
+  // 创建认证流程会话
+  rpc CreateAuthSession(CreateAuthSessionRequest) returns (AuthSession) {}
+
+  // 获取认证流程会话
+  rpc GetAuthSession(GetAuthSessionRequest) returns (AuthSession) {}
+
+  // 轮询认证流程会话状态
+  rpc PollAuthSession(PollAuthSessionRequest) returns (AuthSession) {}
+
+  // 确认认证流程会话
+  rpc ConfirmAuthSession(ConfirmAuthSessionRequest) returns (AuthSession) {}
+
+  // 取消认证流程会话
+  rpc CancelAuthSession(CancelAuthSessionRequest) returns (google.protobuf.Empty) {}
+}
+
+// 认证流程场景
+enum AuthFlowScene {
+  AUTH_FLOW_SCENE_UNSPECIFIED = 0;
+
+  LOGIN_QR = 1; // 扫码登录
+  BIND_QR = 2; // 扫码绑定
+  SOCIAL_LOGIN = 3; // 第三方网页登录
+  SOCIAL_BIND = 4; // 第三方账号绑定
+  MINIAPP_AUTH = 5; // 小程序认证
+}
+
+// 认证流程状态
+enum AuthFlowStatus {
+  AUTH_FLOW_STATUS_UNSPECIFIED = 0;
+
+  AUTH_FLOW_PENDING = 1; // 待处理
+  AUTH_FLOW_SCANNED = 2; // 已扫码
+  AUTH_FLOW_CONFIRMED = 3; // 已确认
+  AUTH_FLOW_UNBOUND = 4; // 已识别但未绑定本地账号
+  AUTH_FLOW_EXPIRED = 5; // 已过期
+  AUTH_FLOW_CANCELED = 6; // 已取消
+  AUTH_FLOW_FAILED = 7; // 失败
+}
+
+// 认证流程会话
+message AuthSession {
+  string session_id = 1 [
+    json_name = "sessionId",
+    (gnostic.openapi.v3.property) = {description: "认证流程会话ID"}
+  ];
+
+  optional string session_token = 2 [
+    json_name = "sessionToken",
+    (gnostic.openapi.v3.property) = {description: "认证流程会话令牌"}
+  ];
+
+  AuthFlowScene scene = 3 [
+    json_name = "scene",
+    (gnostic.openapi.v3.property) = {description: "认证流程场景"}
+  ];
+
+  AuthFlowStatus status = 4 [
+    json_name = "status",
+    (gnostic.openapi.v3.property) = {description: "认证流程状态"}
+  ];
+
+  optional uint32 tenant_id = 5 [
+    json_name = "tenantId",
+    (gnostic.openapi.v3.property) = {description: "租户ID"}
+  ];
+
+  optional uint32 user_id = 6 [
+    json_name = "userId",
+    (gnostic.openapi.v3.property) = {description: "关联用户ID"}
+  ];
+
+  optional string provider_key = 7 [
+    json_name = "providerKey",
+    (gnostic.openapi.v3.property) = {description: "稳定 provider key，如 github、wechat_web、wechat_miniapp"}
+  ];
+
+  optional OAuthProvider provider = 8 [
+    json_name = "provider",
+    (gnostic.openapi.v3.property) = {description: "第三方提供商枚举，主要用于传输层兼容"}
+  ];
+
+  optional string provider_account_id = 9 [
+    json_name = "providerAccountId",
+    (gnostic.openapi.v3.property) = {description: "第三方账号唯一标识"}
+  ];
+
+  optional ClientType client_type = 10 [
+    json_name = "clientType",
+    (gnostic.openapi.v3.property) = {description: "客户端类型"}
+  ];
+
+  optional string redirect_uri = 11 [
+    json_name = "redirectUri",
+    (gnostic.openapi.v3.property) = {description: "跳转地址"}
+  ];
+
+  optional string extra_info = 12 [
+    json_name = "extraInfo",
+    (gnostic.openapi.v3.property) = {description: "扩展信息"}
+  ];
+
+  optional google.protobuf.Timestamp expires_at = 13 [
+    json_name = "expiresAt",
+    (gnostic.openapi.v3.property) = {description: "过期时间"}
+  ];
+
+  optional google.protobuf.Timestamp confirmed_at = 14 [
+    json_name = "confirmedAt",
+    (gnostic.openapi.v3.property) = {description: "确认时间"}
+  ];
+
+  optional string qr_code_url = 15 [
+    json_name = "qrCodeUrl",
+    (gnostic.openapi.v3.property) = {description: "二维码地址"}
+  ];
+
+  optional string display_hint = 16 [
+    json_name = "displayHint",
+    (gnostic.openapi.v3.property) = {description: "前端展示提示"}
+  ];
+}
+
+message CreateAuthSessionRequest {
+  AuthFlowScene scene = 1 [
+    json_name = "scene",
+    (google.api.field_behavior) = REQUIRED,
+    (gnostic.openapi.v3.property) = {description: "认证流程场景"}
+  ];
+
+  optional uint32 tenant_id = 2 [
+    json_name = "tenantId",
+    (gnostic.openapi.v3.property) = {description: "租户ID"}
+  ];
+
+  optional uint32 user_id = 3 [
+    json_name = "userId",
+    (gnostic.openapi.v3.property) = {description: "用户ID"}
+  ];
+
+  optional string provider_key = 4 [
+    json_name = "providerKey",
+    (gnostic.openapi.v3.property) = {description: "稳定 provider key"}
+  ];
+
+  optional OAuthProvider provider = 5 [
+    json_name = "provider",
+    (gnostic.openapi.v3.property) = {description: "第三方提供商枚举，主要用于传输层兼容"}
+  ];
+
+  optional ClientType client_type = 6 [
+    json_name = "clientType",
+    (gnostic.openapi.v3.property) = {description: "客户端类型"}
+  ];
+
+  optional string redirect_uri = 7 [
+    json_name = "redirectUri",
+    (gnostic.openapi.v3.property) = {description: "跳转地址"}
+  ];
+
+  optional string extra_info = 8 [
+    json_name = "extraInfo",
+    (gnostic.openapi.v3.property) = {description: "扩展信息"}
+  ];
+}
+
+message GetAuthSessionRequest {
+  string session_id = 1 [
+    json_name = "sessionId",
+    (google.api.field_behavior) = REQUIRED,
+    (gnostic.openapi.v3.property) = {description: "认证流程会话ID"}
+  ];
+}
+
+message PollAuthSessionRequest {
+  string session_id = 1 [
+    json_name = "sessionId",
+    (google.api.field_behavior) = REQUIRED,
+    (gnostic.openapi.v3.property) = {description: "认证流程会话ID"}
+  ];
+
+  optional string session_token = 2 [
+    json_name = "sessionToken",
+    (gnostic.openapi.v3.property) = {description: "认证流程会话令牌"}
+  ];
+}
+
+message ConfirmAuthSessionRequest {
+  string session_id = 1 [
+    json_name = "sessionId",
+    (google.api.field_behavior) = REQUIRED,
+    (gnostic.openapi.v3.property) = {description: "认证流程会话ID"}
+  ];
+
+  optional string session_token = 2 [
+    json_name = "sessionToken",
+    (gnostic.openapi.v3.property) = {description: "认证流程会话令牌"}
+  ];
+
+  optional uint32 user_id = 3 [
+    json_name = "userId",
+    (gnostic.openapi.v3.property) = {description: "确认用户ID"}
+  ];
+
+  optional bool approved = 4 [
+    json_name = "approved",
+    (gnostic.openapi.v3.property) = {description: "是否确认通过"}
+  ];
+
+  optional string extra_info = 5 [
+    json_name = "extraInfo",
+    (gnostic.openapi.v3.property) = {description: "扩展信息"}
+  ];
+}
+
+message CancelAuthSessionRequest {
+  string session_id = 1 [
+    json_name = "sessionId",
+    (google.api.field_behavior) = REQUIRED,
+    (gnostic.openapi.v3.property) = {description: "认证流程会话ID"}
+  ];
+
+  optional string session_token = 2 [
+    json_name = "sessionToken",
+    (gnostic.openapi.v3.property) = {description: "认证流程会话令牌"}
+  ];
+}

@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package admin.service.v1;
+
+import "gnostic/openapi/v3/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+import "authentication/v1/auth_flow.proto";
+
+// 管理端认证流程状态服务
+service AuthFlowService {
+  // 创建认证流程会话
+  rpc CreateAuthSession(authentication.service.v1.CreateAuthSessionRequest) returns (authentication.service.v1.AuthSession) {
+    option (google.api.http) = {
+      post: "/admin/v1/auth-sessions"
+      body: "*"
+    };
+  }
+
+  // 获取认证流程会话
+  rpc GetAuthSession(authentication.service.v1.GetAuthSessionRequest) returns (authentication.service.v1.AuthSession) {
+    option (google.api.http) = {
+      get: "/admin/v1/auth-sessions/{session_id}"
+    };
+  }
+
+  // 轮询认证流程会话状态
+  rpc PollAuthSession(authentication.service.v1.PollAuthSessionRequest) returns (authentication.service.v1.AuthSession) {
+    option (google.api.http) = {
+      get: "/admin/v1/auth-sessions/{session_id}/poll"
+    };
+  }
+
+  // 确认认证流程会话
+  rpc ConfirmAuthSession(authentication.service.v1.ConfirmAuthSessionRequest) returns (authentication.service.v1.AuthSession) {
+    option (google.api.http) = {
+      post: "/admin/v1/auth-sessions/{session_id}:confirm"
+      body: "*"
+    };
+  }
+
+  // 取消认证流程会话
+  rpc CancelAuthSession(authentication.service.v1.CancelAuthSessionRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/admin/v1/auth-sessions/{session_id}:cancel"
+      body: "*"
+    };
+  }
+}

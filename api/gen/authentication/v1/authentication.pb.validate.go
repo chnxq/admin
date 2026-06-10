@@ -706,6 +706,370 @@ var _ interface {
 	ErrorName() string
 } = ValidateTokenResponseValidationError{}
 
+// Validate checks the field values on RegisterByUsernameRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *RegisterByUsernameRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on RegisterByUsernameRequest with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// RegisterByUsernameRequestMultiError, or nil if none found.
+func (m *RegisterByUsernameRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *RegisterByUsernameRequest) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Username
+
+	// no validation rules for Password
+
+	if m.Email != nil {
+		// no validation rules for Email
+	}
+
+	if m.Mobile != nil {
+		// no validation rules for Mobile
+	}
+
+	if m.CaptchaId != nil {
+		// no validation rules for CaptchaId
+	}
+
+	if m.CaptchaCode != nil {
+		// no validation rules for CaptchaCode
+	}
+
+	if len(errors) > 0 {
+		return RegisterByUsernameRequestMultiError(errors)
+	}
+
+	return nil
+}
+
+// RegisterByUsernameRequestMultiError is an error wrapping multiple validation
+// errors returned by RegisterByUsernameRequest.ValidateAll() if the
+// designated constraints aren't met.
+type RegisterByUsernameRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m RegisterByUsernameRequestMultiError) Error() string {
+	msgs := make([]string, 0, len(m))
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m RegisterByUsernameRequestMultiError) AllErrors() []error { return m }
+
+// RegisterByUsernameRequestValidationError is the validation error returned by
+// RegisterByUsernameRequest.Validate if the designated constraints aren't met.
+type RegisterByUsernameRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e RegisterByUsernameRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e RegisterByUsernameRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e RegisterByUsernameRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e RegisterByUsernameRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e RegisterByUsernameRequestValidationError) ErrorName() string {
+	return "RegisterByUsernameRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e RegisterByUsernameRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sRegisterByUsernameRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = RegisterByUsernameRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = RegisterByUsernameRequestValidationError{}
+
+// Validate checks the field values on RegisterByEmailRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *RegisterByEmailRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on RegisterByEmailRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// RegisterByEmailRequestMultiError, or nil if none found.
+func (m *RegisterByEmailRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *RegisterByEmailRequest) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Email
+
+	// no validation rules for EmailCode
+
+	// no validation rules for Password
+
+	if m.Username != nil {
+		// no validation rules for Username
+	}
+
+	if m.CaptchaId != nil {
+		// no validation rules for CaptchaId
+	}
+
+	if m.CaptchaCode != nil {
+		// no validation rules for CaptchaCode
+	}
+
+	if len(errors) > 0 {
+		return RegisterByEmailRequestMultiError(errors)
+	}
+
+	return nil
+}
+
+// RegisterByEmailRequestMultiError is an error wrapping multiple validation
+// errors returned by RegisterByEmailRequest.ValidateAll() if the designated
+// constraints aren't met.
+type RegisterByEmailRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m RegisterByEmailRequestMultiError) Error() string {
+	msgs := make([]string, 0, len(m))
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m RegisterByEmailRequestMultiError) AllErrors() []error { return m }
+
+// RegisterByEmailRequestValidationError is the validation error returned by
+// RegisterByEmailRequest.Validate if the designated constraints aren't met.
+type RegisterByEmailRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e RegisterByEmailRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e RegisterByEmailRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e RegisterByEmailRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e RegisterByEmailRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e RegisterByEmailRequestValidationError) ErrorName() string {
+	return "RegisterByEmailRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e RegisterByEmailRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sRegisterByEmailRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = RegisterByEmailRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = RegisterByEmailRequestValidationError{}
+
+// Validate checks the field values on RegisterByMobileRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *RegisterByMobileRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on RegisterByMobileRequest with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// RegisterByMobileRequestMultiError, or nil if none found.
+func (m *RegisterByMobileRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *RegisterByMobileRequest) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Mobile
+
+	// no validation rules for MobileCode
+
+	if m.Password != nil {
+		// no validation rules for Password
+	}
+
+	if m.Username != nil {
+		// no validation rules for Username
+	}
+
+	if m.CaptchaId != nil {
+		// no validation rules for CaptchaId
+	}
+
+	if m.CaptchaCode != nil {
+		// no validation rules for CaptchaCode
+	}
+
+	if len(errors) > 0 {
+		return RegisterByMobileRequestMultiError(errors)
+	}
+
+	return nil
+}
+
+// RegisterByMobileRequestMultiError is an error wrapping multiple validation
+// errors returned by RegisterByMobileRequest.ValidateAll() if the designated
+// constraints aren't met.
+type RegisterByMobileRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m RegisterByMobileRequestMultiError) Error() string {
+	msgs := make([]string, 0, len(m))
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m RegisterByMobileRequestMultiError) AllErrors() []error { return m }
+
+// RegisterByMobileRequestValidationError is the validation error returned by
+// RegisterByMobileRequest.Validate if the designated constraints aren't met.
+type RegisterByMobileRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e RegisterByMobileRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e RegisterByMobileRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e RegisterByMobileRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e RegisterByMobileRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e RegisterByMobileRequestValidationError) ErrorName() string {
+	return "RegisterByMobileRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e RegisterByMobileRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sRegisterByMobileRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = RegisterByMobileRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = RegisterByMobileRequestValidationError{}
+
 // Validate checks the field values on RegisterUserRequest with the rules
 // defined in the proto definition for this message. If any rules are
 // violated, the first error encountered is returned, or nil if there are no violations.
@@ -728,18 +1092,142 @@ func (m *RegisterUserRequest) validate(all bool) error {
 
 	var errors []error
 
-	// no validation rules for Username
-
-	// no validation rules for Password
-
 	// no validation rules for TenantCode
 
-	if m.Email != nil {
-		// no validation rules for Email
+	switch v := m.RegisterBy.(type) {
+	case *RegisterUserRequest_ByUsername:
+		if v == nil {
+			err := RegisterUserRequestValidationError{
+				field:  "RegisterBy",
+				reason: "oneof value cannot be a typed-nil",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
+		}
+
+		if all {
+			switch v := interface{}(m.GetByUsername()).(type) {
+			case interface{ ValidateAll() error }:
+				if err := v.ValidateAll(); err != nil {
+					errors = append(errors, RegisterUserRequestValidationError{
+						field:  "ByUsername",
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			case interface{ Validate() error }:
+				if err := v.Validate(); err != nil {
+					errors = append(errors, RegisterUserRequestValidationError{
+						field:  "ByUsername",
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			}
+		} else if v, ok := interface{}(m.GetByUsername()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return RegisterUserRequestValidationError{
+					field:  "ByUsername",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	case *RegisterUserRequest_ByEmail:
+		if v == nil {
+			err := RegisterUserRequestValidationError{
+				field:  "RegisterBy",
+				reason: "oneof value cannot be a typed-nil",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
+		}
+
+		if all {
+			switch v := interface{}(m.GetByEmail()).(type) {
+			case interface{ ValidateAll() error }:
+				if err := v.ValidateAll(); err != nil {
+					errors = append(errors, RegisterUserRequestValidationError{
+						field:  "ByEmail",
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			case interface{ Validate() error }:
+				if err := v.Validate(); err != nil {
+					errors = append(errors, RegisterUserRequestValidationError{
+						field:  "ByEmail",
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			}
+		} else if v, ok := interface{}(m.GetByEmail()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return RegisterUserRequestValidationError{
+					field:  "ByEmail",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	case *RegisterUserRequest_ByMobile:
+		if v == nil {
+			err := RegisterUserRequestValidationError{
+				field:  "RegisterBy",
+				reason: "oneof value cannot be a typed-nil",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
+		}
+
+		if all {
+			switch v := interface{}(m.GetByMobile()).(type) {
+			case interface{ ValidateAll() error }:
+				if err := v.ValidateAll(); err != nil {
+					errors = append(errors, RegisterUserRequestValidationError{
+						field:  "ByMobile",
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			case interface{ Validate() error }:
+				if err := v.Validate(); err != nil {
+					errors = append(errors, RegisterUserRequestValidationError{
+						field:  "ByMobile",
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			}
+		} else if v, ok := interface{}(m.GetByMobile()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return RegisterUserRequestValidationError{
+					field:  "ByMobile",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	default:
+		_ = v // ensures v is used
 	}
 
 	if m.ClientType != nil {
 		// no validation rules for ClientType
+	}
+
+	if m.DeviceId != nil {
+		// no validation rules for DeviceId
 	}
 
 	if len(errors) > 0 {
@@ -845,6 +1333,39 @@ func (m *RegisterUserResponse) validate(all bool) error {
 	var errors []error
 
 	// no validation rules for UserId
+
+	if m.Login != nil {
+
+		if all {
+			switch v := interface{}(m.GetLogin()).(type) {
+			case interface{ ValidateAll() error }:
+				if err := v.ValidateAll(); err != nil {
+					errors = append(errors, RegisterUserResponseValidationError{
+						field:  "Login",
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			case interface{ Validate() error }:
+				if err := v.Validate(); err != nil {
+					errors = append(errors, RegisterUserResponseValidationError{
+						field:  "Login",
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			}
+		} else if v, ok := interface{}(m.GetLogin()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return RegisterUserResponseValidationError{
+					field:  "Login",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
 
 	if len(errors) > 0 {
 		return RegisterUserResponseMultiError(errors)

@@ -1,0 +1,397 @@
+syntax = "proto3";
+
+package authentication.service.v1;
+
+import "gnostic/openapi/v3/annotations.proto";
+
+import "google/protobuf/timestamp.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+import "authentication/v1/authentication.proto";
+import "authentication/v1/oauth.proto";
+
+// 第三方登录入口服务
+service SocialAuthService {
+  // 开始第三方登录流程
+  rpc StartSocialLogin(StartSocialLoginRequest) returns (StartSocialLoginResponse) {}
+
+  // 完成网页回调式第三方登录
+  rpc CompleteSocialLogin(CompleteSocialLoginRequest) returns (CompleteSocialLoginResponse) {}
+
+  // 处理小程序 code/authCode 交换式登录
+  rpc ExchangeMiniAppCode(ExchangeMiniAppCodeRequest) returns (ExchangeMiniAppCodeResponse) {}
+
+  // 在未绑定场景下确认“绑定已有账号”或“创建并绑定新账号”
+  rpc ConfirmBindOrRegister(ConfirmBindOrRegisterRequest) returns (ConfirmBindOrRegisterResponse) {}
+}
+
+// 第三方登录结果状态
+enum SocialAuthStatus {
+  SOCIAL_AUTH_STATUS_UNSPECIFIED = 0;
+
+  SOCIAL_AUTH_BOUND = 1; // 已绑定本地账号，可直接签发本系统 token
+  SOCIAL_AUTH_UNBOUND = 2; // 未绑定本地账号，需要继续确认绑定或注册
+  SOCIAL_AUTH_PENDING = 3; // 流程处理中
+  SOCIAL_AUTH_EXPIRED = 4; // 流程已过期
+  SOCIAL_AUTH_FAILED = 5; // 流程失败
+}
+
+// 第三方资料摘要
+message SocialProviderProfile {
+  optional string provider_key = 1 [
+    json_name = "providerKey",
+    (gnostic.openapi.v3.property) = {description: "稳定 provider key，如 github、dingtalk_web"}
+  ];
+
+  optional OAuthProvider provider = 2 [
+    json_name = "provider",
+    (gnostic.openapi.v3.property) = {description: "第三方提供商枚举，主要用于传输层兼容"}
+  ];
+
+  optional string provider_account_id = 3 [
+    json_name = "providerAccountId",
+    (gnostic.openapi.v3.property) = {description: "第三方账号唯一标识"}
+  ];
+
+  optional string union_id = 4 [
+    json_name = "unionId",
+    (gnostic.openapi.v3.property) = {description: "第三方 union_id"}
+  ];
+
+  optional string open_id = 5 [
+    json_name = "openId",
+    (gnostic.openapi.v3.property) = {description: "第三方 open_id"}
+  ];
+
+  optional string app_id = 6 [
+    json_name = "appId",
+    (gnostic.openapi.v3.property) = {description: "第三方 app_id"}
+  ];
+
+  optional string nickname = 7 [
+    json_name = "nickname",
+    (gnostic.openapi.v3.property) = {description: "第三方昵称"}
+  ];
+
+  optional string avatar = 8 [
+    json_name = "avatar",
+    (gnostic.openapi.v3.property) = {description: "第三方头像"}
+  ];
+
+  optional string email = 9 [
+    json_name = "email",
+    (gnostic.openapi.v3.property) = {description: "第三方邮箱"}
+  ];
+
+  optional string mobile = 10 [
+    json_name = "mobile",
+    (gnostic.openapi.v3.property) = {description: "第三方手机号"}
+  ];
+
+  optional string raw_profile_json = 11 [
+    json_name = "rawProfileJson",
+    (gnostic.openapi.v3.property) = {description: "第三方原始资料 JSON"}
+  ];
+}
+
+// 未绑定状态载荷
+message SocialAuthPendingBinding {
+  string session_id = 1 [
+    json_name = "sessionId",
+    (gnostic.openapi.v3.property) = {description: "认证流程会话ID"}
+  ];
+
+  string bind_token = 2 [
+    json_name = "bindToken",
+    (gnostic.openapi.v3.property) = {description: "未绑定流程确认令牌"}
+  ];
+
+  SocialProviderProfile profile = 3 [
+    json_name = "profile",
+    (gnostic.openapi.v3.property) = {description: "第三方资料摘要"}
+  ];
+
+  optional google.protobuf.Timestamp expires_at = 4 [
+    json_name = "expiresAt",
+    (gnostic.openapi.v3.property) = {description: "过期时间"}
+  ];
+
+  optional string display_hint = 5 [
+    json_name = "displayHint",
+    (gnostic.openapi.v3.property) = {description: "前端展示提示"}
+  ];
+}
+
+message StartSocialLoginRequest {
+  OAuthProvider provider = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    json_name = "provider",
+    (gnostic.openapi.v3.property) = {description: "第三方提供商"}
+  ];
+
+  optional string provider_key = 2 [
+    json_name = "providerKey",
+    (gnostic.openapi.v3.property) = {description: "稳定 provider key，如 github、wechat_web、dingtalk_web"}
+  ];
+
+  optional ClientType client_type = 3 [
+    json_name = "clientType",
+    (gnostic.openapi.v3.property) = {description: "客户端类型"}
+  ];
+
+  optional string redirect_uri = 4 [
+    json_name = "redirectUri",
+    (gnostic.openapi.v3.property) = {description: "回调或跳转地址"}
+  ];
+
+  repeated string scopes = 5 [
+    json_name = "scopes",
+    (gnostic.openapi.v3.property) = {description: "授权范围"}
+  ];
+
+  optional uint32 tenant_id = 6 [
+    json_name = "tenantId",
+    (gnostic.openapi.v3.property) = {description: "租户ID"}
+  ];
+
+  optional string device_id = 7 [
+    json_name = "deviceId",
+    (gnostic.openapi.v3.property) = {description: "设备ID"}
+  ];
+}
+
+message StartSocialLoginResponse {
+  optional string authorization_url = 1 [
+    json_name = "authorizationUrl",
+    (gnostic.openapi.v3.property) = {description: "授权地址"}
+  ];
+
+  optional string qr_code_url = 2 [
+    json_name = "qrCodeUrl",
+    (gnostic.openapi.v3.property) = {description: "二维码地址"}
+  ];
+
+  optional string session_id = 3 [
+    json_name = "sessionId",
+    (gnostic.openapi.v3.property) = {description: "认证流程会话ID"}
+  ];
+
+  optional string state = 4 [
+    json_name = "state",
+    (gnostic.openapi.v3.property) = {description: "第三方授权状态参数"}
+  ];
+
+  optional google.protobuf.Timestamp expires_at = 5 [
+    json_name = "expiresAt",
+    (gnostic.openapi.v3.property) = {description: "过期时间"}
+  ];
+
+  optional string display_hint = 6 [
+    json_name = "displayHint",
+    (gnostic.openapi.v3.property) = {description: "前端展示提示"}
+  ];
+}
+
+message CompleteSocialLoginRequest {
+  optional string session_id = 1 [
+    json_name = "sessionId",
+    (gnostic.openapi.v3.property) = {description: "认证流程会话ID"}
+  ];
+
+  OAuthProvider provider = 2 [
+    json_name = "provider",
+    (google.api.field_behavior) = REQUIRED,
+    (gnostic.openapi.v3.property) = {description: "第三方提供商"}
+  ];
+
+  optional string provider_key = 3 [
+    json_name = "providerKey",
+    (gnostic.openapi.v3.property) = {description: "稳定 provider key"}
+  ];
+
+  string code = 4 [
+    json_name = "code",
+    (google.api.field_behavior) = REQUIRED,
+    (gnostic.openapi.v3.property) = {description: "第三方回调 code"}
+  ];
+
+  optional string state = 5 [
+    json_name = "state",
+    (gnostic.openapi.v3.property) = {description: "第三方回调 state"}
+  ];
+
+  optional string redirect_uri = 6 [
+    json_name = "redirectUri",
+    (gnostic.openapi.v3.property) = {description: "回调地址"}
+  ];
+
+  optional ClientType client_type = 7 [
+    json_name = "clientType",
+    (gnostic.openapi.v3.property) = {description: "客户端类型"}
+  ];
+
+  optional string device_id = 8 [
+    json_name = "deviceId",
+    (gnostic.openapi.v3.property) = {description: "设备ID"}
+  ];
+}
+
+message CompleteSocialLoginResponse {
+  SocialAuthStatus status = 1 [
+    json_name = "status",
+    (gnostic.openapi.v3.property) = {description: "第三方登录结果状态"}
+  ];
+
+  optional LoginResponse login = 2 [
+    json_name = "login",
+    (gnostic.openapi.v3.property) = {description: "已绑定时返回本系统登录结果"}
+  ];
+
+  optional SocialAuthPendingBinding pending = 3 [
+    json_name = "pending",
+    (gnostic.openapi.v3.property) = {description: "未绑定时返回待确认载荷"}
+  ];
+}
+
+message ExchangeMiniAppCodeRequest {
+  OAuthProvider provider = 1 [
+    json_name = "provider",
+    (google.api.field_behavior) = REQUIRED,
+    (gnostic.openapi.v3.property) = {description: "小程序 provider"}
+  ];
+
+  optional string provider_key = 2 [
+    json_name = "providerKey",
+    (gnostic.openapi.v3.property) = {description: "稳定 provider key，如 wechat_miniapp、alipay_miniapp"}
+  ];
+
+  string code = 3 [
+    json_name = "code",
+    (google.api.field_behavior) = REQUIRED,
+    (gnostic.openapi.v3.property) = {description: "小程序 code/authCode"}
+  ];
+
+  optional string app_id = 4 [
+    json_name = "appId",
+    (gnostic.openapi.v3.property) = {description: "小程序 app_id"}
+  ];
+
+  optional uint32 tenant_id = 5 [
+    json_name = "tenantId",
+    (gnostic.openapi.v3.property) = {description: "租户ID"}
+  ];
+
+  optional string device_id = 6 [
+    json_name = "deviceId",
+    (gnostic.openapi.v3.property) = {description: "设备ID"}
+  ];
+}
+
+message ExchangeMiniAppCodeResponse {
+  SocialAuthStatus status = 1 [
+    json_name = "status",
+    (gnostic.openapi.v3.property) = {description: "小程序登录结果状态"}
+  ];
+
+  optional LoginResponse login = 2 [
+    json_name = "login",
+    (gnostic.openapi.v3.property) = {description: "已绑定时返回本系统登录结果"}
+  ];
+
+  optional SocialAuthPendingBinding pending = 3 [
+    json_name = "pending",
+    (gnostic.openapi.v3.property) = {description: "未绑定时返回待确认载荷"}
+  ];
+}
+
+enum ConfirmBindOrRegisterOperation {
+  CONFIRM_BIND_OR_REGISTER_OPERATION_UNSPECIFIED = 0;
+
+  BIND_EXISTING = 1; // 绑定已有账号
+  REGISTER_NEW = 2; // 创建并绑定新账号
+}
+
+message ExistingAccountBinding {
+  optional string tenant_code = 1 [
+    json_name = "tenantCode",
+    (gnostic.openapi.v3.property) = {description: "租户代码"}
+  ];
+
+  oneof identifier {
+    string username = 10 [
+      json_name = "username",
+      (gnostic.openapi.v3.property) = {description: "用户名"}
+    ];
+    string email = 11 [
+      json_name = "email",
+      (gnostic.openapi.v3.property) = {description: "邮箱"}
+    ];
+    string mobile = 12 [
+      json_name = "mobile",
+      (gnostic.openapi.v3.property) = {description: "手机号"}
+    ];
+  }
+
+  optional string password = 20 [
+    json_name = "password",
+    (gnostic.openapi.v3.property) = {description: "已有账号密码"}
+  ];
+
+  optional string captcha_id = 21 [
+    json_name = "captchaId",
+    (gnostic.openapi.v3.property) = {description: "图形验证码ID"}
+  ];
+
+  optional string captcha_code = 22 [
+    json_name = "captchaCode",
+    (gnostic.openapi.v3.property) = {description: "图形验证码"}
+  ];
+}
+
+message ConfirmBindOrRegisterRequest {
+  string bind_token = 1 [
+    json_name = "bindToken",
+    (google.api.field_behavior) = REQUIRED,
+    (gnostic.openapi.v3.property) = {description: "未绑定流程确认令牌"}
+  ];
+
+  ConfirmBindOrRegisterOperation operation = 2 [
+    json_name = "operation",
+    (google.api.field_behavior) = REQUIRED,
+    (gnostic.openapi.v3.property) = {description: "确认操作类型"}
+  ];
+
+  optional ClientType client_type = 3 [
+    json_name = "clientType",
+    (gnostic.openapi.v3.property) = {description: "客户端类型"}
+  ];
+
+  optional string device_id = 4 [
+    json_name = "deviceId",
+    (gnostic.openapi.v3.property) = {description: "设备ID"}
+  ];
+
+  oneof payload {
+    ExistingAccountBinding existing = 10;
+    RegisterUserRequest registration = 11;
+  }
+}
+
+message ConfirmBindOrRegisterResponse {
+  SocialAuthStatus status = 1 [
+    json_name = "status",
+    (gnostic.openapi.v3.property) = {description: "确认结果状态"}
+  ];
+
+  optional uint32 user_id = 2 [
+    json_name = "userId",
+    (gnostic.openapi.v3.property) = {description: "绑定或创建后的用户ID"}
+  ];
+
+  optional LoginResponse login = 3 [
+    json_name = "login",
+    (gnostic.openapi.v3.property) = {description: "本系统登录结果"}
+  ];
+}

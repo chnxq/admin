@@ -300,6 +300,114 @@ paths:
                 "200":
                     description: OK
                     content: {}
+    /admin/v1/auth-sessions:
+        post:
+            tags:
+                - AuthFlowService
+            description: 创建认证流程会话
+            operationId: AuthFlowService_CreateAuthSession
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateAuthSessionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AuthSession'
+    /admin/v1/auth-sessions/{sessionId}:
+        get:
+            tags:
+                - AuthFlowService
+            description: 获取认证流程会话
+            operationId: AuthFlowService_GetAuthSession
+            parameters:
+                - name: sessionId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AuthSession'
+    /admin/v1/auth-sessions/{sessionId}/poll:
+        get:
+            tags:
+                - AuthFlowService
+            description: 轮询认证流程会话状态
+            operationId: AuthFlowService_PollAuthSession
+            parameters:
+                - name: sessionId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: sessionToken
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AuthSession'
+    /admin/v1/auth-sessions/{sessionId}:cancel:
+        post:
+            tags:
+                - AuthFlowService
+            description: 取消认证流程会话
+            operationId: AuthFlowService_CancelAuthSession
+            parameters:
+                - name: sessionId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CancelAuthSessionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/auth-sessions/{sessionId}:confirm:
+        post:
+            tags:
+                - AuthFlowService
+            description: 确认认证流程会话
+            operationId: AuthFlowService_ConfirmAuthSession
+            parameters:
+                - name: sessionId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ConfirmAuthSessionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AuthSession'
     /admin/v1/captcha:
         get:
             tags:
@@ -3429,6 +3537,27 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/LoginResponse'
+    /admin/v1/register:
+        post:
+            tags:
+                - AuthenticationService
+            description: 注册用户
+            operationId: AuthenticationService_RegisterUser
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RegisterUserRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RegisterUserResponse'
+            security:
+                - {}
     /admin/v1/roles:
         get:
             tags:
@@ -3606,6 +3735,90 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListRouteResponse'
+    /admin/v1/social-auth/miniapp:exchange-code:
+        post:
+            tags:
+                - SocialAuthService
+            description: 处理小程序 code 或 authCode 登录交换
+            operationId: SocialAuthService_ExchangeMiniAppCode
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ExchangeMiniAppCodeRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ExchangeMiniAppCodeResponse'
+            security:
+                - {}
+    /admin/v1/social-auth:complete:
+        post:
+            tags:
+                - SocialAuthService
+            description: 完成网页回调式第三方登录
+            operationId: SocialAuthService_CompleteSocialLogin
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CompleteSocialLoginRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CompleteSocialLoginResponse'
+            security:
+                - {}
+    /admin/v1/social-auth:confirm-bind-or-register:
+        post:
+            tags:
+                - SocialAuthService
+            description: 确认绑定已有账号或创建并绑定新账号
+            operationId: SocialAuthService_ConfirmBindOrRegister
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ConfirmBindOrRegisterRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConfirmBindOrRegisterResponse'
+            security:
+                - {}
+    /admin/v1/social-auth:start:
+        post:
+            tags:
+                - SocialAuthService
+            description: 开始第三方登录流程
+            operationId: SocialAuthService_StartSocialLogin
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/StartSocialLoginRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/StartSocialLoginResponse'
+            security:
+                - {}
     /admin/v1/task-groups:
         get:
             tags:
@@ -4937,6 +5150,122 @@ components:
                     description: 日志创建时间
                     format: date-time
             description: 接口审计日志
+        AuthSession:
+            type: object
+            properties:
+                sessionId:
+                    type: string
+                    description: 认证流程会话ID
+                sessionToken:
+                    type: string
+                    description: 认证流程会话令牌
+                scene:
+                    enum:
+                        - AUTH_FLOW_SCENE_UNSPECIFIED
+                        - LOGIN_QR
+                        - BIND_QR
+                        - SOCIAL_LOGIN
+                        - SOCIAL_BIND
+                        - MINIAPP_AUTH
+                    type: string
+                    description: 认证流程场景
+                    format: enum
+                status:
+                    enum:
+                        - AUTH_FLOW_STATUS_UNSPECIFIED
+                        - AUTH_FLOW_PENDING
+                        - AUTH_FLOW_SCANNED
+                        - AUTH_FLOW_CONFIRMED
+                        - AUTH_FLOW_UNBOUND
+                        - AUTH_FLOW_EXPIRED
+                        - AUTH_FLOW_CANCELED
+                        - AUTH_FLOW_FAILED
+                    type: string
+                    description: 认证流程状态
+                    format: enum
+                tenantId:
+                    type: integer
+                    description: 租户ID
+                    format: uint32
+                userId:
+                    type: integer
+                    description: 关联用户ID
+                    format: uint32
+                providerKey:
+                    type: string
+                    description: 稳定 provider key，如 github、wechat_web、wechat_miniapp
+                provider:
+                    enum:
+                        - OAUTH_PROVIDER_UNSPECIFIED
+                        - WECHAT
+                        - QQ
+                        - WEIBO
+                        - DOUYIN
+                        - KUAISHOU
+                        - BAIDU
+                        - ALIPAY
+                        - TAOBAO
+                        - JD
+                        - MEITUAN
+                        - DINGTALK
+                        - BILIBILI
+                        - XIAOHONGSHU
+                        - GOOGLE
+                        - FACEBOOK
+                        - APPLE
+                        - TELEGRAM
+                        - TWITTER
+                        - LINKEDIN
+                        - GITHUB
+                        - MICROSOFT
+                        - DISCORD
+                        - SLACK
+                        - INSTAGRAM
+                        - TIKTOK
+                        - REDDIT
+                        - YOUTUBE
+                        - SPOTIFY
+                        - PINTEREST
+                        - SNAPCHAT
+                        - TUMBLR
+                        - YAHOO
+                        - WHATSAPP
+                        - LINE
+                    type: string
+                    description: 第三方提供商枚举，主要用于传输层兼容
+                    format: enum
+                providerAccountId:
+                    type: string
+                    description: 第三方账号唯一标识
+                clientType:
+                    enum:
+                        - admin
+                        - app
+                        - miniapp
+                    type: string
+                    description: 客户端类型
+                    format: enum
+                redirectUri:
+                    type: string
+                    description: 跳转地址
+                extraInfo:
+                    type: string
+                    description: 扩展信息
+                expiresAt:
+                    type: string
+                    description: 过期时间
+                    format: date-time
+                confirmedAt:
+                    type: string
+                    description: 确认时间
+                    format: date-time
+                qrCodeUrl:
+                    type: string
+                    description: 二维码地址
+                displayHint:
+                    type: string
+                    description: 前端展示提示
+            description: 认证流程会话
         BatchCreateLanguagesRequest:
             type: object
             properties:
@@ -4969,6 +5298,17 @@ components:
                 code:
                     type: string
                     description: 验证码
+        CancelAuthSessionRequest:
+            required:
+                - sessionId
+            type: object
+            properties:
+                sessionId:
+                    type: string
+                    description: 认证流程会话ID
+                sessionToken:
+                    type: string
+                    description: 认证流程会话令牌
         ChangePasswordRequest:
             type: object
             properties:
@@ -4979,12 +5319,256 @@ components:
                     type: string
                     description: 新密码
             description: 修改用户密码（需要验证旧密码） - 请求
+        CompleteSocialLoginRequest:
+            required:
+                - provider
+                - code
+            type: object
+            properties:
+                sessionId:
+                    type: string
+                    description: 认证流程会话ID
+                provider:
+                    enum:
+                        - OAUTH_PROVIDER_UNSPECIFIED
+                        - WECHAT
+                        - QQ
+                        - WEIBO
+                        - DOUYIN
+                        - KUAISHOU
+                        - BAIDU
+                        - ALIPAY
+                        - TAOBAO
+                        - JD
+                        - MEITUAN
+                        - DINGTALK
+                        - BILIBILI
+                        - XIAOHONGSHU
+                        - GOOGLE
+                        - FACEBOOK
+                        - APPLE
+                        - TELEGRAM
+                        - TWITTER
+                        - LINKEDIN
+                        - GITHUB
+                        - MICROSOFT
+                        - DISCORD
+                        - SLACK
+                        - INSTAGRAM
+                        - TIKTOK
+                        - REDDIT
+                        - YOUTUBE
+                        - SPOTIFY
+                        - PINTEREST
+                        - SNAPCHAT
+                        - TUMBLR
+                        - YAHOO
+                        - WHATSAPP
+                        - LINE
+                    type: string
+                    description: 第三方提供商
+                    format: enum
+                providerKey:
+                    type: string
+                    description: 稳定 provider key
+                code:
+                    type: string
+                    description: 第三方回调 code
+                state:
+                    type: string
+                    description: 第三方回调 state
+                redirectUri:
+                    type: string
+                    description: 回调地址
+                clientType:
+                    enum:
+                        - admin
+                        - app
+                        - miniapp
+                    type: string
+                    description: 客户端类型
+                    format: enum
+                deviceId:
+                    type: string
+                    description: 设备ID
+        CompleteSocialLoginResponse:
+            type: object
+            properties:
+                status:
+                    enum:
+                        - SOCIAL_AUTH_STATUS_UNSPECIFIED
+                        - SOCIAL_AUTH_BOUND
+                        - SOCIAL_AUTH_UNBOUND
+                        - SOCIAL_AUTH_PENDING
+                        - SOCIAL_AUTH_EXPIRED
+                        - SOCIAL_AUTH_FAILED
+                    type: string
+                    description: 第三方登录结果状态
+                    format: enum
+                login:
+                    $ref: '#/components/schemas/LoginResponse'
+                pending:
+                    $ref: '#/components/schemas/SocialAuthPendingBinding'
+        ConfirmAuthSessionRequest:
+            required:
+                - sessionId
+            type: object
+            properties:
+                sessionId:
+                    type: string
+                    description: 认证流程会话ID
+                sessionToken:
+                    type: string
+                    description: 认证流程会话令牌
+                userId:
+                    type: integer
+                    description: 确认用户ID
+                    format: uint32
+                approved:
+                    type: boolean
+                    description: 是否确认通过
+                extraInfo:
+                    type: string
+                    description: 扩展信息
+        ConfirmBindOrRegisterRequest:
+            required:
+                - bindToken
+                - operation
+            type: object
+            properties:
+                bindToken:
+                    type: string
+                    description: 未绑定流程确认令牌
+                operation:
+                    enum:
+                        - CONFIRM_BIND_OR_REGISTER_OPERATION_UNSPECIFIED
+                        - BIND_EXISTING
+                        - REGISTER_NEW
+                    type: string
+                    description: 确认操作类型
+                    format: enum
+                clientType:
+                    enum:
+                        - admin
+                        - app
+                        - miniapp
+                    type: string
+                    description: 客户端类型
+                    format: enum
+                deviceId:
+                    type: string
+                    description: 设备ID
+                existing:
+                    $ref: '#/components/schemas/ExistingAccountBinding'
+                registration:
+                    $ref: '#/components/schemas/RegisterUserRequest'
+        ConfirmBindOrRegisterResponse:
+            type: object
+            properties:
+                status:
+                    enum:
+                        - SOCIAL_AUTH_STATUS_UNSPECIFIED
+                        - SOCIAL_AUTH_BOUND
+                        - SOCIAL_AUTH_UNBOUND
+                        - SOCIAL_AUTH_PENDING
+                        - SOCIAL_AUTH_EXPIRED
+                        - SOCIAL_AUTH_FAILED
+                    type: string
+                    description: 确认结果状态
+                    format: enum
+                userId:
+                    type: integer
+                    description: 绑定或创建后的用户ID
+                    format: uint32
+                login:
+                    $ref: '#/components/schemas/LoginResponse'
         CreateApiRequest:
             type: object
             properties:
                 data:
                     $ref: '#/components/schemas/Api'
             description: 创建 - 请求
+        CreateAuthSessionRequest:
+            required:
+                - scene
+            type: object
+            properties:
+                scene:
+                    enum:
+                        - AUTH_FLOW_SCENE_UNSPECIFIED
+                        - LOGIN_QR
+                        - BIND_QR
+                        - SOCIAL_LOGIN
+                        - SOCIAL_BIND
+                        - MINIAPP_AUTH
+                    type: string
+                    description: 认证流程场景
+                    format: enum
+                tenantId:
+                    type: integer
+                    description: 租户ID
+                    format: uint32
+                userId:
+                    type: integer
+                    description: 用户ID
+                    format: uint32
+                providerKey:
+                    type: string
+                    description: 稳定 provider key
+                provider:
+                    enum:
+                        - OAUTH_PROVIDER_UNSPECIFIED
+                        - WECHAT
+                        - QQ
+                        - WEIBO
+                        - DOUYIN
+                        - KUAISHOU
+                        - BAIDU
+                        - ALIPAY
+                        - TAOBAO
+                        - JD
+                        - MEITUAN
+                        - DINGTALK
+                        - BILIBILI
+                        - XIAOHONGSHU
+                        - GOOGLE
+                        - FACEBOOK
+                        - APPLE
+                        - TELEGRAM
+                        - TWITTER
+                        - LINKEDIN
+                        - GITHUB
+                        - MICROSOFT
+                        - DISCORD
+                        - SLACK
+                        - INSTAGRAM
+                        - TIKTOK
+                        - REDDIT
+                        - YOUTUBE
+                        - SPOTIFY
+                        - PINTEREST
+                        - SNAPCHAT
+                        - TUMBLR
+                        - YAHOO
+                        - WHATSAPP
+                        - LINE
+                    type: string
+                    description: 第三方提供商枚举，主要用于传输层兼容
+                    format: enum
+                clientType:
+                    enum:
+                        - admin
+                        - app
+                        - miniapp
+                    type: string
+                    description: 客户端类型
+                    format: enum
+                redirectUri:
+                    type: string
+                    description: 跳转地址
+                extraInfo:
+                    type: string
+                    description: 扩展信息
         CreateDictCategoryRequest:
             type: object
             properties:
@@ -5623,6 +6207,110 @@ components:
                     type: string
                     description: 邮箱验证码
             description: 邮箱验证
+        ExchangeMiniAppCodeRequest:
+            required:
+                - provider
+                - code
+            type: object
+            properties:
+                provider:
+                    enum:
+                        - OAUTH_PROVIDER_UNSPECIFIED
+                        - WECHAT
+                        - QQ
+                        - WEIBO
+                        - DOUYIN
+                        - KUAISHOU
+                        - BAIDU
+                        - ALIPAY
+                        - TAOBAO
+                        - JD
+                        - MEITUAN
+                        - DINGTALK
+                        - BILIBILI
+                        - XIAOHONGSHU
+                        - GOOGLE
+                        - FACEBOOK
+                        - APPLE
+                        - TELEGRAM
+                        - TWITTER
+                        - LINKEDIN
+                        - GITHUB
+                        - MICROSOFT
+                        - DISCORD
+                        - SLACK
+                        - INSTAGRAM
+                        - TIKTOK
+                        - REDDIT
+                        - YOUTUBE
+                        - SPOTIFY
+                        - PINTEREST
+                        - SNAPCHAT
+                        - TUMBLR
+                        - YAHOO
+                        - WHATSAPP
+                        - LINE
+                    type: string
+                    description: 小程序 provider
+                    format: enum
+                providerKey:
+                    type: string
+                    description: 稳定 provider key，如 wechat_miniapp、alipay_miniapp
+                code:
+                    type: string
+                    description: 小程序 code/authCode
+                appId:
+                    type: string
+                    description: 小程序 app_id
+                tenantId:
+                    type: integer
+                    description: 租户ID
+                    format: uint32
+                deviceId:
+                    type: string
+                    description: 设备ID
+        ExchangeMiniAppCodeResponse:
+            type: object
+            properties:
+                status:
+                    enum:
+                        - SOCIAL_AUTH_STATUS_UNSPECIFIED
+                        - SOCIAL_AUTH_BOUND
+                        - SOCIAL_AUTH_UNBOUND
+                        - SOCIAL_AUTH_PENDING
+                        - SOCIAL_AUTH_EXPIRED
+                        - SOCIAL_AUTH_FAILED
+                    type: string
+                    description: 小程序登录结果状态
+                    format: enum
+                login:
+                    $ref: '#/components/schemas/LoginResponse'
+                pending:
+                    $ref: '#/components/schemas/SocialAuthPendingBinding'
+        ExistingAccountBinding:
+            type: object
+            properties:
+                tenantCode:
+                    type: string
+                    description: 租户代码
+                username:
+                    type: string
+                    description: 用户名
+                email:
+                    type: string
+                    description: 邮箱
+                mobile:
+                    type: string
+                    description: 手机号
+                password:
+                    type: string
+                    description: 已有账号密码
+                captchaId:
+                    type: string
+                    description: 图形验证码ID
+                captchaCode:
+                    type: string
+                    description: 图形验证码
         File:
             type: object
             properties:
@@ -6532,6 +7220,7 @@ components:
                     enum:
                         - admin
                         - app
+                        - miniapp
                     type: string
                     description: 客户端类型
                     format: enum
@@ -7432,6 +8121,101 @@ components:
                     type: string
                     description: 预签名约束的 Content-Type（可选）
             description: 预签名选项
+        RegisterByEmailRequest:
+            type: object
+            properties:
+                email:
+                    type: string
+                    description: 电子邮件地址
+                emailCode:
+                    type: string
+                    description: 邮箱验证码
+                password:
+                    type: string
+                    description: 注册密码
+                username:
+                    type: string
+                    description: 可选用户名
+                captchaId:
+                    type: string
+                    description: 图形验证码ID
+                captchaCode:
+                    type: string
+                    description: 图形验证码
+        RegisterByMobileRequest:
+            type: object
+            properties:
+                mobile:
+                    type: string
+                    description: 手机号
+                mobileCode:
+                    type: string
+                    description: 手机验证码
+                password:
+                    type: string
+                    description: 可选注册密码
+                username:
+                    type: string
+                    description: 可选用户名
+                captchaId:
+                    type: string
+                    description: 图形验证码ID
+                captchaCode:
+                    type: string
+                    description: 图形验证码
+        RegisterByUsernameRequest:
+            type: object
+            properties:
+                username:
+                    type: string
+                    description: 用户名
+                password:
+                    type: string
+                    description: 注册密码
+                email:
+                    type: string
+                    description: 可选邮箱
+                mobile:
+                    type: string
+                    description: 可选手机号
+                captchaId:
+                    type: string
+                    description: 图形验证码ID
+                captchaCode:
+                    type: string
+                    description: 图形验证码
+        RegisterUserRequest:
+            type: object
+            properties:
+                tenantCode:
+                    type: string
+                    description: 租户代码
+                clientType:
+                    enum:
+                        - admin
+                        - app
+                        - miniapp
+                    type: string
+                    description: 客户端类型
+                    format: enum
+                deviceId:
+                    type: string
+                    description: 设备ID
+                byUsername:
+                    $ref: '#/components/schemas/RegisterByUsernameRequest'
+                byEmail:
+                    $ref: '#/components/schemas/RegisterByEmailRequest'
+                byMobile:
+                    $ref: '#/components/schemas/RegisterByMobileRequest'
+        RegisterUserResponse:
+            type: object
+            properties:
+                userId:
+                    type: integer
+                    description: 用户ID
+                    format: uint32
+                login:
+                    $ref: '#/components/schemas/LoginResponse'
         RevokeMessageRequest:
             type: object
             properties:
@@ -7582,6 +8366,192 @@ components:
                     type: integer
                     description: 消息ID
                     format: uint32
+        SocialAuthPendingBinding:
+            type: object
+            properties:
+                sessionId:
+                    type: string
+                    description: 认证流程会话ID
+                bindToken:
+                    type: string
+                    description: 未绑定流程确认令牌
+                profile:
+                    $ref: '#/components/schemas/SocialProviderProfile'
+                expiresAt:
+                    type: string
+                    description: 过期时间
+                    format: date-time
+                displayHint:
+                    type: string
+                    description: 前端展示提示
+            description: 未绑定状态载荷
+        SocialProviderProfile:
+            type: object
+            properties:
+                providerKey:
+                    type: string
+                    description: 稳定 provider key，如 github、dingtalk_web
+                provider:
+                    enum:
+                        - OAUTH_PROVIDER_UNSPECIFIED
+                        - WECHAT
+                        - QQ
+                        - WEIBO
+                        - DOUYIN
+                        - KUAISHOU
+                        - BAIDU
+                        - ALIPAY
+                        - TAOBAO
+                        - JD
+                        - MEITUAN
+                        - DINGTALK
+                        - BILIBILI
+                        - XIAOHONGSHU
+                        - GOOGLE
+                        - FACEBOOK
+                        - APPLE
+                        - TELEGRAM
+                        - TWITTER
+                        - LINKEDIN
+                        - GITHUB
+                        - MICROSOFT
+                        - DISCORD
+                        - SLACK
+                        - INSTAGRAM
+                        - TIKTOK
+                        - REDDIT
+                        - YOUTUBE
+                        - SPOTIFY
+                        - PINTEREST
+                        - SNAPCHAT
+                        - TUMBLR
+                        - YAHOO
+                        - WHATSAPP
+                        - LINE
+                    type: string
+                    description: 第三方提供商枚举，主要用于传输层兼容
+                    format: enum
+                providerAccountId:
+                    type: string
+                    description: 第三方账号唯一标识
+                unionId:
+                    type: string
+                    description: 第三方 union_id
+                openId:
+                    type: string
+                    description: 第三方 open_id
+                appId:
+                    type: string
+                    description: 第三方 app_id
+                nickname:
+                    type: string
+                    description: 第三方昵称
+                avatar:
+                    type: string
+                    description: 第三方头像
+                email:
+                    type: string
+                    description: 第三方邮箱
+                mobile:
+                    type: string
+                    description: 第三方手机号
+                rawProfileJson:
+                    type: string
+                    description: 第三方原始资料 JSON
+            description: 第三方资料摘要
+        StartSocialLoginRequest:
+            required:
+                - provider
+            type: object
+            properties:
+                provider:
+                    enum:
+                        - OAUTH_PROVIDER_UNSPECIFIED
+                        - WECHAT
+                        - QQ
+                        - WEIBO
+                        - DOUYIN
+                        - KUAISHOU
+                        - BAIDU
+                        - ALIPAY
+                        - TAOBAO
+                        - JD
+                        - MEITUAN
+                        - DINGTALK
+                        - BILIBILI
+                        - XIAOHONGSHU
+                        - GOOGLE
+                        - FACEBOOK
+                        - APPLE
+                        - TELEGRAM
+                        - TWITTER
+                        - LINKEDIN
+                        - GITHUB
+                        - MICROSOFT
+                        - DISCORD
+                        - SLACK
+                        - INSTAGRAM
+                        - TIKTOK
+                        - REDDIT
+                        - YOUTUBE
+                        - SPOTIFY
+                        - PINTEREST
+                        - SNAPCHAT
+                        - TUMBLR
+                        - YAHOO
+                        - WHATSAPP
+                        - LINE
+                    type: string
+                    description: 第三方提供商
+                    format: enum
+                providerKey:
+                    type: string
+                    description: 稳定 provider key，如 github、wechat_web、dingtalk_web
+                clientType:
+                    enum:
+                        - admin
+                        - app
+                        - miniapp
+                    type: string
+                    description: 客户端类型
+                    format: enum
+                redirectUri:
+                    type: string
+                    description: 回调或跳转地址
+                scopes:
+                    type: array
+                    items:
+                        type: string
+                    description: 授权范围
+                tenantId:
+                    type: integer
+                    description: 租户ID
+                    format: uint32
+                deviceId:
+                    type: string
+                    description: 设备ID
+        StartSocialLoginResponse:
+            type: object
+            properties:
+                authorizationUrl:
+                    type: string
+                    description: 授权地址
+                qrCodeUrl:
+                    type: string
+                    description: 二维码地址
+                sessionId:
+                    type: string
+                    description: 认证流程会话ID
+                state:
+                    type: string
+                    description: 第三方授权状态参数
+                expiresAt:
+                    type: string
+                    description: 过期时间
+                    format: date-time
+                displayHint:
+                    type: string
+                    description: 前端展示提示
         StartTaskGroupRequest:
             type: object
             properties:
@@ -8479,6 +9449,8 @@ tags:
       description: API审计日志管理服务
     - name: ApiService
       description: API资源管理服务
+    - name: AuthFlowService
+      description: 管理端认证流程状态服务
     - name: AuthenticationService
       description: 用户后台登录认证服务
     - name: DataAccessAuditLogService
@@ -8523,6 +9495,8 @@ tags:
       description: 职位管理服务
     - name: RoleService
       description: 角色管理服务
+    - name: SocialAuthService
+      description: 管理端第三方登录入口服务
     - name: TaskGroupService
       description: 任务分组管理服务
     - name: TaskLogService

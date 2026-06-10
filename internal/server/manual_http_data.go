@@ -203,6 +203,12 @@ func (s *manualAuthenticationService) RefreshToken(ctx context.Context, req *aut
 	return resp, nil
 }
 
+func (s *manualAuthenticationService) RegisterUser(ctx context.Context, req *authenticationv1.RegisterUserRequest) (*authenticationv1.RegisterUserResponse, error) {
+	_ = ctx
+	_ = req
+	return nil, authenticationv1.ErrorNotImplemented("register user is not implemented yet")
+}
+
 func authRequestLogPrefix(ctx context.Context, chain string) string {
 	parts := make([]string, 0, 5)
 	if chain = strings.TrimSpace(chain); chain != "" {
