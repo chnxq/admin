@@ -7,6 +7,7 @@ import (
 
 	taskv1 "admin/api/gen/task/v1"
 	taskruntime "admin/internal/task/runtime"
+	"github.com/chnxq/xkitmod/log"
 )
 
 type bootstrapTestExecutor struct {
@@ -45,7 +46,10 @@ func (s *fakeSchedulerStore) UpdateTaskRuntimeState(context.Context, uint64, tas
 }
 
 func TestResolveTaskSchedulerRejectsInconsistentSchedulers(t *testing.T) {
-	taskService := &TaskService{scheduler: taskruntime.NewScheduler(&fakeSchedulerStore{}, nil)}
+	taskService := &TaskService{
+		log:       log.NewHelper(log.NewStdLogger(taskTestingWriter{t: t})),
+		scheduler: taskruntime.NewScheduler(&fakeSchedulerStore{}, nil),
+	}
 	taskGroupService := &TaskGroupService{scheduler: taskruntime.NewScheduler(&fakeSchedulerStore{}, nil)}
 	_, err := resolveTaskScheduler(taskService, taskGroupService)
 	if err == nil || !strings.Contains(err.Error(), "inconsistent") {
@@ -72,6 +76,7 @@ func TestRegisterTaskSchedulerAllowsPartialRestoreFailures(t *testing.T) {
 	}, runner)
 
 	taskService := &TaskService{
+		log:           log.NewHelper(log.NewStdLogger(taskTestingWriter{t: t})),
 		runtimeRunner: runner,
 		scheduler:     scheduler,
 	}
@@ -92,4 +97,15 @@ func TestRegisterTaskSchedulerAllowsPartialRestoreFailures(t *testing.T) {
 
 func bootstrapStringPtr(value string) *string {
 	return &value
+}
+
+type taskTestingWriter struct {
+	t *testing.T
+}
+
+func (w taskTestingWriter) Write(p []byte) (int, error) {
+	if w.t != nil {
+		w.t.Log(string(p))
+	}
+	return len(p), nil
 }

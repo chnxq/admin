@@ -16,6 +16,7 @@ import (
 	"admin/internal/filex"
 
 	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
+	"github.com/chnxq/xkitmod/log"
 	"github.com/chnxq/xkitpkg/app"
 	httptransport "github.com/chnxq/xkitpkg/transport/http"
 )
@@ -29,19 +30,19 @@ type generatedDataWithFileRepo interface {
 }
 
 type fileBrowserPayload struct {
-	ID           uint32 `json:"id"`
-	FileName     string `json:"fileName"`
-	Extension    string `json:"extension"`
-	Size         uint64 `json:"size"`
-	SizeFormat   string `json:"sizeFormat"`
-	BucketName   string `json:"bucketName"`
+	ID            uint32 `json:"id"`
+	FileName      string `json:"fileName"`
+	Extension     string `json:"extension"`
+	Size          uint64 `json:"size"`
+	SizeFormat    string `json:"sizeFormat"`
+	BucketName    string `json:"bucketName"`
 	FileDirectory string `json:"fileDirectory"`
-	ObjectName   string `json:"objectName"`
-	TenantID     uint32 `json:"tenantId,omitempty"`
-	TenantName   string `json:"tenantName,omitempty"`
-	PreviewType  string `json:"previewType"`
-	PreviewURL   string `json:"previewUrl"`
-	DownloadURL  string `json:"downloadUrl"`
+	ObjectName    string `json:"objectName"`
+	TenantID      uint32 `json:"tenantId,omitempty"`
+	TenantName    string `json:"tenantName,omitempty"`
+	PreviewType   string `json:"previewType"`
+	PreviewURL    string `json:"previewUrl"`
+	DownloadURL   string `json:"downloadUrl"`
 }
 
 func registerManualFileHTTP(srv *httptransport.Server, data GeneratedData) {
@@ -55,6 +56,7 @@ func registerManualFileHTTP(srv *httptransport.Server, data GeneratedData) {
 	}
 	fileTransferService, err := filex.NewTransferManager(dataWithApp.GetAppCtx(), dataWithRepo.FileRepoProvider())
 	if err != nil {
+		log.Errorf("chain=manual_file.init init transfer manager failed: %s", err.Error())
 		return
 	}
 
@@ -118,6 +120,7 @@ func handleFileMultipartUpload(
 ) (*fileBrowserPayload, error) {
 	req := httpCtx.Request()
 	if err := req.ParseMultipartForm(32 << 20); err != nil {
+		log.Errorf("chain=manual_file.upload_multipart operation=/admin.service.manual.FileBrowser/UploadMultipart parse multipart form failed: %s", err.Error())
 		return nil, storagev1.ErrorBadRequest("invalid multipart form")
 	}
 	file, header, err := req.FormFile("file")
@@ -128,15 +131,16 @@ func handleFileMultipartUpload(
 
 	content, err := io.ReadAll(file)
 	if err != nil {
+		log.Errorf("chain=manual_file.upload_multipart operation=/admin.service.manual.FileBrowser/UploadMultipart read upload content failed file_name=%s: %s", header.Filename, err.Error())
 		return nil, storagev1.ErrorUploadFailed("%v", err)
 	}
 
 	uploadReq := &storagev1.UploadFileRequest{
-		StorageObject:   &storagev1.StorageObject{},
-		Source:          &storagev1.UploadFileRequest_File{File: content},
-		SourceFileName:  filex.StringPtr(header.Filename),
-		Mime:            filex.StringPtr(header.Header.Get("Content-Type")),
-		Size:            filex.Int64Ptr(int64(len(content))),
+		StorageObject:  &storagev1.StorageObject{},
+		Source:         &storagev1.UploadFileRequest_File{File: content},
+		SourceFileName: filex.StringPtr(header.Filename),
+		Mime:           filex.StringPtr(header.Header.Get("Content-Type")),
+		Size:           filex.Int64Ptr(int64(len(content))),
 	}
 	if folder := strings.TrimSpace(req.FormValue("folder")); folder != "" {
 		uploadReq.StorageObject.FileDirectory = filex.StringPtr(folder)
@@ -147,11 +151,13 @@ func handleFileMultipartUpload(
 
 	uploadResp, err := fileTransferService.UploadFile(ctx, uploadReq)
 	if err != nil {
+		log.Errorf("chain=manual_file.upload_multipart operation=/admin.service.manual.FileBrowser/UploadMultipart upload file failed file_name=%s: %s", header.Filename, err.Error())
 		return nil, err
 	}
 
 	listResp, err := fileRepo.List(ctx, paginationRequestNoPaging)
 	if err != nil {
+		log.Errorf("chain=manual_file.upload_multipart operation=/admin.service.manual.FileBrowser/UploadMultipart list uploaded file metadata failed file_name=%s object_name=%s: %s", header.Filename, uploadResp.GetObjectName(), err.Error())
 		return nil, err
 	}
 	targetObjectName := uploadResp.GetObjectName()
@@ -168,6 +174,7 @@ func handleFileMultipartUpload(
 		}
 		return buildFileBrowserPayload(item), nil
 	}
+	log.Errorf("chain=manual_file.upload_multipart operation=/admin.service.manual.FileBrowser/UploadMultipart uploaded file metadata not found file_name=%s object_name=%s", header.Filename, targetObjectName)
 	return nil, storagev1.ErrorInternalServerError("uploaded file metadata not found")
 }
 
@@ -185,6 +192,7 @@ func handleFilePreview(
 		QueryBy: &storagev1.GetFileRequest_Id{Id: fileID},
 	})
 	if err != nil {
+		log.Errorf("chain=manual_file.preview operation=/admin.service.manual.FileBrowser/Preview file_id=%d load file metadata failed: %s", fileID, err.Error())
 		return err
 	}
 	downloadResp, err := fileTransferService.DownloadFile(ctx, &storagev1.DownloadFileRequest{
@@ -192,6 +200,7 @@ func handleFilePreview(
 		Disposition: filex.StringPtr("inline"),
 	})
 	if err != nil {
+		log.Errorf("chain=manual_file.preview operation=/admin.service.manual.FileBrowser/Preview file_id=%d download file failed: %s", fileID, err.Error())
 		return err
 	}
 
@@ -219,6 +228,7 @@ func handleFileDownload(
 		QueryBy: &storagev1.GetFileRequest_Id{Id: fileID},
 	})
 	if err != nil {
+		log.Errorf("chain=manual_file.download operation=/admin.service.manual.FileBrowser/Download file_id=%d load file metadata failed: %s", fileID, err.Error())
 		return err
 	}
 	downloadResp, err := fileTransferService.DownloadFile(ctx, &storagev1.DownloadFileRequest{
@@ -226,6 +236,7 @@ func handleFileDownload(
 		Disposition: filex.StringPtr("attachment"),
 	})
 	if err != nil {
+		log.Errorf("chain=manual_file.download operation=/admin.service.manual.FileBrowser/Download file_id=%d download file failed: %s", fileID, err.Error())
 		return err
 	}
 	if url := downloadResp.GetDownloadUrl(); url != "" {
@@ -245,6 +256,7 @@ func handleFileBrowserInfo(ctx context.Context, fileRepo repo.FileRepo) (*fileBr
 		QueryBy: &storagev1.GetFileRequest_Id{Id: fileID},
 	})
 	if err != nil {
+		log.Errorf("chain=manual_file.browser_info operation=/admin.service.manual.FileBrowser/GetBrowserInfo file_id=%d load file metadata failed: %s", fileID, err.Error())
 		return nil, err
 	}
 	return buildFileBrowserPayload(record), nil
@@ -255,7 +267,11 @@ func handleFileBinaryDelete(ctx context.Context, fileTransferService *filex.Tran
 	if err != nil {
 		return err
 	}
-	return fileTransferService.DeleteFile(ctx, fileID)
+	if err := fileTransferService.DeleteFile(ctx, fileID); err != nil {
+		log.Errorf("chain=manual_file.delete_binary operation=/admin.service.manual.FileBrowser/DeleteBinary file_id=%d delete binary failed: %s", fileID, err.Error())
+		return err
+	}
+	return nil
 }
 
 var paginationRequestNoPaging = storagePagingRequestNoPaging()

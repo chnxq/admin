@@ -702,9 +702,13 @@ func (r *userRepo) createOrUpdateUserCredential(ctx context.Context, txClient *e
 			SetCredential(string(normalizedPassword)).
 			SetStatus(usercredential.StatusEnabled).
 			Save(ctx)
+		if err != nil {
+			r.log.Errorf("update user credential failed: user_id=%d credential_id=%d username=%q: %s", userID, existing.ID, username, err.Error())
+		}
 		return err
 	}
 	if err != nil && !ent.IsNotFound(err) {
+		r.log.Errorf("load user credential failed: user_id=%d username=%q: %s", userID, username, err.Error())
 		return err
 	}
 
@@ -720,6 +724,9 @@ func (r *userRepo) createOrUpdateUserCredential(ctx context.Context, txClient *e
 		builder.SetTenantID(*tenantID)
 	}
 	_, err = builder.Save(ctx)
+	if err != nil {
+		r.log.Errorf("create user credential failed: user_id=%d username=%q: %s", userID, username, err.Error())
+	}
 	return err
 }
 
@@ -728,6 +735,7 @@ func (r *userRepo) replaceUserOrgUnits(ctx context.Context, txClient *ent.Client
 		return err
 	}
 	if _, err := txClient.UserOrgUnit.Delete().Where(userorgunit.UserIDEQ(userID)).Exec(ctx); err != nil {
+		r.log.Errorf("delete user org unit relations failed: user_id=%d: %s", userID, err.Error())
 		return err
 	}
 	for index, orgUnitID := range orgUnitIDs {
@@ -744,6 +752,7 @@ func (r *userRepo) replaceUserOrgUnits(ctx context.Context, txClient *ent.Client
 			builder.SetTenantID(*tenantID)
 		}
 		if _, err := builder.Save(ctx); err != nil {
+			r.log.Errorf("create user org unit relation failed: user_id=%d org_unit_id=%d: %s", userID, orgUnitID, err.Error())
 			return err
 		}
 	}
@@ -755,6 +764,7 @@ func (r *userRepo) replaceUserPositions(ctx context.Context, txClient *ent.Clien
 		return err
 	}
 	if _, err := txClient.UserPosition.Delete().Where(userposition.UserIDEQ(userID)).Exec(ctx); err != nil {
+		r.log.Errorf("delete user position relations failed: user_id=%d: %s", userID, err.Error())
 		return err
 	}
 	for index, positionID := range positionIDs {
@@ -771,6 +781,7 @@ func (r *userRepo) replaceUserPositions(ctx context.Context, txClient *ent.Clien
 			builder.SetTenantID(*tenantID)
 		}
 		if _, err := builder.Save(ctx); err != nil {
+			r.log.Errorf("create user position relation failed: user_id=%d position_id=%d: %s", userID, positionID, err.Error())
 			return err
 		}
 	}
@@ -782,6 +793,7 @@ func (r *userRepo) replaceUserRoles(ctx context.Context, txClient *ent.Client, n
 		return err
 	}
 	if _, err := txClient.UserRole.Delete().Where(userrole.UserIDEQ(userID)).Exec(ctx); err != nil {
+		r.log.Errorf("delete user role relations failed: user_id=%d: %s", userID, err.Error())
 		return err
 	}
 	for index, roleID := range roleIDs {
@@ -798,6 +810,7 @@ func (r *userRepo) replaceUserRoles(ctx context.Context, txClient *ent.Client, n
 			builder.SetTenantID(*tenantID)
 		}
 		if _, err := builder.Save(ctx); err != nil {
+			r.log.Errorf("create user role relation failed: user_id=%d role_id=%d: %s", userID, roleID, err.Error())
 			return err
 		}
 	}

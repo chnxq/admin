@@ -9,6 +9,7 @@ import (
 	resourcev1 "admin/api/gen/resource/v1"
 
 	crudviewer "github.com/chnxq/x-crud/viewer"
+	"github.com/chnxq/xkitmod/log"
 )
 
 type permissionServiceTestViewer struct {
@@ -31,7 +32,9 @@ func (v permissionServiceTestViewer) IsSystemContext() bool             { return
 func (v permissionServiceTestViewer) ShouldAudit() bool                 { return false }
 
 func TestPermissionServiceSyncPermissions_RejectsTenantContext(t *testing.T) {
-	svc := &PermissionService{}
+	svc := &PermissionService{
+		log: log.NewHelper(log.NewStdLogger(permissionTestingWriter{t: t})),
+	}
 	ctx := crudviewer.WithContext(context.Background(), permissionServiceTestViewer{
 		platform: true,
 		tenant:   true,
@@ -45,7 +48,9 @@ func TestPermissionServiceSyncPermissions_RejectsTenantContext(t *testing.T) {
 }
 
 func TestPermissionServiceSyncPermissions_AllowsPlatformContextPastTenantGate(t *testing.T) {
-	svc := &PermissionService{}
+	svc := &PermissionService{
+		log: log.NewHelper(log.NewStdLogger(permissionTestingWriter{t: t})),
+	}
 	ctx := crudviewer.WithContext(context.Background(), permissionServiceTestViewer{
 		platform: true,
 		tenant:   false,

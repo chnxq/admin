@@ -11,6 +11,7 @@ import (
 	"time"
 
 	crudviewer "github.com/chnxq/x-crud/viewer"
+	"github.com/chnxq/xkitmod/log"
 	"github.com/chnxq/xkitpkg/app"
 	httptransport "github.com/chnxq/xkitpkg/transport/http"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -19,8 +20,10 @@ import (
 	authenticationv1 "admin/api/gen/authentication/v1"
 	identityv1 "admin/api/gen/identity/v1"
 	resourcev1 "admin/api/gen/resource/v1"
-	conf "github.com/chnxq/xkitpkg/conf/v1"
 	"admin/internal/data/repo"
+
+	conf "github.com/chnxq/xkitpkg/conf/v1"
+	transport "github.com/chnxq/xkitpkg/transport"
 )
 
 func RegisterManualHTTPServicesWithData(srv *httptransport.Server, appCtx *app.AppCtx, data GeneratedData) {
@@ -45,6 +48,14 @@ type manualAuthenticationService struct {
 	credentialFinder   userCredentialFinder
 	auth               *authConfig
 	tokenStore         *tokenStore
+	log                *log.Helper
+}
+
+func (s *manualAuthenticationService) logger() *log.Helper {
+	if s != nil && s.log != nil {
+		return s.log
+	}
+	return log.NewHelper(log.With(log.GetLogger(), "module", "authentication/server"))
 }
 
 func newManualAuthenticationService(appCtx *app.AppCtx, data GeneratedData) *manualAuthenticationService {
@@ -58,17 +69,27 @@ func newManualAuthenticationService(appCtx *app.AppCtx, data GeneratedData) *man
 			service.credentialFinder = finder
 		}
 	}
+	service.log = log.NewHelper(log.With(log.GetLogger(), "module", "authentication/server"))
 	auth, err := loadAuthConfig(appCtx)
 	if err == nil {
 		service.auth = auth
+	} else {
+		service.log.Errorf("chain=manual_auth.init load auth config failed: %s", err.Error())
 	}
 	if store, err := newTokenStore(loadDataConfig(appCtx)); err == nil {
 		service.tokenStore = store
+	} else {
+		service.log.Errorf("chain=manual_auth.init init token store failed: %s", err.Error())
 	}
 	return service
 }
 
 func (s *manualAuthenticationService) Login(ctx context.Context, req *authenticationv1.LoginRequest) (*authenticationv1.LoginResponse, error) {
+	logger := s.logger()
+	if s == nil {
+		logger.Errorf("%s authentication service is not initialized", authRequestLogPrefix(ctx, "manual_auth.login"))
+		return nil, authenticationv1.ErrorInternalServerError("authentication service is unavailable")
+	}
 	if req.GetGrantType() != authenticationv1.GrantType_password {
 		return nil, authenticationv1.ErrorInvalidGrantType("unsupported grant_type %q", req.GetGrantType().String())
 	}
@@ -80,10 +101,12 @@ func (s *manualAuthenticationService) Login(ctx context.Context, req *authentica
 		return nil, authenticationv1.ErrorBadRequest("identifier and password are required")
 	}
 	if s.credentialFinder == nil || s.auth == nil {
+		logger.Errorf("%s authentication service unavailable: credential_finder_nil=%t auth_nil=%t", authRequestLogPrefix(ctx, "manual_auth.login"), s.credentialFinder == nil, s.auth == nil)
 		return nil, authenticationv1.ErrorInternalServerError("authentication service is unavailable")
 	}
 	credential, err := s.credentialFinder.FindPasswordCredentialByIdentifier(ensureDefaultViewerContext(ctx), identifier)
 	if err != nil {
+		logger.Errorf("%s find credential failed for identifier=%s: %s", authRequestLogPrefix(ctx, "manual_auth.login"), identifier, err.Error())
 		return nil, err
 	}
 	if credential == nil || credential.User == nil {
@@ -99,9 +122,19 @@ func (s *manualAuthenticationService) Login(ctx context.Context, req *authentica
 		QueryBy: &identityv1.GetUserRequest_Id{Id: credential.User.ID},
 	})
 	if err != nil || userDTO == nil {
+		if err != nil {
+			logger.Errorf("%s load user profile failed for user_id=%d: %s", authRequestLogPrefix(ctx, "manual_auth.login"), credential.User.ID, err.Error())
+		} else {
+			logger.Errorf("%s load user profile returned nil for user_id=%d", authRequestLogPrefix(ctx, "manual_auth.login"), credential.User.ID)
+		}
 		return nil, authenticationv1.ErrorUnauthorized("failed to load user profile")
 	}
-	return issueLoginResponse(userDTO, req, s.auth, s.tokenStore)
+	resp, err := issueLoginResponse(userDTO, req, s.auth, s.tokenStore)
+	if err != nil {
+		logger.Errorf("%s issue login response failed for user_id=%d: %s", authRequestLogPrefix(ctx, "manual_auth.login"), userDTO.GetId(), err.Error())
+		return nil, err
+	}
+	return resp, nil
 }
 
 func (s *manualAuthenticationService) Logout(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
@@ -123,6 +156,11 @@ func (s *manualAuthenticationService) Logout(ctx context.Context, _ *emptypb.Emp
 }
 
 func (s *manualAuthenticationService) RefreshToken(ctx context.Context, req *authenticationv1.LoginRequest) (*authenticationv1.LoginResponse, error) {
+	logger := s.logger()
+	if s == nil {
+		logger.Errorf("%s authentication service is not initialized", authRequestLogPrefix(ctx, "manual_auth.refresh"))
+		return nil, authenticationv1.ErrorInternalServerError("authentication service is unavailable")
+	}
 	if req.GetGrantType() != authenticationv1.GrantType_refresh_token {
 		return nil, authenticationv1.ErrorInvalidGrantType("unsupported grant_type %q", req.GetGrantType().String())
 	}
@@ -130,16 +168,23 @@ func (s *manualAuthenticationService) RefreshToken(ctx context.Context, req *aut
 		return nil, authenticationv1.ErrorBadRequest("refresh_token is required")
 	}
 	if s.auth == nil || s.userRepo == nil || s.tokenStore == nil {
+		logger.Errorf("%s authentication service unavailable: auth_nil=%t user_repo_nil=%t token_store_nil=%t", authRequestLogPrefix(ctx, "manual_auth.refresh"), s.auth == nil, s.userRepo == nil, s.tokenStore == nil)
 		return nil, authenticationv1.ErrorInternalServerError("authentication service is unavailable")
 	}
 	refreshRecord, err := s.tokenStore.ResolveRefreshToken(req.GetRefreshToken())
 	if err != nil {
+		logger.Errorf("%s resolve refresh token failed: %s", authRequestLogPrefix(ctx, "manual_auth.refresh"), err.Error())
 		return nil, err
 	}
 	userDTO, err := s.userRepo.Get(ensureDefaultViewerContext(ctx), &identityv1.GetUserRequest{
 		QueryBy: &identityv1.GetUserRequest_Id{Id: refreshRecord.UserID},
 	})
 	if err != nil || userDTO == nil {
+		if err != nil {
+			logger.Errorf("%s load user failed for user_id=%d: %s", authRequestLogPrefix(ctx, "manual_auth.refresh"), refreshRecord.UserID, err.Error())
+		} else {
+			logger.Errorf("%s load user returned nil for user_id=%d", authRequestLogPrefix(ctx, "manual_auth.refresh"), refreshRecord.UserID)
+		}
 		return nil, authenticationv1.ErrorUserNotFound("user not found")
 	}
 	if err := isUserDTOAllowedToLogin(userDTO); err != nil {
@@ -148,12 +193,36 @@ func (s *manualAuthenticationService) RefreshToken(ctx context.Context, req *aut
 	refreshReq := cloneRefreshLoginRequest(req, refreshRecord)
 	resp, err := issueLoginResponse(userDTO, refreshReq, s.auth, s.tokenStore)
 	if err != nil {
+		logger.Errorf("%s issue rotated token pair failed for user_id=%d jti=%s: %s", authRequestLogPrefix(ctx, "manual_auth.refresh"), userDTO.GetId(), refreshRecord.JTI, err.Error())
 		return nil, err
 	}
 	if err := s.tokenStore.RevokeTokenPairWithAccessGrace(req.GetRefreshToken(), refreshRecord.JTI, accessTokenRefreshGraceTTL); err != nil {
+		logger.Errorf("%s revoke old token pair with grace failed for user_id=%d jti=%s: %s", authRequestLogPrefix(ctx, "manual_auth.refresh"), userDTO.GetId(), refreshRecord.JTI, err.Error())
 		return nil, authenticationv1.ErrorInternalServerError("failed to rotate token pair")
 	}
 	return resp, nil
+}
+
+func authRequestLogPrefix(ctx context.Context, chain string) string {
+	parts := make([]string, 0, 5)
+	if chain = strings.TrimSpace(chain); chain != "" {
+		parts = append(parts, "chain="+chain)
+	}
+	if tr, ok := transport.FromServerContext(ctx); ok && tr != nil {
+		if op := strings.TrimSpace(tr.Operation()); op != "" {
+			parts = append(parts, "operation="+op)
+		}
+		if htr, ok := tr.(httptransport.Transporter); ok && htr.Request() != nil {
+			req := htr.Request()
+			if reqID := strings.TrimSpace(req.Header.Get("X-Request-ID")); reqID != "" {
+				parts = append(parts, "request_id="+reqID)
+			}
+			if path := strings.TrimSpace(req.URL.Path); path != "" {
+				parts = append(parts, "path="+path)
+			}
+		}
+	}
+	return strings.Join(parts, " ")
 }
 
 func loadDataConfig(appCtx *app.AppCtx) *conf.Data {
@@ -641,10 +710,13 @@ type manualUserProfileService struct {
 	userRepo           repo.UserRepo
 	userCredentialRepo repo.UserCredentialRepo
 	credentialFinder   userCredentialFinder
+	log                *log.Helper
 }
 
 func newManualUserProfileService(data GeneratedData) *manualUserProfileService {
-	service := &manualUserProfileService{}
+	service := &manualUserProfileService{
+		log: log.NewHelper(log.With(log.GetLogger(), "module", "user_profile/server")),
+	}
 	if dataWithUserRepo, ok := data.(generatedDataWithUserRepo); ok {
 		service.userRepo = dataWithUserRepo.UserRepoProvider()
 	}
@@ -658,6 +730,9 @@ func newManualUserProfileService(data GeneratedData) *manualUserProfileService {
 }
 
 func (s *manualUserProfileService) GetUser(ctx context.Context, _ *emptypb.Empty) (*identityv1.User, error) {
+	if s == nil {
+		return nil, authenticationv1.ErrorInternalServerError("user service is unavailable")
+	}
 	if s.userRepo != nil {
 		if viewer, ok := crudviewer.FromContext(ctx); ok && viewer.UserID() > 0 {
 			user, err := s.userRepo.Get(ctx, &identityv1.GetUserRequest{
@@ -666,13 +741,22 @@ func (s *manualUserProfileService) GetUser(ctx context.Context, _ *emptypb.Empty
 			if err == nil && user != nil {
 				return user, nil
 			}
+			if err != nil {
+				s.log.Errorf("chain=manual_user_profile.get operation=/admin.service.v1.UserProfileService/Get user_id=%d load current user failed: %s", viewer.UserID(), err.Error())
+			} else {
+				s.log.Errorf("chain=manual_user_profile.get operation=/admin.service.v1.UserProfileService/Get user_id=%d load current user returned nil", viewer.UserID())
+			}
 		}
 	}
 	return nil, authenticationv1.ErrorUnauthorized("user is not authenticated")
 }
 
 func (s *manualUserProfileService) UpdateUser(ctx context.Context, req *identityv1.UpdateUserRequest) (*emptypb.Empty, error) {
+	if s == nil {
+		return nil, authenticationv1.ErrorInternalServerError("user service is unavailable")
+	}
 	if s.userRepo == nil {
+		s.log.Errorf("chain=manual_user_profile.update operation=/admin.service.v1.UserProfileService/Update user repo is unavailable")
 		return nil, authenticationv1.ErrorInternalServerError("user service is unavailable")
 	}
 	viewer, ok := crudviewer.FromContext(ctx)
@@ -697,11 +781,20 @@ func (s *manualUserProfileService) UpdateUser(ctx context.Context, req *identity
 		updateReq.Data.Region = data.Region
 	}
 
-	return s.userRepo.Update(ctx, updateReq)
+	resp, err := s.userRepo.Update(ctx, updateReq)
+	if err != nil {
+		s.log.Errorf("chain=manual_user_profile.update operation=/admin.service.v1.UserProfileService/Update user_id=%d update current user failed: %s", viewer.UserID(), err.Error())
+		return nil, err
+	}
+	return resp, nil
 }
 
 func (s *manualUserProfileService) ChangePassword(ctx context.Context, req *identityv1.ChangePasswordRequest) (*emptypb.Empty, error) {
+	if s == nil {
+		return nil, authenticationv1.ErrorInternalServerError("user service is unavailable")
+	}
 	if s.userRepo == nil || s.credentialFinder == nil {
+		s.log.Errorf("chain=manual_user_profile.change_password operation=/admin.service.v1.UserProfileService/ChangePassword user service dependencies are unavailable: user_repo_nil=%t credential_finder_nil=%t", s.userRepo == nil, s.credentialFinder == nil)
 		return nil, authenticationv1.ErrorInternalServerError("user service is unavailable")
 	}
 	viewer, ok := crudviewer.FromContext(ctx)
@@ -722,11 +815,17 @@ func (s *manualUserProfileService) ChangePassword(ctx context.Context, req *iden
 		QueryBy: &identityv1.GetUserRequest_Id{Id: uint32(viewer.UserID())},
 	})
 	if err != nil || userDTO == nil {
+		if err != nil {
+			s.log.Errorf("chain=manual_user_profile.change_password operation=/admin.service.v1.UserProfileService/ChangePassword user_id=%d load current user failed: %s", viewer.UserID(), err.Error())
+		} else {
+			s.log.Errorf("chain=manual_user_profile.change_password operation=/admin.service.v1.UserProfileService/ChangePassword user_id=%d load current user returned nil", viewer.UserID())
+		}
 		return nil, authenticationv1.ErrorUserNotFound("user not found")
 	}
 
 	credential, err := s.credentialFinder.FindPasswordCredentialByIdentifier(ensureDefaultViewerContext(ctx), userDTO.GetUsername())
 	if err != nil {
+		s.log.Errorf("chain=manual_user_profile.change_password operation=/admin.service.v1.UserProfileService/ChangePassword user_id=%d username=%s load password credential failed: %s", viewer.UserID(), userDTO.GetUsername(), err.Error())
 		return nil, err
 	}
 	if credential == nil || credential.Credential == nil || credential.Credential.Credential == nil {
@@ -735,6 +834,7 @@ func (s *manualUserProfileService) ChangePassword(ctx context.Context, req *iden
 
 	matched, _, err := repo.VerifyPasswordCredential(oldPassword, *credential.Credential.Credential)
 	if err != nil {
+		s.log.Errorf("chain=manual_user_profile.change_password operation=/admin.service.v1.UserProfileService/ChangePassword user_id=%d verify old password failed: %s", viewer.UserID(), err.Error())
 		return nil, err
 	}
 	if !matched {
@@ -742,6 +842,7 @@ func (s *manualUserProfileService) ChangePassword(ctx context.Context, req *iden
 	}
 
 	if err := s.credentialFinder.UpgradePasswordCredential(ctx, credential.Credential.ID, newPassword); err != nil {
+		s.log.Errorf("chain=manual_user_profile.change_password operation=/admin.service.v1.UserProfileService/ChangePassword user_id=%d credential_id=%d upgrade password credential failed: %s", viewer.UserID(), credential.Credential.ID, err.Error())
 		return nil, err
 	}
 

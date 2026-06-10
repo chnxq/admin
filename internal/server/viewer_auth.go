@@ -14,6 +14,7 @@ import (
 
 	crudviewer "github.com/chnxq/x-crud/viewer"
 	kerrors "github.com/chnxq/xkitmod/errors"
+	"github.com/chnxq/xkitmod/log"
 	"github.com/chnxq/xkitpkg/app"
 	"github.com/chnxq/xkitpkg/middleware"
 )
@@ -35,6 +36,7 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 	if !ok {
 		return nil
 	}
+	logger := log.NewHelper(log.With(log.GetLogger(), "module", "authentication/server"))
 
 	userRepo := source.UserRepoProvider()
 	roleReader, _ := source.RoleRepoProvider().(repo.RolePermissionReader)
@@ -53,6 +55,7 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 			}
 
 			if authErr != nil {
+				logger.Errorf("%s auth config unavailable: %s", authRequestLogPrefix(ctx, "viewer_auth"), authErr.Error())
 				return nil, authenticationv1.ErrorInternalServerError("auth config is unavailable")
 			}
 			token := parseBearerToken(ctx)
@@ -65,6 +68,7 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 			}
 			claims, err := parseAndValidateToken(token, auth, tokenCategoryAccess)
 			if err != nil {
+				logger.Errorf("%s parse access token failed: %s", authRequestLogPrefix(ctx, "viewer_auth"), err.Error())
 				if isProtectedServerRequest(ctx) {
 					return nil, err
 				}
@@ -72,9 +76,11 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 			}
 			if !skipTokenCheck {
 				if tokenStoreErr != nil {
+					logger.Errorf("%s token store unavailable: %s", authRequestLogPrefix(ctx, "viewer_auth"), tokenStoreErr.Error())
 					return nil, authenticationv1.ErrorInternalServerError("token store is unavailable")
 				}
 				if err := tokenStore.ValidateAccessToken(token, claims); err != nil {
+					logger.Errorf("%s validate access token failed for user_id=%d jti=%s: %s", authRequestLogPrefix(ctx, "viewer_auth"), claims.UserID, claims.ID, err.Error())
 					return nil, err
 				}
 			}
@@ -83,6 +89,11 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 				QueryBy: &identityv1.GetUserRequest_Id{Id: claims.UserID},
 			})
 			if err != nil || user == nil {
+				if err != nil {
+					logger.Errorf("%s load viewer user failed for user_id=%d: %s", authRequestLogPrefix(ctx, "viewer_auth"), claims.UserID, err.Error())
+				} else {
+					logger.Errorf("%s load viewer user returned nil for user_id=%d", authRequestLogPrefix(ctx, "viewer_auth"), claims.UserID)
+				}
 				if isProtectedServerRequest(ctx) {
 					if err == nil || ent.IsNotFound(err) {
 						return nil, authenticationv1.ErrorUserNotFound("user not found")

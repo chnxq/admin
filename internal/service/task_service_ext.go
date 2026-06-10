@@ -22,6 +22,7 @@ func (s *TaskService) create(ctx context.Context, req *taskv1.CreateTaskRequest)
 		return nil, fmt.Errorf("invalid parameter")
 	}
 	if err := s.validateTaskInput(ctx, req.Data, true); err != nil {
+		s.log.Errorf("create task failed: validate input task_name=%q group_id=%d: %s", req.Data.GetTaskName(), req.Data.GetGroupId(), err.Error())
 		return nil, err
 	}
 	if _, err := s.taskRepo.Create(ctx, req); err != nil {
@@ -32,6 +33,7 @@ func (s *TaskService) create(ctx context.Context, req *taskv1.CreateTaskRequest)
 		return nil, err
 	}
 	if err := s.syncTaskSchedule(ctx, taskItem); err != nil {
+		s.log.Errorf("create task failed: sync schedule task_id=%d: %s", taskItem.GetId(), err.Error())
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -42,6 +44,7 @@ func (s *TaskService) update(ctx context.Context, req *taskv1.UpdateTaskRequest)
 		return nil, fmt.Errorf("invalid parameter")
 	}
 	if err := s.validateTaskInput(ctx, req.Data, false); err != nil {
+		s.log.Errorf("update task failed: validate input task_id=%d task_name=%q: %s", req.GetId(), req.Data.GetTaskName(), err.Error())
 		return nil, err
 	}
 	if _, err := s.taskRepo.Update(ctx, req); err != nil {
@@ -52,6 +55,7 @@ func (s *TaskService) update(ctx context.Context, req *taskv1.UpdateTaskRequest)
 		return nil, err
 	}
 	if err := s.syncTaskSchedule(ctx, taskItem); err != nil {
+		s.log.Errorf("update task failed: sync schedule task_id=%d: %s", taskItem.GetId(), err.Error())
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
@@ -63,6 +67,7 @@ func (s *TaskService) delete(ctx context.Context, req *taskv1.DeleteTaskRequest)
 	}
 	for _, id := range req.GetIds() {
 		if err := s.stopScheduledTask(ctx, id); err != nil {
+			s.log.Errorf("delete task failed: stop schedule task_id=%d: %s", id, err.Error())
 			return nil, err
 		}
 	}

@@ -22,6 +22,7 @@ func RegisterTaskScheduler(
 	}
 	scheduler.Start()
 	if err := restoreTaskScheduler(ctx, taskService, scheduler); err != nil {
+		taskService.log.Errorf("register task scheduler failed: restore tasks: %s", err.Error())
 		stopTaskScheduler(scheduler)
 		return nil, err
 	}
@@ -38,12 +39,15 @@ func resolveTaskScheduler(
 		return nil, fmt.Errorf("task services are not configured")
 	}
 	if taskService.scheduler == nil {
+		taskService.log.Errorf("resolve task scheduler failed: task scheduler is not configured")
 		return nil, fmt.Errorf("task scheduler is not configured")
 	}
 	if taskGroupService.scheduler == nil {
+		taskService.log.Errorf("resolve task scheduler failed: task group scheduler is not configured")
 		return nil, fmt.Errorf("task group scheduler is not configured")
 	}
 	if taskService.scheduler != taskGroupService.scheduler {
+		taskService.log.Errorf("resolve task scheduler failed: task schedulers are inconsistent")
 		return nil, fmt.Errorf("task schedulers are inconsistent")
 	}
 	return taskService.scheduler, nil

@@ -19,6 +19,7 @@ func (s *TaskGroupService) create(ctx context.Context, req *taskv1.CreateTaskGro
 		return nil, fmt.Errorf("invalid parameter")
 	}
 	if err := validateTaskGroupInput(ctx, req.Data, true); err != nil {
+		s.log.Errorf("create task group failed: validate input group_name=%q: %s", req.Data.GetGroupName(), err.Error())
 		return nil, err
 	}
 	return s.taskGroupRepo.Create(ctx, req)
@@ -29,6 +30,7 @@ func (s *TaskGroupService) update(ctx context.Context, req *taskv1.UpdateTaskGro
 		return nil, fmt.Errorf("invalid parameter")
 	}
 	if err := validateTaskGroupInput(ctx, req.Data, false); err != nil {
+		s.log.Errorf("update task group failed: validate input group_id=%d group_name=%q: %s", req.GetId(), req.Data.GetGroupName(), err.Error())
 		return nil, err
 	}
 	return s.taskGroupRepo.Update(ctx, req)
@@ -41,9 +43,11 @@ func (s *TaskGroupService) delete(ctx context.Context, req *taskv1.DeleteTaskGro
 	for _, groupID := range req.GetIds() {
 		items, err := listTasksByGroup(ctx, s.taskRepo, groupID)
 		if err != nil {
+			s.log.Errorf("delete task group failed: list tasks group_id=%d: %s", groupID, err.Error())
 			return nil, err
 		}
 		if len(items) > 0 {
+			s.log.Errorf("delete task group failed: group_id=%d still has %d tasks", groupID, len(items))
 			return nil, fmt.Errorf("task group %d still has tasks", groupID)
 		}
 	}
