@@ -5,7 +5,7 @@ data:
 #    driver: "mysql"
 #    source: "root:112233@tcp(localhost:3306)/admin?parseTime=true&charset=utf8mb4&loc=Asia%2FShanghai"
     migrate: true
-    debug: true
+    debug: false
     enable_trace: true
     enable_metrics: false
     max_idle_connections: 25

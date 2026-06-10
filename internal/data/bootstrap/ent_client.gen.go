@@ -5,9 +5,11 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 
 	entCrud "github.com/chnxq/x-crud/entgo"
@@ -36,8 +38,14 @@ func NewEntClient(ctx *app.AppCtx) (*entCrud.EntClient[*ent.Client], func(), err
 	if err != nil {
 		return nil, func() {}, fmt.Errorf("open database: %w", err)
 	}
+	clientDrv := any(drv)
+	if database.GetDebug() {
+		clientDrv = dialect.DebugWithContext(drv, func(_ context.Context, args ...any) {
+			logger.Infof("[sql] %s", fmt.Sprint(args...))
+		})
+	}
 
-	client := ent.NewClient(ent.Driver(drv))
+	client := ent.NewClient(ent.Driver(clientDrv.(dialect.Driver)))
 	entClient := entCrud.NewEntClient[*ent.Client](client, drv)
 	if database.GetMaxIdleConnections() > 0 || database.GetMaxOpenConnections() > 0 || database.GetConnectionMaxLifetime() != nil {
 		entClient.SetConnectionOption(
