@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -11,6 +15,7 @@ import (
 	identityv1 "admin/api/gen/identity/v1"
 	"admin/internal/data/repo"
 	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
+	crudviewer "github.com/chnxq/x-crud/viewer"
 	"github.com/chnxq/xkitmod/log"
 	"github.com/chnxq/xkitpkg/app"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -36,8 +41,16 @@ type manualSocialAuthService struct {
 	credentialFinder   userCredentialFinder
 	authFlowStore      *authFlowStore
 	auth               *authConfig
+	social             *socialAuthConfig
 	tokenStore         *tokenStore
 	registration       *registrationDefaultsResolver
+	log                *log.Helper
+}
+
+type manualOAuthService struct {
+	userCredentialRepo repo.UserCredentialRepo
+	authFlowStore      *authFlowStore
+	social             *socialAuthConfig
 	log                *log.Helper
 }
 
@@ -76,12 +89,37 @@ func newManualSocialAuthService(appCtx *app.AppCtx, data GeneratedData) *manualS
 	} else {
 		service.log.Errorf("chain=manual_social_auth.init load auth config failed: %s", err.Error())
 	}
+	if social, err := loadSocialAuthConfig(appCtx); err == nil {
+		service.social = social
+	} else {
+		service.log.Errorf("chain=manual_social_auth.init load social auth config failed: %s", err.Error())
+	}
 	if store, err := newTokenStore(loadDataConfig(appCtx)); err == nil {
 		service.tokenStore = store
 	} else {
 		service.log.Errorf("chain=manual_social_auth.init init token store failed: %s", err.Error())
 	}
 	service.registration = newRegistrationDefaultsResolver(appCtx, data)
+	return service
+}
+
+func newManualOAuthService(appCtx *app.AppCtx, data GeneratedData) *manualOAuthService {
+	service := &manualOAuthService{
+		log: log.NewHelper(log.With(log.GetLogger(), "module", "oauth/server")),
+	}
+	if provider, ok := data.(generatedDataWithUserCredentialRepo); ok {
+		service.userCredentialRepo = provider.UserCredentialRepoProvider()
+	}
+	if store, err := newAuthFlowStore(loadDataConfig(appCtx)); err == nil {
+		service.authFlowStore = store
+	} else {
+		service.log.Errorf("chain=manual_oauth.init init auth flow store failed: %s", err.Error())
+	}
+	if social, err := loadSocialAuthConfig(appCtx); err == nil {
+		service.social = social
+	} else {
+		service.log.Errorf("chain=manual_oauth.init load social auth config failed: %s", err.Error())
+	}
 	return service
 }
 
@@ -213,11 +251,15 @@ func (s *manualSocialAuthService) StartSocialLogin(ctx context.Context, req *aut
 	if s == nil || s.authFlowStore == nil {
 		return nil, authenticationv1.ErrorInternalServerError("social auth service is unavailable")
 	}
+	providerKey := strings.TrimSpace(req.GetProviderKey())
+	if providerKey == "" {
+		providerKey = providerKeyFromOAuthProvider(req.GetProvider())
+	}
 	authFlow := &manualAuthFlowService{store: s.authFlowStore, log: s.log}
 	session, err := authFlow.CreateAuthSession(ctx, &authenticationv1.CreateAuthSessionRequest{
 		Scene:       authenticationv1.AuthFlowScene_SOCIAL_LOGIN,
 		TenantId:    req.TenantId,
-		ProviderKey: req.ProviderKey,
+		ProviderKey: stringPtr(providerKey),
 		Provider:    optionalOAuthProvider(req.GetProvider()),
 		ClientType:  req.ClientType,
 		RedirectUri: req.RedirectUri,
@@ -225,8 +267,15 @@ func (s *manualSocialAuthService) StartSocialLogin(ctx context.Context, req *aut
 	if err != nil {
 		return nil, err
 	}
+	authorizationURL := session.GetQrCodeUrl()
+	if req.GetProvider() == authenticationv1.OAuthProvider_GITHUB {
+		authorizationURL, err = s.buildGitHubAuthorizationURL(req, session)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &authenticationv1.StartSocialLoginResponse{
-		AuthorizationUrl: stringPtr(session.GetQrCodeUrl()),
+		AuthorizationUrl: stringPtr(authorizationURL),
 		QrCodeUrl:        stringPtr(session.GetQrCodeUrl()),
 		SessionId:        stringPtr(session.GetSessionId()),
 		State:            stringPtr(session.GetSessionToken()),
@@ -245,11 +294,26 @@ func (s *manualSocialAuthService) CompleteSocialLogin(ctx context.Context, req *
 	}
 	sessionID := strings.TrimSpace(req.GetSessionId())
 	if sessionID == "" {
-		sessionID = "as_" + newJWTID()
+		if existing, err := s.authFlowStore.FindSessionByToken(strings.TrimSpace(req.GetState())); err == nil && existing != nil {
+			sessionID = existing.SessionID
+		} else {
+			sessionID = "as_" + newJWTID()
+		}
 	}
-	accountID := strings.TrimSpace(req.GetCode())
-	if accountID == "" {
+	code := strings.TrimSpace(req.GetCode())
+	if code == "" {
 		return nil, authenticationv1.ErrorBadRequest("social auth code is required")
+	}
+	sessionRecord, err := s.resolveAuthSessionForComplete(req, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	profile, err := s.resolveSocialProfile(ctx, req, providerKey, code, sessionRecord)
+	if err != nil {
+		return nil, err
+	}
+	if profile == nil || strings.TrimSpace(profile.ProviderAccountID) == "" {
+		return nil, authenticationv1.ErrorUnauthorized("failed to resolve social identity")
 	}
 
 	record := &authFlowSessionRecord{
@@ -259,22 +323,20 @@ func (s *manualSocialAuthService) CompleteSocialLogin(ctx context.Context, req *
 		Status:            authenticationv1.AuthFlowStatus_AUTH_FLOW_PENDING,
 		ProviderKey:       providerKey,
 		Provider:          req.GetProvider(),
-		ProviderAccountID: accountID,
+		ProviderAccountID: profile.ProviderAccountID,
 		ClientType:        req.GetClientType(),
 		RedirectURI:       strings.TrimSpace(req.GetRedirectUri()),
 		ExpiresAt:         time.Now().Add(authFlowSessionTTL),
-		Profile: &authFlowProviderProfile{
-			ProviderKey:       providerKey,
-			Provider:          req.GetProvider(),
-			ProviderAccountID: accountID,
-			Nickname:          defaultSocialNickname(providerKey, accountID),
-			RawProfileJSON:    socialProfileJSON(providerKey, accountID),
-		},
+		Profile:           profile,
 	}
-	if existing, err := s.authFlowStore.GetSession(sessionID); err == nil && existing != nil {
+	if sessionRecord != nil {
+		existing := sessionRecord
 		record.SessionToken = existing.SessionToken
 		record.TenantID = existing.TenantID
 		record.ExpiresAt = existing.ExpiresAt
+		if strings.TrimSpace(record.RedirectURI) == "" {
+			record.RedirectURI = existing.RedirectURI
+		}
 	}
 	if record.SessionToken == "" {
 		token, err := generateRefreshToken()
@@ -285,9 +347,9 @@ func (s *manualSocialAuthService) CompleteSocialLogin(ctx context.Context, req *
 	}
 	record.QRCodeURL = buildAuthSessionQRCodeURL(record.SessionID, record.SessionToken, record.ProviderKey)
 
-	userDTO, err := s.findUserBySocialIdentity(ctx, record.TenantID, providerKey, accountID)
+	userDTO, err := s.findUserBySocialIdentity(ctx, record.TenantID, providerKey, profile.ProviderAccountID)
 	if err != nil {
-		s.log.Errorf("%s complete social login find bound user failed provider=%s account=%s: %s", authRequestLogPrefix(ctx, "manual_social_auth.complete"), providerKey, accountID, err.Error())
+		s.log.Errorf("%s complete social login find bound user failed provider=%s account=%s: %s", authRequestLogPrefix(ctx, "manual_social_auth.complete"), providerKey, profile.ProviderAccountID, err.Error())
 		return nil, err
 	}
 	if userDTO != nil {
@@ -476,6 +538,263 @@ func buildSocialCredentialPagingRequest(tenantID uint32, providerKey, accountID 
 	}
 }
 
+func (s *manualOAuthService) ListLinkedAccounts(ctx context.Context, _ *authenticationv1.ListLinkedAccountsRequest) (*authenticationv1.ListLinkedAccountsResponse, error) {
+	if s == nil || s.userCredentialRepo == nil {
+		return nil, authenticationv1.ErrorInternalServerError("oauth service is unavailable")
+	}
+	viewer, ok := crudviewer.FromContext(ctx)
+	if !ok || viewer == nil || viewer.UserID() == 0 {
+		return nil, authenticationv1.ErrorUnauthorized("user is not authenticated")
+	}
+	resp, err := s.userCredentialRepo.List(ctx, &paginationv1.PagingRequest{
+		NoPaging: boolPtr(true),
+		FilteringType: &paginationv1.PagingRequest_FilterExpr{
+			FilterExpr: &paginationv1.FilterExpr{
+				Type: paginationv1.ExprType_AND,
+				Conditions: []*paginationv1.FilterCondition{
+					{
+						Field:      "user_id",
+						Op:         paginationv1.Operator_EQ,
+						ValueOneof: &paginationv1.FilterCondition_Value{Value: fmt.Sprintf("%d", viewer.UserID())},
+					},
+					{
+						Field:      "identity_type",
+						Op:         paginationv1.Operator_EQ,
+						ValueOneof: &paginationv1.FilterCondition_Value{Value: authenticationv1.UserCredential_SOCIAL_OAUTH.String()},
+					},
+					{
+						Field:      "status",
+						Op:         paginationv1.Operator_NEQ,
+						ValueOneof: &paginationv1.FilterCondition_Value{Value: authenticationv1.UserCredential_REMOVED.String()},
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		s.log.Errorf("%s list linked oauth accounts failed: %s", authRequestLogPrefix(ctx, "manual_oauth.list"), err.Error())
+		return nil, err
+	}
+	result := &authenticationv1.ListLinkedAccountsResponse{
+		Items: make([]*authenticationv1.UserCredential, 0, len(resp.GetItems())),
+		Total: resp.GetTotal(),
+	}
+	for _, item := range resp.GetItems() {
+		if item == nil {
+			continue
+		}
+		result.Items = append(result.Items, item)
+	}
+	return result, nil
+}
+
+func (s *manualOAuthService) ListProviders(context.Context, *authenticationv1.ListProvidersRequest) (*authenticationv1.ListProvidersResponse, error) {
+	items := make([]*authenticationv1.ProviderMetadata, 0, 6)
+	if s != nil && s.social != nil {
+		items = append(items, providerMetadataFromConfig(authenticationv1.OAuthProvider_GITHUB, "github", "GitHub", s.social.GitHub))
+	}
+	items = append(items,
+		providerMetadataPlaceholder(authenticationv1.OAuthProvider_DINGTALK, "dingtalk", "钉钉"),
+		providerMetadataPlaceholder(authenticationv1.OAuthProvider_WECHAT, "wechat_web", "微信网页"),
+		providerMetadataPlaceholder(authenticationv1.OAuthProvider_WECHAT, "wechat_miniapp", "微信小程序"),
+		providerMetadataPlaceholder(authenticationv1.OAuthProvider_ALIPAY, "alipay", "支付宝"),
+		providerMetadataPlaceholder(authenticationv1.OAuthProvider_DOUYIN, "douyin", "抖音"),
+	)
+	return &authenticationv1.ListProvidersResponse{Items: items}, nil
+}
+
+func (s *manualOAuthService) StartLinkOAuth(ctx context.Context, req *authenticationv1.StartLinkOAuthRequest) (*authenticationv1.StartLinkOAuthResponse, error) {
+	if s == nil || s.authFlowStore == nil {
+		return nil, authenticationv1.ErrorInternalServerError("oauth service is unavailable")
+	}
+	viewer, ok := crudviewer.FromContext(ctx)
+	if !ok || viewer == nil || viewer.UserID() == 0 {
+		return nil, authenticationv1.ErrorUnauthorized("user is not authenticated")
+	}
+	providerKey := strings.TrimSpace(req.GetProviderCustom())
+	if providerKey == "" {
+		providerKey = providerKeyFromOAuthProvider(req.GetProvider())
+	}
+	sessionID := "as_" + newJWTID()
+	sessionToken, err := generateRefreshToken()
+	if err != nil {
+		return nil, authenticationv1.ErrorInternalServerError("failed to create oauth session")
+	}
+	record := &authFlowSessionRecord{
+		SessionID:    sessionID,
+		SessionToken: sessionToken,
+		Scene:        authenticationv1.AuthFlowScene_SOCIAL_BIND,
+		Status:       authenticationv1.AuthFlowStatus_AUTH_FLOW_PENDING,
+		TenantID:     uint32(viewer.TenantID()),
+		UserID:       uint32(viewer.UserID()),
+		ProviderKey:  providerKey,
+		Provider:     req.GetProvider(),
+		ClientType:   authenticationv1.ClientType_admin,
+		RedirectURI:  strings.TrimSpace(req.GetRedirectUri()),
+		ExpiresAt:    time.Now().Add(authFlowSessionTTL),
+		DisplayHint:  "请完成第三方账号授权以绑定当前登录用户",
+	}
+	if record.RedirectURI == "" && s.social != nil && req.GetProvider() == authenticationv1.OAuthProvider_GITHUB {
+		record.RedirectURI = s.social.GitHub.RedirectURI
+	}
+	if err := s.authFlowStore.SaveSession(record); err != nil {
+		return nil, authenticationv1.ErrorInternalServerError("failed to persist oauth session")
+	}
+	if req.GetProvider() != authenticationv1.OAuthProvider_GITHUB {
+		return nil, authenticationv1.ErrorNotImplemented("this oauth provider is not implemented yet")
+	}
+	if s.social == nil || !s.social.GitHub.Enabled {
+		return nil, authenticationv1.ErrorInternalServerError("github social auth is not configured")
+	}
+	startReq := &authenticationv1.StartSocialLoginRequest{
+		Provider:    req.GetProvider(),
+		ProviderKey: stringPtr(providerKey),
+		RedirectUri: stringPtr(record.RedirectURI),
+	}
+	session := authSessionDTO(record)
+	authorizationURL, err := (&manualSocialAuthService{social: s.social}).buildGitHubAuthorizationURL(startReq, session)
+	if err != nil {
+		return nil, err
+	}
+	return &authenticationv1.StartLinkOAuthResponse{
+		AuthorizationUrl: stringPtr(authorizationURL),
+		OperationId:      stringPtr(record.SessionID),
+		ExpiresAt:        timestamppb.New(record.ExpiresAt),
+		DisplayHint:      stringPtr(record.DisplayHint),
+	}, nil
+}
+
+func (s *manualOAuthService) ConfirmLinkOAuth(ctx context.Context, req *authenticationv1.ConfirmLinkOAuthRequest) (*authenticationv1.ConfirmLinkOAuthResponse, error) {
+	if s == nil || s.authFlowStore == nil || s.userCredentialRepo == nil {
+		return nil, authenticationv1.ErrorInternalServerError("oauth service is unavailable")
+	}
+	viewer, ok := crudviewer.FromContext(ctx)
+	if !ok || viewer == nil || viewer.UserID() == 0 {
+		return nil, authenticationv1.ErrorUnauthorized("user is not authenticated")
+	}
+	operationID := strings.TrimSpace(req.GetOperationId())
+	var (
+		record *authFlowSessionRecord
+		err    error
+	)
+	if operationID != "" {
+		record, err = s.authFlowStore.GetSession(operationID)
+	} else {
+		record, err = s.authFlowStore.FindSessionByToken(strings.TrimSpace(req.GetState()))
+	}
+	if err != nil || record == nil {
+		return nil, authenticationv1.ErrorUnauthorized("oauth session is invalid or expired")
+	}
+	if record.UserID != uint32(viewer.UserID()) {
+		return nil, authenticationv1.ErrorForbidden("oauth session does not belong to current user")
+	}
+	code := strings.TrimSpace(req.GetCode())
+	if code == "" {
+		return nil, authenticationv1.ErrorBadRequest("oauth code is required")
+	}
+	profile, err := (&manualSocialAuthService{
+		authFlowStore: s.authFlowStore,
+		social:        s.social,
+		log:           s.log,
+	}).resolveSocialProfile(ctx, &authenticationv1.CompleteSocialLoginRequest{
+		Provider:    req.GetProvider(),
+		ProviderKey: stringPtr(firstNonEmpty(record.ProviderKey, req.GetProviderCustom())),
+		RedirectUri: stringPtr(firstNonEmpty(record.RedirectURI, req.GetProviderCustom())),
+	}, firstNonEmpty(record.ProviderKey, providerKeyFromOAuthProvider(req.GetProvider())), code, record)
+	if err != nil {
+		return nil, err
+	}
+	if profile == nil || strings.TrimSpace(profile.ProviderAccountID) == "" {
+		return nil, authenticationv1.ErrorUnauthorized("failed to resolve social identity")
+	}
+
+	existing, err := s.findLinkedCredentialByProvider(ctx, firstNonEmpty(record.ProviderKey, providerKeyFromOAuthProvider(req.GetProvider())), profile.ProviderAccountID)
+	if err != nil {
+		s.log.Errorf("%s find linked oauth credential failed: %s", authRequestLogPrefix(ctx, "manual_oauth.confirm"), err.Error())
+		return nil, err
+	}
+	if existing != nil {
+		if existing.GetUserId() != uint32(viewer.UserID()) {
+			return nil, authenticationv1.ErrorConflict("third-party account is already linked to another user")
+		}
+		return &authenticationv1.ConfirmLinkOAuthResponse{
+			Account: existing,
+		}, nil
+	}
+
+	identityType := authenticationv1.UserCredential_SOCIAL_OAUTH
+	credentialType := authenticationv1.UserCredential_OAUTH_TOKEN
+	status := authenticationv1.UserCredential_ENABLED
+	createReq := &authenticationv1.CreateUserCredentialRequest{
+		Data: &authenticationv1.UserCredential{
+			UserId:            uint32Ptr(uint32(viewer.UserID())),
+			TenantId:          uint32Ptr(uint32(viewer.TenantID())),
+			IdentityType:      &identityType,
+			CredentialType:    &credentialType,
+			Identifier:        stringPtr(profile.ProviderAccountID),
+			Credential:        stringPtr(profile.RawProfileJSON),
+			Status:            &status,
+			Provider:          stringPtr(firstNonEmpty(record.ProviderKey, providerKeyFromOAuthProvider(req.GetProvider()))),
+			ProviderAccountId: stringPtr(profile.ProviderAccountID),
+			ExtraInfo:         stringPtr(profile.RawProfileJSON),
+		},
+	}
+	if _, err := s.userCredentialRepo.Create(ensureDefaultViewerContext(ctx), createReq); err != nil {
+		s.log.Errorf("%s create linked oauth credential failed user_id=%d: %s", authRequestLogPrefix(ctx, "manual_oauth.confirm"), viewer.UserID(), err.Error())
+		return nil, err
+	}
+	created, err := s.findLinkedCredentialByProvider(ctx, firstNonEmpty(record.ProviderKey, providerKeyFromOAuthProvider(req.GetProvider())), profile.ProviderAccountID)
+	if err != nil {
+		return nil, err
+	}
+	record.Status = authenticationv1.AuthFlowStatus_AUTH_FLOW_CONFIRMED
+	now := time.Now()
+	record.ConfirmedAt = &now
+	record.ProviderAccountID = profile.ProviderAccountID
+	record.Profile = profile
+	_ = s.authFlowStore.SaveSession(record)
+	return &authenticationv1.ConfirmLinkOAuthResponse{
+		Account: created,
+	}, nil
+}
+
+func (s *manualOAuthService) UnlinkOAuth(ctx context.Context, req *authenticationv1.UnlinkOAuthRequest) (*emptypb.Empty, error) {
+	if s == nil || s.userCredentialRepo == nil {
+		return nil, authenticationv1.ErrorInternalServerError("oauth service is unavailable")
+	}
+	viewer, ok := crudviewer.FromContext(ctx)
+	if !ok || viewer == nil || viewer.UserID() == 0 {
+		return nil, authenticationv1.ErrorUnauthorized("user is not authenticated")
+	}
+	var target *authenticationv1.UserCredential
+	var err error
+	if req.GetCredentialId() != "" {
+		target, err = s.userCredentialRepo.Get(ctx, &authenticationv1.GetUserCredentialRequest{
+			QueryBy: &authenticationv1.GetUserCredentialRequest_Id{Id: parseUint32Safe(req.GetCredentialId())},
+		})
+	} else {
+		target, err = s.findCurrentUserLinkedCredentialByProvider(ctx, uint32(viewer.UserID()), firstNonEmpty(req.GetProviderCustom(), providerKeyFromOAuthProvider(req.GetProvider())))
+	}
+	if err != nil {
+		s.log.Errorf("%s load linked oauth credential failed: %s", authRequestLogPrefix(ctx, "manual_oauth.unlink"), err.Error())
+		return nil, err
+	}
+	if target == nil || target.GetId() == 0 {
+		return nil, authenticationv1.ErrorNotFound("linked oauth account not found")
+	}
+	if target.GetUserId() != uint32(viewer.UserID()) {
+		return nil, authenticationv1.ErrorForbidden("linked oauth account does not belong to current user")
+	}
+	_, err = s.userCredentialRepo.Delete(ctx, &authenticationv1.DeleteUserCredentialRequest{
+		QueryBy: &authenticationv1.DeleteUserCredentialRequest_Id{Id: target.GetId()},
+	})
+	if err != nil {
+		s.log.Errorf("%s unlink oauth credential failed credential_id=%d: %s", authRequestLogPrefix(ctx, "manual_oauth.unlink"), target.GetId(), err.Error())
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
 func (s *manualSocialAuthService) bindSocialCredential(ctx context.Context, userDTO *identityv1.User, bindRecord *authFlowBindRecord) error {
 	if userDTO == nil || bindRecord == nil || bindRecord.Profile == nil {
 		return authenticationv1.ErrorBadRequest("invalid bind record")
@@ -660,6 +979,278 @@ func socialProfileJSON(providerKey, accountID string) string {
 	return string(payload)
 }
 
+func providerMetadataFromConfig(provider authenticationv1.OAuthProvider, providerCustom, displayName string, cfg githubSocialProviderConfig) *authenticationv1.ProviderMetadata {
+	return &authenticationv1.ProviderMetadata{
+		Provider:              provider,
+		ProviderCustom:        providerCustom,
+		DisplayName:           displayName,
+		AuthorizationEndpoint: cfg.AuthURL,
+		TokenEndpoint:         cfg.TokenURL,
+		DefaultScopes:         append([]string(nil), cfg.Scopes...),
+	}
+}
+
+func providerMetadataPlaceholder(provider authenticationv1.OAuthProvider, providerCustom, displayName string) *authenticationv1.ProviderMetadata {
+	return &authenticationv1.ProviderMetadata{
+		Provider:       provider,
+		ProviderCustom: providerCustom,
+		DisplayName:    displayName,
+	}
+}
+
+type socialAuthConfig struct {
+	GitHub githubSocialProviderConfig
+}
+
+type githubSocialProviderConfig struct {
+	AuthURL      string
+	ClientID     string
+	ClientSecret string
+	Enabled      bool
+	RedirectURI  string
+	Scopes       []string
+	TokenURL     string
+	UserAPIURL   string
+}
+
+type githubAccessTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	Error       string `json:"error"`
+	Description string `json:"error_description"`
+}
+
+type githubUserProfile struct {
+	AvatarURL string `json:"avatar_url"`
+	Email     string `json:"email"`
+	ID        int64  `json:"id"`
+	Login     string `json:"login"`
+	Name      string `json:"name"`
+}
+
+func loadSocialAuthConfig(appCtx *app.AppCtx) (*socialAuthConfig, error) {
+	if appCtx == nil || appCtx.GetConfig() == nil || appCtx.GetConfig().GetServer() == nil {
+		return nil, fmt.Errorf("app config is missing")
+	}
+	restCfg := appCtx.GetConfig().GetServer().GetRest()
+	defaultRedirectURI := "http://localhost:5666/auth/social/callback/github"
+	if restCfg != nil {
+		if address := strings.TrimSpace(restCfg.GetAddr()); address != "" {
+			if strings.HasPrefix(address, ":") {
+				defaultRedirectURI = "http://localhost" + address + "/auth/social/callback/github"
+			} else if strings.HasPrefix(address, "http://") || strings.HasPrefix(address, "https://") {
+				defaultRedirectURI = strings.TrimRight(address, "/") + "/auth/social/callback/github"
+			}
+		}
+	}
+	cfg := &socialAuthConfig{}
+	authn := appCtx.GetConfig().GetAuthn()
+	if authn != nil && authn.GetSocialAuth() != nil && authn.GetSocialAuth().GetGithub() != nil {
+		github := authn.GetSocialAuth().GetGithub()
+		cfg.GitHub = githubSocialProviderConfig{
+			AuthURL:      strings.TrimSpace(github.GetAuthUrl()),
+			ClientID:     strings.TrimSpace(github.GetClientId()),
+			ClientSecret: strings.TrimSpace(github.GetClientSecret()),
+			Enabled:      github.GetEnabled(),
+			RedirectURI:  strings.TrimSpace(github.GetRedirectUri()),
+			Scopes:       append([]string(nil), github.GetScopes()...),
+			TokenURL:     strings.TrimSpace(github.GetTokenUrl()),
+			UserAPIURL:   strings.TrimSpace(github.GetUserApiUrl()),
+		}
+	}
+	if cfg.GitHub.AuthURL == "" {
+		cfg.GitHub.AuthURL = "https://github.com/login/oauth/authorize"
+	}
+	if cfg.GitHub.TokenURL == "" {
+		cfg.GitHub.TokenURL = "https://github.com/login/oauth/access_token"
+	}
+	if cfg.GitHub.UserAPIURL == "" {
+		cfg.GitHub.UserAPIURL = "https://api.github.com/user"
+	}
+	if len(cfg.GitHub.Scopes) == 0 {
+		cfg.GitHub.Scopes = []string{"read:user", "user:email"}
+	}
+	if cfg.GitHub.ClientID == "" {
+		cfg.GitHub.ClientID = strings.TrimSpace(getenvFirst("ADMIN_SOCIAL_GITHUB_CLIENT_ID", "GITHUB_CLIENT_ID"))
+	}
+	if cfg.GitHub.ClientSecret == "" {
+		cfg.GitHub.ClientSecret = strings.TrimSpace(getenvFirst("ADMIN_SOCIAL_GITHUB_CLIENT_SECRET", "GITHUB_CLIENT_SECRET"))
+	}
+	if cfg.GitHub.RedirectURI == "" {
+		cfg.GitHub.RedirectURI = strings.TrimSpace(getenvFirst("ADMIN_SOCIAL_GITHUB_REDIRECT_URI"))
+	}
+	if cfg.GitHub.RedirectURI == "" {
+		cfg.GitHub.RedirectURI = defaultRedirectURI
+	}
+	if !cfg.GitHub.Enabled {
+		cfg.GitHub.Enabled = cfg.GitHub.ClientID != "" && cfg.GitHub.ClientSecret != ""
+	}
+	return cfg, nil
+}
+
+func getenvFirst(keys ...string) string {
+	for _, key := range keys {
+		if value := strings.TrimSpace(strings.TrimSpace(strings.Trim(os.Getenv(key), "\""))); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func (s *manualSocialAuthService) buildGitHubAuthorizationURL(req *authenticationv1.StartSocialLoginRequest, session *authenticationv1.AuthSession) (string, error) {
+	if s == nil || s.social == nil || !s.social.GitHub.Enabled {
+		return "", authenticationv1.ErrorInternalServerError("github social auth is not configured")
+	}
+	redirectURI := strings.TrimSpace(req.GetRedirectUri())
+	if redirectURI == "" {
+		redirectURI = s.social.GitHub.RedirectURI
+	}
+	query := url.Values{}
+	query.Set("client_id", s.social.GitHub.ClientID)
+	query.Set("redirect_uri", redirectURI)
+	query.Set("state", session.GetSessionToken())
+	query.Set("scope", strings.Join(s.social.GitHub.Scopes, " "))
+	query.Set("allow_signup", "true")
+	return s.social.GitHub.AuthURL + "?" + query.Encode(), nil
+}
+
+func (s *manualSocialAuthService) resolveAuthSessionForComplete(req *authenticationv1.CompleteSocialLoginRequest, sessionID string) (*authFlowSessionRecord, error) {
+	if s == nil || s.authFlowStore == nil || strings.TrimSpace(sessionID) == "" {
+		return nil, nil
+	}
+	record, err := s.authFlowStore.GetSession(sessionID)
+	if err != nil {
+		if strings.TrimSpace(req.GetState()) == "" {
+			return nil, authenticationv1.ErrorUnauthorized("social auth session is invalid or expired")
+		}
+		return nil, nil
+	}
+	if state := strings.TrimSpace(req.GetState()); state != "" && record != nil && record.SessionToken != "" && state != record.SessionToken {
+		return nil, authenticationv1.ErrorUnauthorized("social auth state mismatch")
+	}
+	return record, nil
+}
+
+func (s *manualSocialAuthService) resolveSocialProfile(ctx context.Context, req *authenticationv1.CompleteSocialLoginRequest, providerKey, code string, sessionRecord *authFlowSessionRecord) (*authFlowProviderProfile, error) {
+	switch req.GetProvider() {
+	case authenticationv1.OAuthProvider_GITHUB:
+		return s.resolveGitHubProfile(ctx, req, code, sessionRecord)
+	default:
+		return &authFlowProviderProfile{
+			ProviderKey:       providerKey,
+			Provider:          req.GetProvider(),
+			ProviderAccountID: code,
+			Nickname:          defaultSocialNickname(providerKey, code),
+			RawProfileJSON:    socialProfileJSON(providerKey, code),
+		}, nil
+	}
+}
+
+func (s *manualSocialAuthService) resolveGitHubProfile(ctx context.Context, req *authenticationv1.CompleteSocialLoginRequest, code string, sessionRecord *authFlowSessionRecord) (*authFlowProviderProfile, error) {
+	if s == nil || s.social == nil || !s.social.GitHub.Enabled {
+		return nil, authenticationv1.ErrorInternalServerError("github social auth is not configured")
+	}
+	redirectURI := strings.TrimSpace(req.GetRedirectUri())
+	if redirectURI == "" && sessionRecord != nil {
+		redirectURI = strings.TrimSpace(sessionRecord.RedirectURI)
+	}
+	if redirectURI == "" {
+		redirectURI = s.social.GitHub.RedirectURI
+	}
+	token, err := s.exchangeGitHubAccessToken(ctx, code, redirectURI)
+	if err != nil {
+		return nil, err
+	}
+	profile, rawProfile, err := s.fetchGitHubProfile(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	accountID := fmt.Sprintf("%d", profile.ID)
+	nickname := strings.TrimSpace(profile.Name)
+	if nickname == "" {
+		nickname = strings.TrimSpace(profile.Login)
+	}
+	return &authFlowProviderProfile{
+		ProviderKey:       "github",
+		Provider:          authenticationv1.OAuthProvider_GITHUB,
+		ProviderAccountID: accountID,
+		Nickname:          nickname,
+		Avatar:            strings.TrimSpace(profile.AvatarURL),
+		Email:             strings.TrimSpace(profile.Email),
+		RawProfileJSON:    rawProfile,
+	}, nil
+}
+
+func (s *manualSocialAuthService) exchangeGitHubAccessToken(ctx context.Context, code, redirectURI string) (string, error) {
+	values := url.Values{}
+	values.Set("client_id", s.social.GitHub.ClientID)
+	values.Set("client_secret", s.social.GitHub.ClientSecret)
+	values.Set("code", code)
+	if strings.TrimSpace(redirectURI) != "" {
+		values.Set("redirect_uri", redirectURI)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.social.GitHub.TokenURL, strings.NewReader(values.Encode()))
+	if err != nil {
+		return "", authenticationv1.ErrorInternalServerError("failed to build github token request")
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", authenticationv1.ErrorInternalServerError("github token exchange failed")
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", authenticationv1.ErrorInternalServerError("failed to read github token response")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		s.log.Errorf("chain=manual_social_auth.github status=token_exchange code=%d body=%s", resp.StatusCode, string(body))
+		return "", authenticationv1.ErrorUnauthorized("github token exchange failed")
+	}
+	var tokenResp githubAccessTokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return "", authenticationv1.ErrorInternalServerError("failed to decode github token response")
+	}
+	if strings.TrimSpace(tokenResp.AccessToken) == "" {
+		if strings.TrimSpace(tokenResp.Description) != "" {
+			return "", authenticationv1.ErrorUnauthorized("github token exchange rejected by provider")
+		}
+		return "", authenticationv1.ErrorUnauthorized("github access token is empty")
+	}
+	return tokenResp.AccessToken, nil
+}
+
+func (s *manualSocialAuthService) fetchGitHubProfile(ctx context.Context, accessToken string) (*githubUserProfile, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.social.GitHub.UserAPIURL, nil)
+	if err != nil {
+		return nil, "", authenticationv1.ErrorInternalServerError("failed to build github profile request")
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("User-Agent", "xadmin-social-auth")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, "", authenticationv1.ErrorInternalServerError("github profile request failed")
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", authenticationv1.ErrorInternalServerError("failed to read github profile response")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		s.log.Errorf("chain=manual_social_auth.github status=fetch_profile code=%d body=%s", resp.StatusCode, string(body))
+		return nil, "", authenticationv1.ErrorUnauthorized("github profile request failed")
+	}
+	var profile githubUserProfile
+	if err := json.Unmarshal(body, &profile); err != nil {
+		return nil, "", authenticationv1.ErrorInternalServerError("failed to decode github profile")
+	}
+	if profile.ID == 0 {
+		return nil, "", authenticationv1.ErrorUnauthorized("github account id is empty")
+	}
+	return &profile, string(body), nil
+}
+
 func existingAccountIdentifier(existing *authenticationv1.ExistingAccountBinding) string {
 	if existing == nil {
 		return ""
@@ -681,6 +1272,10 @@ func optionalString(value string) *string {
 	if value == "" {
 		return nil
 	}
+	return &value
+}
+
+func boolPtr(value bool) *bool {
 	return &value
 }
 
@@ -707,6 +1302,94 @@ func firstNonZero(values ...uint32) uint32 {
 		}
 	}
 	return 0
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+func parseUint32Safe(value string) uint32 {
+	var result uint32
+	_, _ = fmt.Sscanf(strings.TrimSpace(value), "%d", &result)
+	return result
+}
+
+func (s *manualOAuthService) findLinkedCredentialByProvider(ctx context.Context, providerKey, accountID string) (*authenticationv1.UserCredential, error) {
+	if s == nil || s.userCredentialRepo == nil {
+		return nil, nil
+	}
+	conditions := []*paginationv1.FilterCondition{
+		{
+			Field:      "provider",
+			Op:         paginationv1.Operator_EQ,
+			ValueOneof: &paginationv1.FilterCondition_Value{Value: providerKey},
+		},
+		{
+			Field:      "identity_type",
+			Op:         paginationv1.Operator_EQ,
+			ValueOneof: &paginationv1.FilterCondition_Value{Value: authenticationv1.UserCredential_SOCIAL_OAUTH.String()},
+		},
+	}
+	if strings.TrimSpace(accountID) != "" {
+		conditions = append(conditions, &paginationv1.FilterCondition{
+			Field:      "provider_account_id",
+			Op:         paginationv1.Operator_EQ,
+			ValueOneof: &paginationv1.FilterCondition_Value{Value: accountID},
+		})
+	}
+	resp, err := s.userCredentialRepo.List(ensureDefaultViewerContext(ctx), &paginationv1.PagingRequest{
+		Limit: uint32Ptr(1),
+		FilteringType: &paginationv1.PagingRequest_FilterExpr{
+			FilterExpr: &paginationv1.FilterExpr{
+				Type:       paginationv1.ExprType_AND,
+				Conditions: conditions,
+			},
+		},
+	})
+	if err != nil || resp == nil || len(resp.GetItems()) == 0 {
+		return nil, err
+	}
+	return resp.GetItems()[0], nil
+}
+
+func (s *manualOAuthService) findCurrentUserLinkedCredentialByProvider(ctx context.Context, userID uint32, providerKey string) (*authenticationv1.UserCredential, error) {
+	if s == nil || s.userCredentialRepo == nil {
+		return nil, nil
+	}
+	resp, err := s.userCredentialRepo.List(ensureDefaultViewerContext(ctx), &paginationv1.PagingRequest{
+		Limit: uint32Ptr(1),
+		FilteringType: &paginationv1.PagingRequest_FilterExpr{
+			FilterExpr: &paginationv1.FilterExpr{
+				Type: paginationv1.ExprType_AND,
+				Conditions: []*paginationv1.FilterCondition{
+					{
+						Field:      "user_id",
+						Op:         paginationv1.Operator_EQ,
+						ValueOneof: &paginationv1.FilterCondition_Value{Value: fmt.Sprintf("%d", userID)},
+					},
+					{
+						Field:      "provider",
+						Op:         paginationv1.Operator_EQ,
+						ValueOneof: &paginationv1.FilterCondition_Value{Value: providerKey},
+					},
+					{
+						Field:      "identity_type",
+						Op:         paginationv1.Operator_EQ,
+						ValueOneof: &paginationv1.FilterCondition_Value{Value: authenticationv1.UserCredential_SOCIAL_OAUTH.String()},
+					},
+				},
+			},
+		},
+	})
+	if err != nil || resp == nil || len(resp.GetItems()) == 0 {
+		return nil, err
+	}
+	return resp.GetItems()[0], nil
 }
 
 func uint32Value(value *uint32) uint32 {

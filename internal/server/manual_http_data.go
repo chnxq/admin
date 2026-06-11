@@ -34,6 +34,7 @@ func RegisterManualHTTPServicesWithData(srv *httptransport.Server, appCtx *app.A
 	adminv1.RegisterAuthenticationServiceHTTPServer(srv, newManualAuthenticationService(appCtx, data))
 	adminv1.RegisterAuthFlowServiceHTTPServer(srv, newManualAuthFlowServiceWithStore(appCtx))
 	adminv1.RegisterSocialAuthServiceHTTPServer(srv, newManualSocialAuthService(appCtx, data))
+	adminv1.RegisterOAuthServiceHTTPServer(srv, newManualOAuthService(appCtx, data))
 	adminv1.RegisterAdminPortalServiceHTTPServer(srv, newManualAdminPortalService(data))
 	profileService := newManualUserProfileService(appCtx, data)
 	adminv1.RegisterUserProfileServiceHTTPServer(srv, profileService)

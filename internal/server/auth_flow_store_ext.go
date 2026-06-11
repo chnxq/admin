@@ -116,7 +116,15 @@ func (s *authFlowStore) SaveSession(record *authFlowSessionRecord) error {
 	if ttl <= 0 {
 		ttl = authFlowSessionTTL
 	}
-	return s.cache.Set(authFlowSessionKey(record.SessionID), string(payload), ttl)
+	if err := s.cache.Set(authFlowSessionKey(record.SessionID), string(payload), ttl); err != nil {
+		return err
+	}
+	if token := strings.TrimSpace(record.SessionToken); token != "" {
+		if err := s.cache.Set(authFlowSessionTokenKey(token), record.SessionID, ttl); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *authFlowStore) GetSession(sessionID string) (*authFlowSessionRecord, error) {
@@ -138,7 +146,27 @@ func (s *authFlowStore) DeleteSession(sessionID string) error {
 	if s == nil || s.cache == nil {
 		return nil
 	}
+	if record, err := s.GetSession(sessionID); err == nil && record != nil {
+		if token := strings.TrimSpace(record.SessionToken); token != "" {
+			_ = s.cache.Del(authFlowSessionTokenKey(token))
+		}
+	}
 	return s.cache.Del(authFlowSessionKey(sessionID))
+}
+
+func (s *authFlowStore) FindSessionByToken(sessionToken string) (*authFlowSessionRecord, error) {
+	if s == nil || s.cache == nil {
+		return nil, fmt.Errorf("auth flow store is unavailable")
+	}
+	sessionToken = strings.TrimSpace(sessionToken)
+	if sessionToken == "" {
+		return nil, fmt.Errorf("auth flow session token is required")
+	}
+	sessionID, err := s.cache.Get(authFlowSessionTokenKey(sessionToken))
+	if err != nil || strings.TrimSpace(sessionID) == "" {
+		return nil, fmt.Errorf("auth flow session not found")
+	}
+	return s.GetSession(sessionID)
 }
 
 func (s *authFlowStore) SaveBindRecord(bindToken string, record *authFlowBindRecord) error {
@@ -187,4 +215,8 @@ func authFlowSessionKey(sessionID string) string {
 
 func authFlowBindKey(bindToken string) string {
 	return fmt.Sprintf("%s:bind:%s", authFlowStoreKeyPrefix, strings.TrimSpace(bindToken))
+}
+
+func authFlowSessionTokenKey(sessionToken string) string {
+	return fmt.Sprintf("%s:token:%s", authFlowStoreKeyPrefix, strings.TrimSpace(sessionToken))
 }
