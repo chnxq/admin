@@ -24,9 +24,9 @@ authn:
 
   social_auth:
     github:
-      enabled: false
-      client_id: ""
-      client_secret: ""
+      enabled: true
+      client_id: "你的 GitHub OAuth App Client ID"
+      client_secret: "你的 GitHub OAuth App Client Secret"
       redirect_uri: "http://localhost:5666/auth/social/callback/github"
       auth_url: "https://github.com/login/oauth/authorize"
       token_url: "https://github.com/login/oauth/access_token"
@@ -35,7 +35,7 @@ authn:
         - "read:user"
         - "user:email"
     dingtalk:
-      enabled: false
+      enabled: true
       client_id: ""
       client_secret: ""
       redirect_uri: ""
