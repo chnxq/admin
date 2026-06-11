@@ -2,7 +2,7 @@ server:
   # gRPC服务配置
   grpc:
     network: "tcp"
-    addr: "0.0.0.0:9090"
+    addr: "0.0.0.0:7790"
     timeout: "10s"
     middleware:
     # 中间件配置
