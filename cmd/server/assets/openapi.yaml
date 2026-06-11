@@ -2537,6 +2537,100 @@ paths:
                 "200":
                     description: OK
                     content: {}
+    /admin/v1/oauth/linked-accounts:
+        get:
+            tags:
+                - OAuthService
+            description: 查询当前用户已绑定的第三方账号列表
+            operationId: OAuthService_ListLinkedAccounts
+            parameters:
+                - name: userId
+                  in: query
+                  schema:
+                    type: string
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: pageToken
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListLinkedAccountsResponse'
+    /admin/v1/oauth/providers:
+        get:
+            tags:
+                - OAuthService
+            description: 查询支持的第三方登录提供商列表
+            operationId: OAuthService_ListProviders
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListProvidersResponse'
+    /admin/v1/oauth:confirm-link:
+        post:
+            tags:
+                - OAuthService
+            description: 确认第三方账号绑定
+            operationId: OAuthService_ConfirmLinkOAuth
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ConfirmLinkOAuthRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConfirmLinkOAuthResponse'
+    /admin/v1/oauth:start-link:
+        post:
+            tags:
+                - OAuthService
+            description: 开始第三方账号绑定流程
+            operationId: OAuthService_StartLinkOAuth
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/StartLinkOAuthRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/StartLinkOAuthResponse'
+    /admin/v1/oauth:unlink:
+        post:
+            tags:
+                - OAuthService
+            description: 解除第三方账号绑定
+            operationId: OAuthService_UnlinkOAuth
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UnlinkOAuthRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
     /admin/v1/operation-audit-logs:
         get:
             tags:
@@ -3739,7 +3833,7 @@ paths:
         post:
             tags:
                 - SocialAuthService
-            description: 处理小程序 code 或 authCode 登录交换
+            description: 处理小程序 code 或 authCode 换取登录结果
             operationId: SocialAuthService_ExchangeMiniAppCode
             requestBody:
                 content:
@@ -5482,6 +5576,71 @@ components:
                     format: uint32
                 login:
                     $ref: '#/components/schemas/LoginResponse'
+        ConfirmLinkOAuthRequest:
+            type: object
+            properties:
+                operationId:
+                    type: string
+                provider:
+                    enum:
+                        - OAUTH_PROVIDER_UNSPECIFIED
+                        - WECHAT
+                        - QQ
+                        - WEIBO
+                        - DOUYIN
+                        - KUAISHOU
+                        - BAIDU
+                        - ALIPAY
+                        - TAOBAO
+                        - JD
+                        - MEITUAN
+                        - DINGTALK
+                        - BILIBILI
+                        - XIAOHONGSHU
+                        - GOOGLE
+                        - FACEBOOK
+                        - APPLE
+                        - TELEGRAM
+                        - TWITTER
+                        - LINKEDIN
+                        - GITHUB
+                        - MICROSOFT
+                        - DISCORD
+                        - SLACK
+                        - INSTAGRAM
+                        - TIKTOK
+                        - REDDIT
+                        - YOUTUBE
+                        - SPOTIFY
+                        - PINTEREST
+                        - SNAPCHAT
+                        - TUMBLR
+                        - YAHOO
+                        - WHATSAPP
+                        - LINE
+                    type: string
+                    format: enum
+                providerCustom:
+                    type: string
+                oauthToken:
+                    type: string
+                code:
+                    type: string
+                authorizationResponse:
+                    type: string
+                state:
+                    type: string
+                displayName:
+                    type: string
+            description: 确认第三方账号绑定请求
+        ConfirmLinkOAuthResponse:
+            type: object
+            properties:
+                account:
+                    $ref: '#/components/schemas/UserCredential'
+                secret:
+                    $ref: '#/components/schemas/OAuthToken'
+            description: 确认第三方账号绑定响应
         CreateApiRequest:
             type: object
             properties:
@@ -6807,6 +6966,18 @@ components:
                 total:
                     type: string
             description: 语言列表 - 答复
+        ListLinkedAccountsResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/UserCredential'
+                total:
+                    type: string
+                nextPageToken:
+                    type: string
+            description: 查询已绑定第三方账号列表响应
         ListLoginAuditLogResponse:
             type: object
             properties:
@@ -6915,6 +7086,14 @@ components:
                 total:
                     type: string
             description: 获取职位列表 - 答复
+        ListProvidersResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ProviderMetadata'
+            description: 查询支持的第三方提供商列表响应
         ListRoleResponse:
             type: object
             properties:
@@ -7462,6 +7641,21 @@ components:
                 meta:
                     $ref: '#/components/schemas/MenuMeta'
             description: 路由项
+        OAuthToken:
+            type: object
+            properties:
+                accessToken:
+                    type: string
+                refreshToken:
+                    type: string
+                scopes:
+                    type: array
+                    items:
+                        type: string
+                expiresAt:
+                    type: string
+                    format: date-time
+            description: 第三方访问令牌摘要
         OperationAuditLog:
             type: object
             properties:
@@ -8121,6 +8315,69 @@ components:
                     type: string
                     description: 预签名约束的 Content-Type（可选）
             description: 预签名选项
+        ProviderMetadata:
+            type: object
+            properties:
+                provider:
+                    enum:
+                        - OAUTH_PROVIDER_UNSPECIFIED
+                        - WECHAT
+                        - QQ
+                        - WEIBO
+                        - DOUYIN
+                        - KUAISHOU
+                        - BAIDU
+                        - ALIPAY
+                        - TAOBAO
+                        - JD
+                        - MEITUAN
+                        - DINGTALK
+                        - BILIBILI
+                        - XIAOHONGSHU
+                        - GOOGLE
+                        - FACEBOOK
+                        - APPLE
+                        - TELEGRAM
+                        - TWITTER
+                        - LINKEDIN
+                        - GITHUB
+                        - MICROSOFT
+                        - DISCORD
+                        - SLACK
+                        - INSTAGRAM
+                        - TIKTOK
+                        - REDDIT
+                        - YOUTUBE
+                        - SPOTIFY
+                        - PINTEREST
+                        - SNAPCHAT
+                        - TUMBLR
+                        - YAHOO
+                        - WHATSAPP
+                        - LINE
+                    type: string
+                    format: enum
+                providerCustom:
+                    type: string
+                displayName:
+                    type: string
+                authorizationEndpoint:
+                    type: string
+                tokenEndpoint:
+                    type: string
+                defaultScopes:
+                    type: array
+                    items:
+                        type: string
+                authorizeParams:
+                    type: object
+                    additionalProperties:
+                        type: string
+                tokenParams:
+                    type: object
+                    additionalProperties:
+                        type: string
+            description: 第三方提供商元信息
         RegisterByEmailRequest:
             type: object
             properties:
@@ -8459,6 +8716,74 @@ components:
                     type: string
                     description: 第三方原始资料 JSON
             description: 第三方资料摘要
+        StartLinkOAuthRequest:
+            required:
+                - provider
+            type: object
+            properties:
+                provider:
+                    enum:
+                        - OAUTH_PROVIDER_UNSPECIFIED
+                        - WECHAT
+                        - QQ
+                        - WEIBO
+                        - DOUYIN
+                        - KUAISHOU
+                        - BAIDU
+                        - ALIPAY
+                        - TAOBAO
+                        - JD
+                        - MEITUAN
+                        - DINGTALK
+                        - BILIBILI
+                        - XIAOHONGSHU
+                        - GOOGLE
+                        - FACEBOOK
+                        - APPLE
+                        - TELEGRAM
+                        - TWITTER
+                        - LINKEDIN
+                        - GITHUB
+                        - MICROSOFT
+                        - DISCORD
+                        - SLACK
+                        - INSTAGRAM
+                        - TIKTOK
+                        - REDDIT
+                        - YOUTUBE
+                        - SPOTIFY
+                        - PINTEREST
+                        - SNAPCHAT
+                        - TUMBLR
+                        - YAHOO
+                        - WHATSAPP
+                        - LINE
+                    type: string
+                    format: enum
+                providerCustom:
+                    type: string
+                redirectUri:
+                    type: string
+                scopes:
+                    type: array
+                    items:
+                        type: string
+                state:
+                    type: string
+            description: 开始第三方账号绑定流程请求
+        StartLinkOAuthResponse:
+            type: object
+            properties:
+                authorizationUrl:
+                    type: string
+                operationId:
+                    type: string
+                expiresAt:
+                    type: string
+                    format: date-time
+                displayHint:
+                    type: string
+            description: 开始第三方账号绑定流程响应
         StartSocialLoginRequest:
             required:
                 - provider
@@ -8864,6 +9189,53 @@ components:
                 exist:
                     type: boolean
             description: 租户是否存在 - 答复
+        UnlinkOAuthRequest:
+            type: object
+            properties:
+                credentialId:
+                    type: string
+                provider:
+                    enum:
+                        - OAUTH_PROVIDER_UNSPECIFIED
+                        - WECHAT
+                        - QQ
+                        - WEIBO
+                        - DOUYIN
+                        - KUAISHOU
+                        - BAIDU
+                        - ALIPAY
+                        - TAOBAO
+                        - JD
+                        - MEITUAN
+                        - DINGTALK
+                        - BILIBILI
+                        - XIAOHONGSHU
+                        - GOOGLE
+                        - FACEBOOK
+                        - APPLE
+                        - TELEGRAM
+                        - TWITTER
+                        - LINKEDIN
+                        - GITHUB
+                        - MICROSOFT
+                        - DISCORD
+                        - SLACK
+                        - INSTAGRAM
+                        - TIKTOK
+                        - REDDIT
+                        - YOUTUBE
+                        - SPOTIFY
+                        - PINTEREST
+                        - SNAPCHAT
+                        - TUMBLR
+                        - YAHOO
+                        - WHATSAPP
+                        - LINE
+                    type: string
+                    format: enum
+                providerCustom:
+                    type: string
+            description: 解除第三方账号绑定请求
         UpdateApiRequest:
             type: object
             properties:
@@ -9392,6 +9764,117 @@ components:
                     description: 删除时间
                     format: date-time
             description: 用户
+        UserCredential:
+            type: object
+            properties:
+                id:
+                    type: integer
+                    format: uint32
+                userId:
+                    type: integer
+                    description: 关联主表的用户ID
+                    format: uint32
+                tenantId:
+                    type: integer
+                    description: 租户ID
+                    format: uint32
+                identityType:
+                    enum:
+                        - USERNAME
+                        - USERID
+                        - EMAIL
+                        - PHONE
+                        - SOCIAL_OAUTH
+                        - ENTERPRISE_SSO
+                        - IDENTITY_API_KEY
+                        - DEVICE_ID
+                        - IDENTITY_CUSTOM
+                        - IDENTITY_RESERVED_FOR_FUTURE
+                    type: string
+                    description: 认证方式类型，如用户名+密码、邮箱+密码、手机号+验证码、第三方平台认证等
+                    format: enum
+                identifier:
+                    type: string
+                    description: 身份唯一标识符，如果是密码登录，则是用户名；如果是邮箱登录，则是邮箱地址；如果是手机号登录，则是手机号；如果是第三方平台登录，则是第三方平台的唯一ID（如微信的OpenID）
+                credentialType:
+                    enum:
+                        - TYPE_UNSPECIFIED
+                        - PASSWORD_HASH
+                        - API_KEY
+                        - API_SECRET
+                        - ACCESS_TOKEN
+                        - REFRESH_TOKEN
+                        - JWT
+                        - OAUTH_TOKEN
+                        - OAUTH_AUTHORIZATION_CODE
+                        - OAUTH_CLIENT_CREDENTIALS
+                        - OTP
+                        - TOTP
+                        - SMS_OTP
+                        - EMAIL_OTP
+                        - HARDWARE_TOKEN
+                        - SOFTWARE_TOKEN
+                        - SECURITY_KEY
+                        - BIOMETRIC
+                        - BIOMETRIC_TOKEN
+                        - SSO_TOKEN
+                        - SAML_ASSERTION
+                        - OPENID_CONNECT_ID_TOKEN
+                        - SESSION_COOKIE
+                        - TEMPORARY_CREDENTIAL
+                        - CUSTOM
+                        - RESERVED_FOR_FUTURE
+                    type: string
+                    description: 凭证类型，如加密密码、访问令牌、刷新令牌等
+                    format: enum
+                credential:
+                    type: string
+                    description: 凭证，如果是密码登录，则是密码的hash值；如果是邮箱登录，则是邮箱的验证码；如果是手机号登录，则是手机号的验证码；如果是第三方平台登录，则是第三方平台的access_token
+                isPrimary:
+                    type: boolean
+                    description: 是否主认证方式，如果用户同时绑定了邮箱和手机号，那么可以指定邮箱为主要认证方式。
+                status:
+                    enum:
+                        - DISABLED
+                        - ENABLED
+                        - EXPIRED
+                        - UNVERIFIED
+                        - REMOVED
+                        - BLOCKED
+                        - TEMPORARY
+                    type: string
+                    description: 凭证状态
+                    format: enum
+                extraInfo:
+                    type: string
+                    description: 扩展信息，如果是第三方平台认证，可以记录第三方平台的用户信息。
+                provider:
+                    type: string
+                    description: 第三方平台标识（如 google, wechat）
+                providerAccountId:
+                    type: string
+                    description: 第三方平台的账号唯一ID
+                createdBy:
+                    type: integer
+                    description: 创建者ID
+                    format: uint32
+                updatedBy:
+                    type: integer
+                    description: 更新者ID
+                    format: uint32
+                createdAt:
+                    type: string
+                    description: 创建时间
+                    format: date-time
+                updatedAt:
+                    type: string
+                    description: 更新时间
+                    format: date-time
+                deletedAt:
+                    type: string
+                    description: 删除时间
+                    format: date-time
+            description: 用户凭证
         UserExistsResponse:
             type: object
             properties:
@@ -9479,6 +9962,8 @@ tags:
       description: 登录策略管理服务
     - name: MenuService
       description: 后台菜单管理服务
+    - name: OAuthService
+      description: 管理端第三方账号绑定服务
     - name: OperationAuditLogService
       description: 操作审计日志管理服务
     - name: OrgUnitService

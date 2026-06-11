@@ -12,43 +12,43 @@ import "google/api/field_behavior.proto";
 
 import "authentication/v1/user_credential.proto";
 
-// OAuth 服务接口
+// 第三方账号绑定服务
 service OAuthService {
-  // 列出当前用户所有已关联第三方账号（支持分页）
+  // 查询当前用户已绑定的第三方账号列表
   rpc ListLinkedAccounts(ListLinkedAccountsRequest) returns (ListLinkedAccountsResponse) {}
 
-  // 获取单个已关联账号详情（不返回明文 refresh/access）
+  // 查询单个已绑定第三方账号详情
   rpc GetLinkedAccount(GetLinkedAccountRequest) returns (GetLinkedAccountResponse) {}
 
-  // 开始关联流程（返回 authorization_url 或 verification_id 等）
+  // 开始第三方账号绑定流程
   rpc StartLinkOAuth(StartLinkOAuthRequest) returns (StartLinkOAuthResponse) {}
 
-  // 确认关联：前端使用 code/token/verification_id 提交以完成关联
+  // 确认第三方账号绑定
   rpc ConfirmLinkOAuth(ConfirmLinkOAuthRequest) returns (ConfirmLinkOAuthResponse) {}
 
-  // 兼容：直接关联（若已有 oauth_token/code 可直接创建）
+  // 直接绑定第三方账号
   rpc LinkOAuth(LinkOAuthRequest) returns (LinkOAuthResponse) {}
 
-  // 解除关联（按 provider 或已关联凭证 id）
+  // 解除第三方账号绑定
   rpc UnlinkOAuth(UnlinkOAuthRequest) returns (google.protobuf.Empty) {}
 
-  // 撤销指定已关联凭证的所有令牌/访问权（偏向安全/强制撤销）
+  // 撤销指定已绑定账号的访问授权
   rpc RevokeLinkedAccount(RevokeLinkedAccountRequest) returns (google.protobuf.Empty) {}
 
-  // 使用 refresh token 刷新 access token（实现可选择只返回元信息）
+  // 刷新第三方访问令牌
   rpc RefreshOAuthToken(RefreshOAuthTokenRequest) returns (RefreshOAuthTokenResponse) {}
 
-  // 使用服务端接收到的 code 交换 token（常用于 server-side OAuth 流程）
+  // 使用授权码交换第三方访问令牌
   rpc ExchangeOAuthCode(ExchangeOAuthCodeRequest) returns (ExchangeOAuthCodeResponse) {}
 
-  // 列出支持的 OAuth 提供商与其元信息（授权端点、scope 建议等）
+  // 查询支持的第三方提供商列表
   rpc ListProviders(ListProvidersRequest) returns (ListProvidersResponse) {}
 
-  // 获取单个提供商元信息
+  // 查询单个第三方提供商元信息
   rpc GetProviderMetadata(GetProviderMetadataRequest) returns (ProviderMetadata) {}
 }
 
-// 第三方 OAuth 账号服务
+// 第三方提供商枚举
 enum OAuthProvider {
   OAUTH_PROVIDER_UNSPECIFIED = 0; // 未指定
 
@@ -66,14 +66,14 @@ enum OAuthProvider {
   BILIBILI = 12; // 哔哩哔哩
   XIAOHONGSHU = 13; // 小红书
 
-  GOOGLE = 100; // Google
-  FACEBOOK = 101; // Facebook
-  APPLE = 102; // Apple
+  GOOGLE = 100; // 谷歌
+  FACEBOOK = 101; // 脸书
+  APPLE = 102; // 苹果
   TELEGRAM = 103; // Telegram
-  TWITTER = 104; // Twitter
+  TWITTER = 104; // X / Twitter
   LINKEDIN = 105; // LinkedIn
   GITHUB = 106; // GitHub
-  MICROSOFT = 107; // Microsoft
+  MICROSOFT = 107; // 微软
   DISCORD = 108; // Discord
   SLACK = 109; // Slack
   INSTAGRAM = 110; // Instagram
@@ -89,18 +89,18 @@ enum OAuthProvider {
   LINE = 120; // LINE
 }
 
-// OAuth 授权类型
+// OAuth 授权模式
 enum OAuthGrantType {
   OAUTH_GRANT_UNSPECIFIED = 0;
 
-  CLIENT_CREDENTIALS = 1; // client_credentials
-  AUTHORIZATION_CODE = 2; // authorization_code
-  IMPLICIT = 3;           // implicit
-  PASSWORD = 4;           // password
-  REFRESH_TOKEN = 5;      // refresh_token (用于标注凭证来源/用途)
+  CLIENT_CREDENTIALS = 1; // 客户端凭证模式
+  AUTHORIZATION_CODE = 2; // 授权码模式
+  IMPLICIT = 3;           // 简化模式
+  PASSWORD = 4;           // 密码模式
+  REFRESH_TOKEN = 5;      // 刷新令牌模式
 }
 
-// 简化的 token 表示（返回时需谨慎）
+// 第三方访问令牌摘要
 message OAuthToken {
   string access_token = 1;
   optional string refresh_token = 2;
@@ -108,46 +108,52 @@ message OAuthToken {
   optional google.protobuf.Timestamp expires_at = 4;
 }
 
+// 查询已绑定第三方账号列表请求
 message ListLinkedAccountsRequest {
   optional string user_id = 1;
   optional uint32 page_size = 2;
   optional string page_token = 3;
 }
+
+// 查询已绑定第三方账号列表响应
 message ListLinkedAccountsResponse {
   repeated UserCredential items = 1 [json_name = "items"];
   uint64 total = 2 [json_name = "total"];
   string next_page_token = 3 [json_name = "nextPageToken"];
 }
 
-// 关联第三方账号请求
+// 直接绑定第三方账号请求
 message LinkOAuthRequest {
   OAuthProvider provider = 1 [json_name = "provider"];
-  string provider_custom = 2 [json_name = "providerCustom"]; // 可选：当使用自定义平台或细化标识时填写
-  string oauth_token = 3 [json_name = "oauthToken"];         // 第三方返回的 token / code
-  string redirect_uri = 4 [json_name = "redirectUri"];       // 可选：用于某些平台回调验证
+  string provider_custom = 2 [json_name = "providerCustom"]; // 可选：自定义提供商或细分标识
+  string oauth_token = 3 [json_name = "oauthToken"];         // 第三方返回的访问令牌或授权码
+  string redirect_uri = 4 [json_name = "redirectUri"];       // 可选：回调校验地址
 }
 
-// 关联响应（包含已创建的 LinkedAccount）
+// 直接绑定第三方账号响应
 message LinkOAuthResponse {
   UserCredential account = 1 [json_name = "account"];
-  // 可扩展字段：verification_id、state 等
+  // 预留扩展字段，例如 verification_id、state 等。
 }
 
-// 解除关联请求
+// 解除第三方账号绑定请求
 message UnlinkOAuthRequest {
   optional string credential_id = 1;
   OAuthProvider provider = 2;
   string provider_custom = 3;
 }
 
+// 查询单个已绑定第三方账号请求
 message GetLinkedAccountRequest {
   string credential_id = 1;
 }
+
+// 查询单个已绑定第三方账号响应
 message GetLinkedAccountResponse {
   UserCredential account = 1;
 }
 
-// Start / Confirm 流
+// 开始第三方账号绑定流程请求
 message StartLinkOAuthRequest {
   OAuthProvider provider = 1 [(google.api.field_behavior) = REQUIRED];
   string provider_custom = 2;
@@ -155,6 +161,8 @@ message StartLinkOAuthRequest {
   repeated string scopes = 4;
   optional string state = 5;
 }
+
+// 开始第三方账号绑定流程响应
 message StartLinkOAuthResponse {
   optional string authorization_url = 1;
   optional string operation_id = 2;
@@ -162,6 +170,7 @@ message StartLinkOAuthResponse {
   optional string display_hint = 4;
 }
 
+// 确认第三方账号绑定请求
 message ConfirmLinkOAuthRequest {
   optional string operation_id = 1;
   OAuthProvider provider = 2;
@@ -174,16 +183,20 @@ message ConfirmLinkOAuthRequest {
   optional string state = 20;
   optional string display_name = 21;
 }
+
+// 确认第三方账号绑定响应
 message ConfirmLinkOAuthResponse {
   UserCredential account = 1;
   optional OAuthToken secret = 10;
 }
 
-// Refresh / Exchange / Revoke
+// 刷新第三方访问令牌请求
 message RefreshOAuthTokenRequest {
   string credential_id = 1;
   optional string refresh_token = 2;
 }
+
+// 刷新第三方访问令牌响应
 message RefreshOAuthTokenResponse {
   optional string access_token = 1;
   optional google.protobuf.Timestamp expires_at = 2;
@@ -191,32 +204,41 @@ message RefreshOAuthTokenResponse {
   optional bool refresh_token_present = 4;
 }
 
+// 使用授权码交换第三方访问令牌请求
 message ExchangeOAuthCodeRequest {
   OAuthProvider provider = 1;
   string provider_custom = 2;
   string code = 3;
   string redirect_uri = 4;
 }
+
+// 使用授权码交换第三方访问令牌响应
 message ExchangeOAuthCodeResponse {
   OAuthToken token = 1;
   ProviderMetadata provider = 2;
 }
 
+// 撤销已绑定第三方账号访问授权请求
 message RevokeLinkedAccountRequest {
   string credential_id = 1;
   optional string reason = 10;
 }
 
-// 提供商列表与元信息
+// 查询支持的第三方提供商列表请求
 message ListProvidersRequest {}
+
+// 查询支持的第三方提供商列表响应
 message ListProvidersResponse {
   repeated ProviderMetadata items = 1;
 }
 
+// 查询第三方提供商元信息请求
 message GetProviderMetadataRequest {
   OAuthProvider provider = 1;
   optional string provider_custom = 2;
 }
+
+// 第三方提供商元信息
 message ProviderMetadata {
   OAuthProvider provider = 1;
   string provider_custom = 2;

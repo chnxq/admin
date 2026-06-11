@@ -25,7 +25,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// 第三方 OAuth 账号服务
+// 第三方提供商枚举
 type OAuthProvider int32
 
 const (
@@ -43,14 +43,14 @@ const (
 	OAuthProvider_DINGTALK                   OAuthProvider = 11  // 钉钉
 	OAuthProvider_BILIBILI                   OAuthProvider = 12  // 哔哩哔哩
 	OAuthProvider_XIAOHONGSHU                OAuthProvider = 13  // 小红书
-	OAuthProvider_GOOGLE                     OAuthProvider = 100 // Google
-	OAuthProvider_FACEBOOK                   OAuthProvider = 101 // Facebook
-	OAuthProvider_APPLE                      OAuthProvider = 102 // Apple
+	OAuthProvider_GOOGLE                     OAuthProvider = 100 // 谷歌
+	OAuthProvider_FACEBOOK                   OAuthProvider = 101 // 脸书
+	OAuthProvider_APPLE                      OAuthProvider = 102 // 苹果
 	OAuthProvider_TELEGRAM                   OAuthProvider = 103 // Telegram
-	OAuthProvider_TWITTER                    OAuthProvider = 104 // Twitter
+	OAuthProvider_TWITTER                    OAuthProvider = 104 // X / Twitter
 	OAuthProvider_LINKEDIN                   OAuthProvider = 105 // LinkedIn
 	OAuthProvider_GITHUB                     OAuthProvider = 106 // GitHub
-	OAuthProvider_MICROSOFT                  OAuthProvider = 107 // Microsoft
+	OAuthProvider_MICROSOFT                  OAuthProvider = 107 // 微软
 	OAuthProvider_DISCORD                    OAuthProvider = 108 // Discord
 	OAuthProvider_SLACK                      OAuthProvider = 109 // Slack
 	OAuthProvider_INSTAGRAM                  OAuthProvider = 110 // Instagram
@@ -171,16 +171,16 @@ func (OAuthProvider) EnumDescriptor() ([]byte, []int) {
 	return file_authentication_v1_oauth_proto_rawDescGZIP(), []int{0}
 }
 
-// OAuth 授权类型
+// OAuth 授权模式
 type OAuthGrantType int32
 
 const (
 	OAuthGrantType_OAUTH_GRANT_UNSPECIFIED OAuthGrantType = 0
-	OAuthGrantType_CLIENT_CREDENTIALS      OAuthGrantType = 1 // client_credentials
-	OAuthGrantType_AUTHORIZATION_CODE      OAuthGrantType = 2 // authorization_code
-	OAuthGrantType_IMPLICIT                OAuthGrantType = 3 // implicit
-	OAuthGrantType_PASSWORD                OAuthGrantType = 4 // password
-	OAuthGrantType_REFRESH_TOKEN           OAuthGrantType = 5 // refresh_token (用于标注凭证来源/用途)
+	OAuthGrantType_CLIENT_CREDENTIALS      OAuthGrantType = 1 // 客户端凭证模式
+	OAuthGrantType_AUTHORIZATION_CODE      OAuthGrantType = 2 // 授权码模式
+	OAuthGrantType_IMPLICIT                OAuthGrantType = 3 // 简化模式
+	OAuthGrantType_PASSWORD                OAuthGrantType = 4 // 密码模式
+	OAuthGrantType_REFRESH_TOKEN           OAuthGrantType = 5 // 刷新令牌模式
 )
 
 // Enum value maps for OAuthGrantType.
@@ -230,7 +230,7 @@ func (OAuthGrantType) EnumDescriptor() ([]byte, []int) {
 	return file_authentication_v1_oauth_proto_rawDescGZIP(), []int{1}
 }
 
-// 简化的 token 表示（返回时需谨慎）
+// 第三方访问令牌摘要
 type OAuthToken struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
@@ -299,6 +299,7 @@ func (x *OAuthToken) GetExpiresAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// 查询已绑定第三方账号列表请求
 type ListLinkedAccountsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        *string                `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3,oneof" json:"user_id,omitempty"`
@@ -359,6 +360,7 @@ func (x *ListLinkedAccountsRequest) GetPageToken() string {
 	return ""
 }
 
+// 查询已绑定第三方账号列表响应
 type ListLinkedAccountsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*UserCredential      `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -419,13 +421,13 @@ func (x *ListLinkedAccountsResponse) GetNextPageToken() string {
 	return ""
 }
 
-// 关联第三方账号请求
+// 直接绑定第三方账号请求
 type LinkOAuthRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Provider       OAuthProvider          `protobuf:"varint,1,opt,name=provider,proto3,enum=authentication.service.v1.OAuthProvider" json:"provider,omitempty"`
-	ProviderCustom string                 `protobuf:"bytes,2,opt,name=provider_custom,json=providerCustom,proto3" json:"provider_custom,omitempty"` // 可选：当使用自定义平台或细化标识时填写
-	OauthToken     string                 `protobuf:"bytes,3,opt,name=oauth_token,json=oauthToken,proto3" json:"oauth_token,omitempty"`             // 第三方返回的 token / code
-	RedirectUri    string                 `protobuf:"bytes,4,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`          // 可选：用于某些平台回调验证
+	ProviderCustom string                 `protobuf:"bytes,2,opt,name=provider_custom,json=providerCustom,proto3" json:"provider_custom,omitempty"` // 可选：自定义提供商或细分标识
+	OauthToken     string                 `protobuf:"bytes,3,opt,name=oauth_token,json=oauthToken,proto3" json:"oauth_token,omitempty"`             // 第三方返回的访问令牌或授权码
+	RedirectUri    string                 `protobuf:"bytes,4,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`          // 可选：回调校验地址
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -488,10 +490,10 @@ func (x *LinkOAuthRequest) GetRedirectUri() string {
 	return ""
 }
 
-// 关联响应（包含已创建的 LinkedAccount）
+// 直接绑定第三方账号响应
 type LinkOAuthResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Account       *UserCredential        `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"` // 可扩展字段：verification_id、state 等
+	Account       *UserCredential        `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"` // 预留扩展字段，例如 verification_id、state 等。
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -533,7 +535,7 @@ func (x *LinkOAuthResponse) GetAccount() *UserCredential {
 	return nil
 }
 
-// 解除关联请求
+// 解除第三方账号绑定请求
 type UnlinkOAuthRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	CredentialId   *string                `protobuf:"bytes,1,opt,name=credential_id,json=credentialId,proto3,oneof" json:"credential_id,omitempty"`
@@ -594,6 +596,7 @@ func (x *UnlinkOAuthRequest) GetProviderCustom() string {
 	return ""
 }
 
+// 查询单个已绑定第三方账号请求
 type GetLinkedAccountRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CredentialId  string                 `protobuf:"bytes,1,opt,name=credential_id,json=credentialId,proto3" json:"credential_id,omitempty"`
@@ -638,6 +641,7 @@ func (x *GetLinkedAccountRequest) GetCredentialId() string {
 	return ""
 }
 
+// 查询单个已绑定第三方账号响应
 type GetLinkedAccountResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Account       *UserCredential        `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
@@ -682,7 +686,7 @@ func (x *GetLinkedAccountResponse) GetAccount() *UserCredential {
 	return nil
 }
 
-// Start / Confirm 流
+// 开始第三方账号绑定流程请求
 type StartLinkOAuthRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Provider       OAuthProvider          `protobuf:"varint,1,opt,name=provider,proto3,enum=authentication.service.v1.OAuthProvider" json:"provider,omitempty"`
@@ -759,6 +763,7 @@ func (x *StartLinkOAuthRequest) GetState() string {
 	return ""
 }
 
+// 开始第三方账号绑定流程响应
 type StartLinkOAuthResponse struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	AuthorizationUrl *string                `protobuf:"bytes,1,opt,name=authorization_url,json=authorizationUrl,proto3,oneof" json:"authorization_url,omitempty"`
@@ -827,6 +832,7 @@ func (x *StartLinkOAuthResponse) GetDisplayHint() string {
 	return ""
 }
 
+// 确认第三方账号绑定请求
 type ConfirmLinkOAuthRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	OperationId    *string                `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3,oneof" json:"operation_id,omitempty"`
@@ -965,6 +971,7 @@ func (*ConfirmLinkOAuthRequest_Code) isConfirmLinkOAuthRequest_Credential() {}
 
 func (*ConfirmLinkOAuthRequest_AuthorizationResponse) isConfirmLinkOAuthRequest_Credential() {}
 
+// 确认第三方账号绑定响应
 type ConfirmLinkOAuthResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Account       *UserCredential        `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
@@ -1017,7 +1024,7 @@ func (x *ConfirmLinkOAuthResponse) GetSecret() *OAuthToken {
 	return nil
 }
 
-// Refresh / Exchange / Revoke
+// 刷新第三方访问令牌请求
 type RefreshOAuthTokenRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CredentialId  string                 `protobuf:"bytes,1,opt,name=credential_id,json=credentialId,proto3" json:"credential_id,omitempty"`
@@ -1070,6 +1077,7 @@ func (x *RefreshOAuthTokenRequest) GetRefreshToken() string {
 	return ""
 }
 
+// 刷新第三方访问令牌响应
 type RefreshOAuthTokenResponse struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	AccessToken         *string                `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3,oneof" json:"access_token,omitempty"`
@@ -1138,6 +1146,7 @@ func (x *RefreshOAuthTokenResponse) GetRefreshTokenPresent() bool {
 	return false
 }
 
+// 使用授权码交换第三方访问令牌请求
 type ExchangeOAuthCodeRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Provider       OAuthProvider          `protobuf:"varint,1,opt,name=provider,proto3,enum=authentication.service.v1.OAuthProvider" json:"provider,omitempty"`
@@ -1206,6 +1215,7 @@ func (x *ExchangeOAuthCodeRequest) GetRedirectUri() string {
 	return ""
 }
 
+// 使用授权码交换第三方访问令牌响应
 type ExchangeOAuthCodeResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         *OAuthToken            `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
@@ -1258,6 +1268,7 @@ func (x *ExchangeOAuthCodeResponse) GetProvider() *ProviderMetadata {
 	return nil
 }
 
+// 撤销已绑定第三方账号访问授权请求
 type RevokeLinkedAccountRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CredentialId  string                 `protobuf:"bytes,1,opt,name=credential_id,json=credentialId,proto3" json:"credential_id,omitempty"`
@@ -1310,7 +1321,7 @@ func (x *RevokeLinkedAccountRequest) GetReason() string {
 	return ""
 }
 
-// 提供商列表与元信息
+// 查询支持的第三方提供商列表请求
 type ListProvidersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -1347,6 +1358,7 @@ func (*ListProvidersRequest) Descriptor() ([]byte, []int) {
 	return file_authentication_v1_oauth_proto_rawDescGZIP(), []int{17}
 }
 
+// 查询支持的第三方提供商列表响应
 type ListProvidersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*ProviderMetadata    `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -1391,6 +1403,7 @@ func (x *ListProvidersResponse) GetItems() []*ProviderMetadata {
 	return nil
 }
 
+// 查询第三方提供商元信息请求
 type GetProviderMetadataRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Provider       OAuthProvider          `protobuf:"varint,1,opt,name=provider,proto3,enum=authentication.service.v1.OAuthProvider" json:"provider,omitempty"`
@@ -1443,6 +1456,7 @@ func (x *GetProviderMetadataRequest) GetProviderCustom() string {
 	return ""
 }
 
+// 第三方提供商元信息
 type ProviderMetadata struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	Provider              OAuthProvider          `protobuf:"varint,1,opt,name=provider,proto3,enum=authentication.service.v1.OAuthProvider" json:"provider,omitempty"`

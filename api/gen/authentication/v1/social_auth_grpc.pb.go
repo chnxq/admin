@@ -35,7 +35,7 @@ type SocialAuthServiceClient interface {
 	StartSocialLogin(ctx context.Context, in *StartSocialLoginRequest, opts ...grpc.CallOption) (*StartSocialLoginResponse, error)
 	// 完成网页回调式第三方登录
 	CompleteSocialLogin(ctx context.Context, in *CompleteSocialLoginRequest, opts ...grpc.CallOption) (*CompleteSocialLoginResponse, error)
-	// 处理小程序 code/authCode 交换式登录
+	// 处理小程序 code 或 authCode 换取登录结果
 	ExchangeMiniAppCode(ctx context.Context, in *ExchangeMiniAppCodeRequest, opts ...grpc.CallOption) (*ExchangeMiniAppCodeResponse, error)
 	// 在未绑定场景下确认“绑定已有账号”或“创建并绑定新账号”
 	ConfirmBindOrRegister(ctx context.Context, in *ConfirmBindOrRegisterRequest, opts ...grpc.CallOption) (*ConfirmBindOrRegisterResponse, error)
@@ -99,7 +99,7 @@ type SocialAuthServiceServer interface {
 	StartSocialLogin(context.Context, *StartSocialLoginRequest) (*StartSocialLoginResponse, error)
 	// 完成网页回调式第三方登录
 	CompleteSocialLogin(context.Context, *CompleteSocialLoginRequest) (*CompleteSocialLoginResponse, error)
-	// 处理小程序 code/authCode 交换式登录
+	// 处理小程序 code 或 authCode 换取登录结果
 	ExchangeMiniAppCode(context.Context, *ExchangeMiniAppCodeRequest) (*ExchangeMiniAppCodeResponse, error)
 	// 在未绑定场景下确认“绑定已有账号”或“创建并绑定新账号”
 	ConfirmBindOrRegister(context.Context, *ConfirmBindOrRegisterRequest) (*ConfirmBindOrRegisterResponse, error)

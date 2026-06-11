@@ -20,7 +20,7 @@ service SocialAuthService {
   // 完成网页回调式第三方登录
   rpc CompleteSocialLogin(CompleteSocialLoginRequest) returns (CompleteSocialLoginResponse) {}
 
-  // 处理小程序 code/authCode 交换式登录
+  // 处理小程序 code 或 authCode 换取登录结果
   rpc ExchangeMiniAppCode(ExchangeMiniAppCodeRequest) returns (ExchangeMiniAppCodeResponse) {}
 
   // 在未绑定场景下确认“绑定已有账号”或“创建并绑定新账号”

@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_social_auth.proto
-// generated at        2026-06-10 18:14:50
+// generated at        2026-06-11 12:02:33
 
 package admin
 
@@ -31,7 +31,7 @@ type SocialAuthServiceHTTPServer interface {
 	CompleteSocialLogin(context.Context, *v1.CompleteSocialLoginRequest) (*v1.CompleteSocialLoginResponse, error)
 	// ConfirmBindOrRegister 确认绑定已有账号或创建并绑定新账号
 	ConfirmBindOrRegister(context.Context, *v1.ConfirmBindOrRegisterRequest) (*v1.ConfirmBindOrRegisterResponse, error)
-	// ExchangeMiniAppCode 处理小程序 code 或 authCode 登录交换
+	// ExchangeMiniAppCode 处理小程序 code 或 authCode 换取登录结果
 	ExchangeMiniAppCode(context.Context, *v1.ExchangeMiniAppCodeRequest) (*v1.ExchangeMiniAppCodeResponse, error)
 	// StartSocialLogin 开始第三方登录流程
 	StartSocialLogin(context.Context, *v1.StartSocialLoginRequest) (*v1.StartSocialLoginResponse, error)

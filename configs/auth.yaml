@@ -22,6 +22,59 @@ authn:
     default_org_unit_code: "UNDEFINED"
     default_position_code: "UNDEFINED"
 
+  social_auth:
+    github:
+      enabled: false
+      client_id: ""
+      client_secret: ""
+      redirect_uri: "http://localhost:5666/auth/social/callback/github"
+      auth_url: "https://github.com/login/oauth/authorize"
+      token_url: "https://github.com/login/oauth/access_token"
+      user_api_url: "https://api.github.com/user"
+      scopes:
+        - "read:user"
+        - "user:email"
+    dingtalk:
+      enabled: false
+      client_id: ""
+      client_secret: ""
+      redirect_uri: ""
+      auth_url: ""
+      token_url: ""
+      user_api_url: ""
+    wechat_web:
+      enabled: false
+      client_id: ""
+      client_secret: ""
+      redirect_uri: ""
+      auth_url: ""
+      token_url: ""
+      user_api_url: ""
+    wechat_miniapp:
+      enabled: false
+      client_id: ""
+      client_secret: ""
+      redirect_uri: ""
+      auth_url: ""
+      token_url: ""
+      user_api_url: ""
+    alipay:
+      enabled: false
+      client_id: ""
+      client_secret: ""
+      redirect_uri: ""
+      auth_url: ""
+      token_url: ""
+      user_api_url: ""
+    douyin:
+      enabled: false
+      client_id: ""
+      client_secret: ""
+      redirect_uri: ""
+      auth_url: ""
+      token_url: ""
+      user_api_url: ""
+
 authz:
   type: "casbin" # casbin, opa, zanzibar, noop
 

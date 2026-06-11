@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_task_group.proto
-// generated at        2026-06-03 23:29:28
+// generated at        2026-06-11 12:02:33
 
 package admin
 

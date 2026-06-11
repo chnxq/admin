@@ -33,7 +33,7 @@ service SocialAuthService {
     };
   }
 
-  // 处理小程序 code 或 authCode 登录交换
+  // 处理小程序 code 或 authCode 换取登录结果
   rpc ExchangeMiniAppCode(authentication.service.v1.ExchangeMiniAppCodeRequest) returns (authentication.service.v1.ExchangeMiniAppCodeResponse) {
     option (google.api.http) = {
       post: "/admin/v1/social-auth/miniapp:exchange-code"
