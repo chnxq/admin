@@ -24,9 +24,9 @@ authn:
 
   social_auth:
     github:
-      enabled: true
-      client_id: "你的 GitHub OAuth App Client ID"
-      client_secret: "你的 GitHub OAuth App Client Secret"
+      enabled: false
+      client_id: "your-github-client-id"
+      client_secret: "your-github-client-secret"
       redirect_uri: "http://localhost:5666/auth/social/callback/github"
       auth_url: "https://github.com/login/oauth/authorize"
       token_url: "https://github.com/login/oauth/access_token"
@@ -35,45 +35,55 @@ authn:
         - "read:user"
         - "user:email"
     dingtalk:
-      enabled: true
-      client_id: ""
-      client_secret: ""
-      redirect_uri: ""
-      auth_url: ""
-      token_url: ""
-      user_api_url: ""
+      enabled: false
+      client_id: "your-dingtalk-client-id"
+      client_secret: "your-dingtalk-client-secret"
+      redirect_uri: "http://localhost:5666/auth/social/callback/dingtalk"
+      auth_url: "https://login.dingtalk.com/oauth2/auth"
+      token_url: "https://api.dingtalk.com/v1.0/oauth2/userAccessToken"
+      user_api_url: "https://api.dingtalk.com/v1.0/contact/users/me"
+      scopes:
+        - "openid"
     wechat_web:
       enabled: false
-      client_id: ""
-      client_secret: ""
-      redirect_uri: ""
-      auth_url: ""
-      token_url: ""
-      user_api_url: ""
+      client_id: "your-wechat-web-app-id"
+      client_secret: "your-wechat-web-client-secret"
+      redirect_uri: "http://localhost:5666/auth/social/callback/wechat"
+      auth_url: "https://open.weixin.qq.com/connect/qrconnect"
+      token_url: "https://api.weixin.qq.com/sns/oauth2/access_token"
+      user_api_url: "https://api.weixin.qq.com/sns/userinfo"
+      scopes:
+        - "snsapi_login"
     wechat_miniapp:
       enabled: false
       client_id: ""
       client_secret: ""
       redirect_uri: ""
       auth_url: ""
-      token_url: ""
+      token_url: "https://api.weixin.qq.com/sns/jscode2session"
       user_api_url: ""
+      scopes:
+        - "snsapi_base"
     alipay:
       enabled: false
       client_id: ""
       client_secret: ""
       redirect_uri: ""
-      auth_url: ""
-      token_url: ""
-      user_api_url: ""
+      auth_url: "https://openauth.alipay.com/oauth2/publicAppAuthorize.htm"
+      token_url: "https://openapi.alipay.com/gateway.do"
+      user_api_url: "https://openapi.alipay.com/gateway.do"
+      scopes:
+        - "auth_user"
     douyin:
       enabled: false
       client_id: ""
       client_secret: ""
       redirect_uri: ""
-      auth_url: ""
-      token_url: ""
-      user_api_url: ""
+      auth_url: "https://open.douyin.com/platform/oauth/connect/"
+      token_url: "https://open.douyin.com/oauth/access_token/"
+      user_api_url: "https://open.douyin.com/oauth/userinfo/"
+      scopes:
+        - "user_info"
 
 authz:
   type: "casbin" # casbin, opa, zanzibar, noop

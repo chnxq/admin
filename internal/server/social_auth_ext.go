@@ -251,10 +251,7 @@ func (s *manualSocialAuthService) StartSocialLogin(ctx context.Context, req *aut
 	if s == nil || s.authFlowStore == nil {
 		return nil, authenticationv1.ErrorInternalServerError("social auth service is unavailable")
 	}
-	providerKey := strings.TrimSpace(req.GetProviderKey())
-	if providerKey == "" {
-		providerKey = providerKeyFromOAuthProvider(req.GetProvider())
-	}
+	providerKey := normalizeOAuthProviderKey(strings.TrimSpace(req.GetProviderKey()), req.GetProvider())
 	authFlow := &manualAuthFlowService{store: s.authFlowStore, log: s.log}
 	session, err := authFlow.CreateAuthSession(ctx, &authenticationv1.CreateAuthSessionRequest{
 		Scene:       authenticationv1.AuthFlowScene_SOCIAL_LOGIN,
@@ -268,8 +265,8 @@ func (s *manualSocialAuthService) StartSocialLogin(ctx context.Context, req *aut
 		return nil, err
 	}
 	authorizationURL := session.GetQrCodeUrl()
-	if req.GetProvider() == authenticationv1.OAuthProvider_GITHUB {
-		authorizationURL, err = s.buildGitHubAuthorizationURL(req, session)
+	if providerKey == "github" || providerKey == "dingtalk_web" || providerKey == "wechat_web" {
+		authorizationURL, err = s.buildAuthorizationURL(req, session)
 		if err != nil {
 			return nil, err
 		}
@@ -288,10 +285,7 @@ func (s *manualSocialAuthService) CompleteSocialLogin(ctx context.Context, req *
 	if s == nil || s.authFlowStore == nil {
 		return nil, authenticationv1.ErrorInternalServerError("social auth service is unavailable")
 	}
-	providerKey := strings.TrimSpace(req.GetProviderKey())
-	if providerKey == "" {
-		providerKey = providerKeyFromOAuthProvider(req.GetProvider())
-	}
+	providerKey := normalizeOAuthProviderKey(strings.TrimSpace(req.GetProviderKey()), req.GetProvider())
 	sessionID := strings.TrimSpace(req.GetSessionId())
 	if sessionID == "" {
 		if existing, err := s.authFlowStore.FindSessionByToken(strings.TrimSpace(req.GetState())); err == nil && existing != nil {
@@ -591,7 +585,19 @@ func (s *manualOAuthService) ListLinkedAccounts(ctx context.Context, _ *authenti
 func (s *manualOAuthService) ListProviders(context.Context, *authenticationv1.ListProvidersRequest) (*authenticationv1.ListProvidersResponse, error) {
 	items := make([]*authenticationv1.ProviderMetadata, 0, 6)
 	if s != nil && s.social != nil {
+		items = append(items,
+			providerMetadataFromConfig(authenticationv1.OAuthProvider_GITHUB, "github", "GitHub", s.social.GitHub),
+			providerMetadataFromConfig(authenticationv1.OAuthProvider_DINGTALK, "dingtalk_web", "钉钉", s.social.DingTalkWeb),
+			providerMetadataFromConfig(authenticationv1.OAuthProvider_WECHAT, "wechat_web", "微信网页", s.social.WeChatWeb),
+			providerMetadataPlaceholder(authenticationv1.OAuthProvider_WECHAT, "wechat_miniapp", "微信小程序"),
+			providerMetadataPlaceholder(authenticationv1.OAuthProvider_ALIPAY, "alipay", "支付宝"),
+			providerMetadataPlaceholder(authenticationv1.OAuthProvider_DOUYIN, "douyin", "抖音"),
+		)
+		return &authenticationv1.ListProvidersResponse{Items: items}, nil
+	}
+	if s != nil && s.social != nil {
 		items = append(items, providerMetadataFromConfig(authenticationv1.OAuthProvider_GITHUB, "github", "GitHub", s.social.GitHub))
+		items = append(items, providerMetadataFromConfig(authenticationv1.OAuthProvider_WECHAT, "wechat_web", "微信网页", s.social.WeChatWeb))
 	}
 	items = append(items,
 		providerMetadataPlaceholder(authenticationv1.OAuthProvider_DINGTALK, "dingtalk", "钉钉"),
@@ -612,9 +618,7 @@ func (s *manualOAuthService) StartLinkOAuth(ctx context.Context, req *authentica
 		return nil, authenticationv1.ErrorUnauthorized("user is not authenticated")
 	}
 	providerKey := strings.TrimSpace(req.GetProviderCustom())
-	if providerKey == "" {
-		providerKey = providerKeyFromOAuthProvider(req.GetProvider())
-	}
+	providerKey = normalizeOAuthProviderKey(providerKey, req.GetProvider())
 	sessionID := "as_" + newJWTID()
 	sessionToken, err := generateRefreshToken()
 	if err != nil {
@@ -634,17 +638,18 @@ func (s *manualOAuthService) StartLinkOAuth(ctx context.Context, req *authentica
 		ExpiresAt:    time.Now().Add(authFlowSessionTTL),
 		DisplayHint:  "请完成第三方账号授权以绑定当前登录用户",
 	}
-	if record.RedirectURI == "" && s.social != nil && req.GetProvider() == authenticationv1.OAuthProvider_GITHUB {
-		record.RedirectURI = s.social.GitHub.RedirectURI
+	if record.RedirectURI == "" && s.social != nil {
+		switch providerKey {
+		case "github":
+			record.RedirectURI = s.social.GitHub.RedirectURI
+		case "dingtalk_web":
+			record.RedirectURI = s.social.DingTalkWeb.RedirectURI
+		case "wechat_web":
+			record.RedirectURI = s.social.WeChatWeb.RedirectURI
+		}
 	}
 	if err := s.authFlowStore.SaveSession(record); err != nil {
 		return nil, authenticationv1.ErrorInternalServerError("failed to persist oauth session")
-	}
-	if req.GetProvider() != authenticationv1.OAuthProvider_GITHUB {
-		return nil, authenticationv1.ErrorNotImplemented("this oauth provider is not implemented yet")
-	}
-	if s.social == nil || !s.social.GitHub.Enabled {
-		return nil, authenticationv1.ErrorInternalServerError("github social auth is not configured")
 	}
 	startReq := &authenticationv1.StartSocialLoginRequest{
 		Provider:    req.GetProvider(),
@@ -652,7 +657,7 @@ func (s *manualOAuthService) StartLinkOAuth(ctx context.Context, req *authentica
 		RedirectUri: stringPtr(record.RedirectURI),
 	}
 	session := authSessionDTO(record)
-	authorizationURL, err := (&manualSocialAuthService{social: s.social}).buildGitHubAuthorizationURL(startReq, session)
+	authorizationURL, err := (&manualSocialAuthService{social: s.social}).buildAuthorizationURL(startReq, session)
 	if err != nil {
 		return nil, err
 	}
@@ -953,13 +958,31 @@ func providerKeyFromOAuthProvider(provider authenticationv1.OAuthProvider) strin
 	case authenticationv1.OAuthProvider_GITHUB:
 		return "github"
 	case authenticationv1.OAuthProvider_DINGTALK:
-		return "dingtalk"
+		return "dingtalk_web"
 	case authenticationv1.OAuthProvider_WECHAT:
-		return "wechat"
+		return "wechat_web"
 	case authenticationv1.OAuthProvider_ALIPAY:
 		return "alipay"
 	default:
 		return strings.ToLower(provider.String())
+	}
+}
+
+func normalizeOAuthProviderKey(providerKey string, provider authenticationv1.OAuthProvider) string {
+	switch strings.TrimSpace(providerKey) {
+	case "":
+		if strings.TrimSpace(providerKey) == "" {
+			return providerKeyFromOAuthProvider(provider)
+		}
+		return strings.TrimSpace(providerKey)
+	case "dingtalk":
+		return "dingtalk_web"
+	case "wechat":
+		return "wechat_web"
+	case "github", "dingtalk_web", "alipay", "douyin", "wechat_web", "wechat_miniapp":
+		return strings.TrimSpace(providerKey)
+	default:
+		return strings.TrimSpace(providerKey)
 	}
 }
 
@@ -979,14 +1002,56 @@ func socialProfileJSON(providerKey, accountID string) string {
 	return string(payload)
 }
 
-func providerMetadataFromConfig(provider authenticationv1.OAuthProvider, providerCustom, displayName string, cfg githubSocialProviderConfig) *authenticationv1.ProviderMetadata {
+type socialProviderConfig interface {
+	getAuthURL() string
+	getTokenURL() string
+	getScopes() []string
+}
+
+func (c githubSocialProviderConfig) getAuthURL() string {
+	return c.AuthURL
+}
+
+func (c githubSocialProviderConfig) getTokenURL() string {
+	return c.TokenURL
+}
+
+func (c githubSocialProviderConfig) getScopes() []string {
+	return c.Scopes
+}
+
+func (c wechatSocialProviderConfig) getAuthURL() string {
+	return c.AuthURL
+}
+
+func (c wechatSocialProviderConfig) getTokenURL() string {
+	return c.TokenURL
+}
+
+func (c wechatSocialProviderConfig) getScopes() []string {
+	return c.Scopes
+}
+
+func (c dingtalkSocialProviderConfig) getAuthURL() string {
+	return c.AuthURL
+}
+
+func (c dingtalkSocialProviderConfig) getTokenURL() string {
+	return c.TokenURL
+}
+
+func (c dingtalkSocialProviderConfig) getScopes() []string {
+	return c.Scopes
+}
+
+func providerMetadataFromConfig(provider authenticationv1.OAuthProvider, providerCustom, displayName string, cfg socialProviderConfig) *authenticationv1.ProviderMetadata {
 	return &authenticationv1.ProviderMetadata{
 		Provider:              provider,
 		ProviderCustom:        providerCustom,
 		DisplayName:           displayName,
-		AuthorizationEndpoint: cfg.AuthURL,
-		TokenEndpoint:         cfg.TokenURL,
-		DefaultScopes:         append([]string(nil), cfg.Scopes...),
+		AuthorizationEndpoint: cfg.getAuthURL(),
+		TokenEndpoint:         cfg.getTokenURL(),
+		DefaultScopes:         append([]string(nil), cfg.getScopes()...),
 	}
 }
 
@@ -999,10 +1064,34 @@ func providerMetadataPlaceholder(provider authenticationv1.OAuthProvider, provid
 }
 
 type socialAuthConfig struct {
-	GitHub githubSocialProviderConfig
+	GitHub      githubSocialProviderConfig
+	DingTalkWeb dingtalkSocialProviderConfig
+	WeChatWeb   wechatSocialProviderConfig
 }
 
 type githubSocialProviderConfig struct {
+	AuthURL      string
+	ClientID     string
+	ClientSecret string
+	Enabled      bool
+	RedirectURI  string
+	Scopes       []string
+	TokenURL     string
+	UserAPIURL   string
+}
+
+type wechatSocialProviderConfig struct {
+	AuthURL      string
+	ClientID     string
+	ClientSecret string
+	Enabled      bool
+	RedirectURI  string
+	Scopes       []string
+	TokenURL     string
+	UserAPIURL   string
+}
+
+type dingtalkSocialProviderConfig struct {
 	AuthURL      string
 	ClientID     string
 	ClientSecret string
@@ -1027,18 +1116,65 @@ type githubUserProfile struct {
 	Name      string `json:"name"`
 }
 
+type wechatAccessTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	ExpiresIn    int64  `json:"expires_in"`
+	OpenID       string `json:"openid"`
+	RefreshToken string `json:"refresh_token"`
+	Scope        string `json:"scope"`
+	UnionID      string `json:"unionid"`
+	ErrCode      int64  `json:"errcode"`
+	ErrMsg       string `json:"errmsg"`
+}
+
+type wechatUserProfile struct {
+	OpenID     string `json:"openid"`
+	Nickname   string `json:"nickname"`
+	Sex        int32  `json:"sex"`
+	Province   string `json:"province"`
+	City       string `json:"city"`
+	Country    string `json:"country"`
+	HeadImgURL string `json:"headimgurl"`
+	UnionID    string `json:"unionid"`
+	ErrCode    int64  `json:"errcode"`
+	ErrMsg     string `json:"errmsg"`
+}
+
+type dingtalkAccessTokenResponse struct {
+	AccessToken  string `json:"accessToken"`
+	ExpireIn     int64  `json:"expireIn"`
+	RefreshToken string `json:"refreshToken"`
+}
+
+type dingtalkUserProfile struct {
+	AvatarURL string `json:"avatarUrl"`
+	Email     string `json:"email"`
+	Mobile    string `json:"mobile"`
+	Nick      string `json:"nick"`
+	OpenID    string `json:"openId"`
+	StateCode string `json:"stateCode"`
+	UnionID   string `json:"unionId"`
+}
+
 func loadSocialAuthConfig(appCtx *app.AppCtx) (*socialAuthConfig, error) {
 	if appCtx == nil || appCtx.GetConfig() == nil || appCtx.GetConfig().GetServer() == nil {
 		return nil, fmt.Errorf("app config is missing")
 	}
 	restCfg := appCtx.GetConfig().GetServer().GetRest()
-	defaultRedirectURI := "http://localhost:5666/auth/social/callback/github"
+	defaultGitHubRedirectURI := "http://localhost:5666/auth/social/callback/github"
+	defaultDingTalkRedirectURI := "http://localhost:5666/auth/social/callback/dingtalk"
+	defaultWeChatWebRedirectURI := "http://localhost:5666/auth/social/callback/wechat"
 	if restCfg != nil {
 		if address := strings.TrimSpace(restCfg.GetAddr()); address != "" {
 			if strings.HasPrefix(address, ":") {
-				defaultRedirectURI = "http://localhost" + address + "/auth/social/callback/github"
+				defaultGitHubRedirectURI = "http://localhost" + address + "/auth/social/callback/github"
+				defaultDingTalkRedirectURI = "http://localhost" + address + "/auth/social/callback/dingtalk"
+				defaultWeChatWebRedirectURI = "http://localhost" + address + "/auth/social/callback/wechat"
 			} else if strings.HasPrefix(address, "http://") || strings.HasPrefix(address, "https://") {
-				defaultRedirectURI = strings.TrimRight(address, "/") + "/auth/social/callback/github"
+				base := strings.TrimRight(address, "/")
+				defaultGitHubRedirectURI = base + "/auth/social/callback/github"
+				defaultDingTalkRedirectURI = base + "/auth/social/callback/dingtalk"
+				defaultWeChatWebRedirectURI = base + "/auth/social/callback/wechat"
 			}
 		}
 	}
@@ -1055,6 +1191,32 @@ func loadSocialAuthConfig(appCtx *app.AppCtx) (*socialAuthConfig, error) {
 			Scopes:       append([]string(nil), github.GetScopes()...),
 			TokenURL:     strings.TrimSpace(github.GetTokenUrl()),
 			UserAPIURL:   strings.TrimSpace(github.GetUserApiUrl()),
+		}
+	}
+	if authn != nil && authn.GetSocialAuth() != nil && authn.GetSocialAuth().GetDingtalk() != nil {
+		dingtalk := authn.GetSocialAuth().GetDingtalk()
+		cfg.DingTalkWeb = dingtalkSocialProviderConfig{
+			AuthURL:      strings.TrimSpace(dingtalk.GetAuthUrl()),
+			ClientID:     strings.TrimSpace(dingtalk.GetClientId()),
+			ClientSecret: strings.TrimSpace(dingtalk.GetClientSecret()),
+			Enabled:      dingtalk.GetEnabled(),
+			RedirectURI:  strings.TrimSpace(dingtalk.GetRedirectUri()),
+			Scopes:       append([]string(nil), dingtalk.GetScopes()...),
+			TokenURL:     strings.TrimSpace(dingtalk.GetTokenUrl()),
+			UserAPIURL:   strings.TrimSpace(dingtalk.GetUserApiUrl()),
+		}
+	}
+	if authn != nil && authn.GetSocialAuth() != nil && authn.GetSocialAuth().GetWechatWeb() != nil {
+		wechat := authn.GetSocialAuth().GetWechatWeb()
+		cfg.WeChatWeb = wechatSocialProviderConfig{
+			AuthURL:      strings.TrimSpace(wechat.GetAuthUrl()),
+			ClientID:     strings.TrimSpace(wechat.GetClientId()),
+			ClientSecret: strings.TrimSpace(wechat.GetClientSecret()),
+			Enabled:      wechat.GetEnabled(),
+			RedirectURI:  strings.TrimSpace(wechat.GetRedirectUri()),
+			Scopes:       append([]string(nil), wechat.GetScopes()...),
+			TokenURL:     strings.TrimSpace(wechat.GetTokenUrl()),
+			UserAPIURL:   strings.TrimSpace(wechat.GetUserApiUrl()),
 		}
 	}
 	if cfg.GitHub.AuthURL == "" {
@@ -1079,10 +1241,66 @@ func loadSocialAuthConfig(appCtx *app.AppCtx) (*socialAuthConfig, error) {
 		cfg.GitHub.RedirectURI = strings.TrimSpace(getenvFirst("ADMIN_SOCIAL_GITHUB_REDIRECT_URI"))
 	}
 	if cfg.GitHub.RedirectURI == "" {
-		cfg.GitHub.RedirectURI = defaultRedirectURI
+		cfg.GitHub.RedirectURI = defaultGitHubRedirectURI
 	}
 	if !cfg.GitHub.Enabled {
 		cfg.GitHub.Enabled = cfg.GitHub.ClientID != "" && cfg.GitHub.ClientSecret != ""
+	}
+
+	if cfg.DingTalkWeb.AuthURL == "" {
+		cfg.DingTalkWeb.AuthURL = "https://login.dingtalk.com/oauth2/auth"
+	}
+	if cfg.DingTalkWeb.TokenURL == "" {
+		cfg.DingTalkWeb.TokenURL = "https://api.dingtalk.com/v1.0/oauth2/userAccessToken"
+	}
+	if cfg.DingTalkWeb.UserAPIURL == "" {
+		cfg.DingTalkWeb.UserAPIURL = "https://api.dingtalk.com/v1.0/contact/users/me"
+	}
+	if len(cfg.DingTalkWeb.Scopes) == 0 {
+		cfg.DingTalkWeb.Scopes = []string{"openid"}
+	}
+	if cfg.DingTalkWeb.ClientID == "" {
+		cfg.DingTalkWeb.ClientID = strings.TrimSpace(getenvFirst("ADMIN_SOCIAL_DINGTALK_CLIENT_ID", "DINGTALK_CLIENT_ID"))
+	}
+	if cfg.DingTalkWeb.ClientSecret == "" {
+		cfg.DingTalkWeb.ClientSecret = strings.TrimSpace(getenvFirst("ADMIN_SOCIAL_DINGTALK_CLIENT_SECRET", "DINGTALK_CLIENT_SECRET"))
+	}
+	if cfg.DingTalkWeb.RedirectURI == "" {
+		cfg.DingTalkWeb.RedirectURI = strings.TrimSpace(getenvFirst("ADMIN_SOCIAL_DINGTALK_REDIRECT_URI", "DINGTALK_REDIRECT_URI"))
+	}
+	if cfg.DingTalkWeb.RedirectURI == "" {
+		cfg.DingTalkWeb.RedirectURI = defaultDingTalkRedirectURI
+	}
+	if !cfg.DingTalkWeb.Enabled {
+		cfg.DingTalkWeb.Enabled = cfg.DingTalkWeb.ClientID != "" && cfg.DingTalkWeb.ClientSecret != ""
+	}
+
+	if cfg.WeChatWeb.AuthURL == "" {
+		cfg.WeChatWeb.AuthURL = "https://open.weixin.qq.com/connect/qrconnect"
+	}
+	if cfg.WeChatWeb.TokenURL == "" {
+		cfg.WeChatWeb.TokenURL = "https://api.weixin.qq.com/sns/oauth2/access_token"
+	}
+	if cfg.WeChatWeb.UserAPIURL == "" {
+		cfg.WeChatWeb.UserAPIURL = "https://api.weixin.qq.com/sns/userinfo"
+	}
+	if len(cfg.WeChatWeb.Scopes) == 0 {
+		cfg.WeChatWeb.Scopes = []string{"snsapi_login"}
+	}
+	if cfg.WeChatWeb.ClientID == "" {
+		cfg.WeChatWeb.ClientID = strings.TrimSpace(getenvFirst("ADMIN_SOCIAL_WECHAT_WEB_CLIENT_ID", "WECHAT_WEB_CLIENT_ID", "WECHAT_CLIENT_ID"))
+	}
+	if cfg.WeChatWeb.ClientSecret == "" {
+		cfg.WeChatWeb.ClientSecret = strings.TrimSpace(getenvFirst("ADMIN_SOCIAL_WECHAT_WEB_CLIENT_SECRET", "WECHAT_WEB_CLIENT_SECRET", "WECHAT_CLIENT_SECRET"))
+	}
+	if cfg.WeChatWeb.RedirectURI == "" {
+		cfg.WeChatWeb.RedirectURI = strings.TrimSpace(getenvFirst("ADMIN_SOCIAL_WECHAT_WEB_REDIRECT_URI", "WECHAT_WEB_REDIRECT_URI"))
+	}
+	if cfg.WeChatWeb.RedirectURI == "" {
+		cfg.WeChatWeb.RedirectURI = defaultWeChatWebRedirectURI
+	}
+	if !cfg.WeChatWeb.Enabled {
+		cfg.WeChatWeb.Enabled = cfg.WeChatWeb.ClientID != "" && cfg.WeChatWeb.ClientSecret != ""
 	}
 	return cfg, nil
 }
@@ -1094,6 +1312,20 @@ func getenvFirst(keys ...string) string {
 		}
 	}
 	return ""
+}
+
+func (s *manualSocialAuthService) buildAuthorizationURL(req *authenticationv1.StartSocialLoginRequest, session *authenticationv1.AuthSession) (string, error) {
+	providerKey := firstNonEmpty(strings.TrimSpace(req.GetProviderKey()), providerKeyFromOAuthProvider(req.GetProvider()))
+	switch providerKey {
+	case "github":
+		return s.buildGitHubAuthorizationURL(req, session)
+	case "dingtalk_web":
+		return s.buildDingTalkAuthorizationURL(req, session)
+	case "wechat_web":
+		return s.buildWeChatWebAuthorizationURL(req, session)
+	default:
+		return "", authenticationv1.ErrorNotImplemented("this social provider is not implemented yet")
+	}
 }
 
 func (s *manualSocialAuthService) buildGitHubAuthorizationURL(req *authenticationv1.StartSocialLoginRequest, session *authenticationv1.AuthSession) (string, error) {
@@ -1111,6 +1343,50 @@ func (s *manualSocialAuthService) buildGitHubAuthorizationURL(req *authenticatio
 	query.Set("scope", strings.Join(s.social.GitHub.Scopes, " "))
 	query.Set("allow_signup", "true")
 	return s.social.GitHub.AuthURL + "?" + query.Encode(), nil
+}
+
+func (s *manualSocialAuthService) buildDingTalkAuthorizationURL(req *authenticationv1.StartSocialLoginRequest, session *authenticationv1.AuthSession) (string, error) {
+	if s == nil || s.social == nil || !s.social.DingTalkWeb.Enabled {
+		return "", authenticationv1.ErrorInternalServerError("dingtalk social auth is not configured")
+	}
+	redirectURI := strings.TrimSpace(req.GetRedirectUri())
+	if redirectURI == "" {
+		redirectURI = s.social.DingTalkWeb.RedirectURI
+	}
+	query := url.Values{}
+	query.Set("client_id", s.social.DingTalkWeb.ClientID)
+	query.Set("redirect_uri", redirectURI)
+	query.Set("response_type", "code")
+	query.Set("scope", strings.Join(s.social.DingTalkWeb.Scopes, " "))
+	query.Set("prompt", "consent")
+	query.Set("state", session.GetSessionToken())
+	authorizationURL := s.social.DingTalkWeb.AuthURL + "?" + query.Encode()
+	if s.log != nil {
+		s.log.Infof("chain=manual_social_auth.dingtalk_web action=build_authorization_url client_id=%s redirect_uri=%s url=%s", s.social.DingTalkWeb.ClientID, redirectURI, authorizationURL)
+	}
+	return authorizationURL, nil
+}
+
+func (s *manualSocialAuthService) buildWeChatWebAuthorizationURL(req *authenticationv1.StartSocialLoginRequest, session *authenticationv1.AuthSession) (string, error) {
+	if s == nil || s.social == nil || !s.social.WeChatWeb.Enabled {
+		return "", authenticationv1.ErrorInternalServerError("wechat web social auth is not configured")
+	}
+	redirectURI := strings.TrimSpace(req.GetRedirectUri())
+	if redirectURI == "" {
+		redirectURI = s.social.WeChatWeb.RedirectURI
+	}
+	query := url.Values{}
+	query.Set("appid", s.social.WeChatWeb.ClientID)
+	query.Set("redirect_uri", redirectURI)
+	query.Set("response_type", "code")
+	// WeChat website login only accepts snsapi_login here.
+	query.Set("scope", "snsapi_login")
+	query.Set("state", session.GetSessionToken())
+	authorizationURL := s.social.WeChatWeb.AuthURL + "?" + query.Encode() + "#wechat_redirect"
+	if s.log != nil {
+		s.log.Infof("chain=manual_social_auth.wechat_web action=build_authorization_url appid=%s redirect_uri=%s url=%s", s.social.WeChatWeb.ClientID, redirectURI, authorizationURL)
+	}
+	return authorizationURL, nil
 }
 
 func (s *manualSocialAuthService) resolveAuthSessionForComplete(req *authenticationv1.CompleteSocialLoginRequest, sessionID string) (*authFlowSessionRecord, error) {
@@ -1131,9 +1407,13 @@ func (s *manualSocialAuthService) resolveAuthSessionForComplete(req *authenticat
 }
 
 func (s *manualSocialAuthService) resolveSocialProfile(ctx context.Context, req *authenticationv1.CompleteSocialLoginRequest, providerKey, code string, sessionRecord *authFlowSessionRecord) (*authFlowProviderProfile, error) {
-	switch req.GetProvider() {
-	case authenticationv1.OAuthProvider_GITHUB:
+	switch firstNonEmpty(providerKey, providerKeyFromOAuthProvider(req.GetProvider())) {
+	case "github":
 		return s.resolveGitHubProfile(ctx, req, code, sessionRecord)
+	case "dingtalk_web":
+		return s.resolveDingTalkProfile(ctx, req, code, sessionRecord)
+	case "wechat_web":
+		return s.resolveWeChatWebProfile(ctx, req, code, sessionRecord)
 	default:
 		return &authFlowProviderProfile{
 			ProviderKey:       providerKey,
@@ -1143,6 +1423,74 @@ func (s *manualSocialAuthService) resolveSocialProfile(ctx context.Context, req 
 			RawProfileJSON:    socialProfileJSON(providerKey, code),
 		}, nil
 	}
+}
+
+func (s *manualSocialAuthService) resolveWeChatWebProfile(ctx context.Context, req *authenticationv1.CompleteSocialLoginRequest, code string, sessionRecord *authFlowSessionRecord) (*authFlowProviderProfile, error) {
+	if s == nil || s.social == nil || !s.social.WeChatWeb.Enabled {
+		return nil, authenticationv1.ErrorInternalServerError("wechat web social auth is not configured")
+	}
+	redirectURI := strings.TrimSpace(req.GetRedirectUri())
+	if redirectURI == "" && sessionRecord != nil {
+		redirectURI = strings.TrimSpace(sessionRecord.RedirectURI)
+	}
+	if redirectURI == "" {
+		redirectURI = s.social.WeChatWeb.RedirectURI
+	}
+	tokenResp, err := s.exchangeWeChatWebAccessToken(ctx, code, redirectURI)
+	if err != nil {
+		return nil, err
+	}
+	profile, rawProfile, err := s.fetchWeChatWebProfile(ctx, tokenResp)
+	if err != nil {
+		return nil, err
+	}
+	accountID := firstNonEmpty(strings.TrimSpace(profile.UnionID), strings.TrimSpace(profile.OpenID), strings.TrimSpace(tokenResp.UnionID), strings.TrimSpace(tokenResp.OpenID))
+	if accountID == "" {
+		return nil, authenticationv1.ErrorUnauthorized("wechat account id is empty")
+	}
+	return &authFlowProviderProfile{
+		ProviderKey:       "wechat_web",
+		Provider:          authenticationv1.OAuthProvider_WECHAT,
+		ProviderAccountID: accountID,
+		Nickname:          strings.TrimSpace(profile.Nickname),
+		Avatar:            strings.TrimSpace(profile.HeadImgURL),
+		RawProfileJSON:    rawProfile,
+	}, nil
+}
+
+func (s *manualSocialAuthService) resolveDingTalkProfile(ctx context.Context, req *authenticationv1.CompleteSocialLoginRequest, code string, sessionRecord *authFlowSessionRecord) (*authFlowProviderProfile, error) {
+	if s == nil || s.social == nil || !s.social.DingTalkWeb.Enabled {
+		return nil, authenticationv1.ErrorInternalServerError("dingtalk social auth is not configured")
+	}
+	redirectURI := strings.TrimSpace(req.GetRedirectUri())
+	if redirectURI == "" && sessionRecord != nil {
+		redirectURI = strings.TrimSpace(sessionRecord.RedirectURI)
+	}
+	if redirectURI == "" {
+		redirectURI = s.social.DingTalkWeb.RedirectURI
+	}
+	accessToken, err := s.exchangeDingTalkAccessToken(ctx, code, redirectURI)
+	if err != nil {
+		return nil, err
+	}
+	profile, rawProfile, err := s.fetchDingTalkProfile(ctx, accessToken)
+	if err != nil {
+		return nil, err
+	}
+	accountID := firstNonEmpty(strings.TrimSpace(profile.UnionID), strings.TrimSpace(profile.OpenID))
+	if accountID == "" {
+		return nil, authenticationv1.ErrorUnauthorized("dingtalk account id is empty")
+	}
+	return &authFlowProviderProfile{
+		ProviderKey:       "dingtalk_web",
+		Provider:          authenticationv1.OAuthProvider_DINGTALK,
+		ProviderAccountID: accountID,
+		Nickname:          strings.TrimSpace(profile.Nick),
+		Avatar:            strings.TrimSpace(profile.AvatarURL),
+		Email:             strings.TrimSpace(profile.Email),
+		Mobile:            strings.TrimSpace(profile.Mobile),
+		RawProfileJSON:    rawProfile,
+	}, nil
 }
 
 func (s *manualSocialAuthService) resolveGitHubProfile(ctx context.Context, req *authenticationv1.CompleteSocialLoginRequest, code string, sessionRecord *authFlowSessionRecord) (*authFlowProviderProfile, error) {
@@ -1220,6 +1568,45 @@ func (s *manualSocialAuthService) exchangeGitHubAccessToken(ctx context.Context,
 	return tokenResp.AccessToken, nil
 }
 
+func (s *manualSocialAuthService) exchangeDingTalkAccessToken(ctx context.Context, code, redirectURI string) (string, error) {
+	payload, err := json.Marshal(map[string]string{
+		"clientId":     s.social.DingTalkWeb.ClientID,
+		"clientSecret": s.social.DingTalkWeb.ClientSecret,
+		"code":         code,
+		"grantType":    "authorization_code",
+		"redirectUri":  redirectURI,
+	})
+	if err != nil {
+		return "", authenticationv1.ErrorInternalServerError("failed to encode dingtalk token request")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.social.DingTalkWeb.TokenURL, strings.NewReader(string(payload)))
+	if err != nil {
+		return "", authenticationv1.ErrorInternalServerError("failed to build dingtalk token request")
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", authenticationv1.ErrorInternalServerError("dingtalk token exchange failed")
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", authenticationv1.ErrorInternalServerError("failed to read dingtalk token response")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		s.log.Errorf("chain=manual_social_auth.dingtalk_web status=token_exchange code=%d body=%s", resp.StatusCode, string(body))
+		return "", authenticationv1.ErrorUnauthorized("dingtalk token exchange failed")
+	}
+	var tokenResp dingtalkAccessTokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return "", authenticationv1.ErrorInternalServerError("failed to decode dingtalk token response")
+	}
+	if strings.TrimSpace(tokenResp.AccessToken) == "" {
+		return "", authenticationv1.ErrorUnauthorized("dingtalk access token is empty")
+	}
+	return tokenResp.AccessToken, nil
+}
+
 func (s *manualSocialAuthService) fetchGitHubProfile(ctx context.Context, accessToken string) (*githubUserProfile, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.social.GitHub.UserAPIURL, nil)
 	if err != nil {
@@ -1247,6 +1634,115 @@ func (s *manualSocialAuthService) fetchGitHubProfile(ctx context.Context, access
 	}
 	if profile.ID == 0 {
 		return nil, "", authenticationv1.ErrorUnauthorized("github account id is empty")
+	}
+	return &profile, string(body), nil
+}
+
+func (s *manualSocialAuthService) fetchDingTalkProfile(ctx context.Context, accessToken string) (*dingtalkUserProfile, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.social.DingTalkWeb.UserAPIURL, nil)
+	if err != nil {
+		return nil, "", authenticationv1.ErrorInternalServerError("failed to build dingtalk profile request")
+	}
+	req.Header.Set("x-acs-dingtalk-access-token", accessToken)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, "", authenticationv1.ErrorInternalServerError("dingtalk profile request failed")
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", authenticationv1.ErrorInternalServerError("failed to read dingtalk profile response")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		s.log.Errorf("chain=manual_social_auth.dingtalk_web status=fetch_profile code=%d body=%s", resp.StatusCode, string(body))
+		return nil, "", authenticationv1.ErrorUnauthorized("dingtalk profile request failed")
+	}
+	var profile dingtalkUserProfile
+	if err := json.Unmarshal(body, &profile); err != nil {
+		return nil, "", authenticationv1.ErrorInternalServerError("failed to decode dingtalk profile")
+	}
+	if strings.TrimSpace(profile.UnionID) == "" && strings.TrimSpace(profile.OpenID) == "" {
+		return nil, "", authenticationv1.ErrorUnauthorized("dingtalk account id is empty")
+	}
+	return &profile, string(body), nil
+}
+
+func (s *manualSocialAuthService) exchangeWeChatWebAccessToken(ctx context.Context, code, redirectURI string) (*wechatAccessTokenResponse, error) {
+	query := url.Values{}
+	query.Set("appid", s.social.WeChatWeb.ClientID)
+	query.Set("secret", s.social.WeChatWeb.ClientSecret)
+	query.Set("code", code)
+	query.Set("grant_type", "authorization_code")
+	if strings.TrimSpace(redirectURI) != "" {
+		query.Set("redirect_uri", redirectURI)
+	}
+	endpoint := s.social.WeChatWeb.TokenURL + "?" + query.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, authenticationv1.ErrorInternalServerError("failed to build wechat token request")
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, authenticationv1.ErrorInternalServerError("wechat token exchange failed")
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, authenticationv1.ErrorInternalServerError("failed to read wechat token response")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		s.log.Errorf("chain=manual_social_auth.wechat_web status=token_exchange code=%d body=%s", resp.StatusCode, string(body))
+		return nil, authenticationv1.ErrorUnauthorized("wechat token exchange failed")
+	}
+	var tokenResp wechatAccessTokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return nil, authenticationv1.ErrorInternalServerError("failed to decode wechat token response")
+	}
+	if tokenResp.ErrCode != 0 {
+		s.log.Errorf("chain=manual_social_auth.wechat_web status=token_exchange errcode=%d errmsg=%s", tokenResp.ErrCode, tokenResp.ErrMsg)
+		return nil, authenticationv1.ErrorUnauthorized("wechat token exchange rejected by provider")
+	}
+	if strings.TrimSpace(tokenResp.AccessToken) == "" || strings.TrimSpace(tokenResp.OpenID) == "" {
+		return nil, authenticationv1.ErrorUnauthorized("wechat access token is empty")
+	}
+	return &tokenResp, nil
+}
+
+func (s *manualSocialAuthService) fetchWeChatWebProfile(ctx context.Context, tokenResp *wechatAccessTokenResponse) (*wechatUserProfile, string, error) {
+	if tokenResp == nil {
+		return nil, "", authenticationv1.ErrorUnauthorized("wechat token response is empty")
+	}
+	query := url.Values{}
+	query.Set("access_token", tokenResp.AccessToken)
+	query.Set("openid", tokenResp.OpenID)
+	query.Set("lang", "zh_CN")
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.social.WeChatWeb.UserAPIURL+"?"+query.Encode(), nil)
+	if err != nil {
+		return nil, "", authenticationv1.ErrorInternalServerError("failed to build wechat profile request")
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, "", authenticationv1.ErrorInternalServerError("wechat profile request failed")
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", authenticationv1.ErrorInternalServerError("failed to read wechat profile response")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		s.log.Errorf("chain=manual_social_auth.wechat_web status=fetch_profile code=%d body=%s", resp.StatusCode, string(body))
+		return nil, "", authenticationv1.ErrorUnauthorized("wechat profile request failed")
+	}
+	var profile wechatUserProfile
+	if err := json.Unmarshal(body, &profile); err != nil {
+		return nil, "", authenticationv1.ErrorInternalServerError("failed to decode wechat profile")
+	}
+	if profile.ErrCode != 0 {
+		s.log.Errorf("chain=manual_social_auth.wechat_web status=fetch_profile errcode=%d errmsg=%s", profile.ErrCode, profile.ErrMsg)
+		return nil, "", authenticationv1.ErrorUnauthorized("wechat profile request rejected by provider")
+	}
+	if strings.TrimSpace(profile.OpenID) == "" {
+		return nil, "", authenticationv1.ErrorUnauthorized("wechat openid is empty")
 	}
 	return &profile, string(body), nil
 }
