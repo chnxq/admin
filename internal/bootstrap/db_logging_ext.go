@@ -23,6 +23,7 @@ import (
 	authenticationv1 "admin/api/gen/authentication/v1"
 	identityv1 "admin/api/gen/identity/v1"
 	"admin/internal/data/repo"
+
 	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
 	crudviewer "github.com/chnxq/x-crud/viewer"
 	"github.com/chnxq/x-utils/geoip/geolite"
@@ -38,6 +39,7 @@ const (
 	headerReferer        = "Referer"
 	headerUserAgent      = "User-Agent"
 	headerAuthorization  = "Authorization"
+	headerForwarded      = "Forwarded"
 	headerXForwardedFor  = "X-Forwarded-For"
 	headerXRealIP        = "X-Real-IP"
 	headerXRequestID     = "X-Request-ID"
@@ -61,6 +63,12 @@ type apiAuditLogRepoProvider interface {
 
 type loginAuditLogRepoProvider interface {
 	LoginAuditLogRepoProvider() repo.LoginAuditLogRepo
+}
+
+type databaseHTTPTransport interface {
+	Operation() string
+	PathTemplate() string
+	Request() *http.Request
 }
 
 func (data *GeneratedData) DatabaseLoggingMiddleware() middleware.Middleware {
@@ -94,7 +102,7 @@ func (data *GeneratedData) DatabaseLoggingMiddleware() middleware.Middleware {
 			}
 
 			logCtx := databaseLoggingContext(ctx)
-			if htr.Operation() == adminv1.OperationAuthenticationServiceLogin || htr.Operation() == adminv1.OperationAuthenticationServiceLogout {
+			if shouldWriteLoginAuditLog(htr.Operation(), reply) {
 				if loginWriter != nil {
 					logData := buildLoginAuditLog(logCtx, htr, req, reply, err, userRepo)
 					_ = loginWriter.WriteLoginAuditLog(logCtx, logData)
@@ -140,7 +148,7 @@ func (databaseLoggingViewerContext) IsTenantContext() bool   { return false }
 func (databaseLoggingViewerContext) IsSystemContext() bool   { return true }
 func (databaseLoggingViewerContext) ShouldAudit() bool       { return false }
 
-func buildApiAuditLog(ctx context.Context, htr *httptransport.Transport, err error, latencyMs int64, userRepo repo.UserRepo) *auditv1.ApiAuditLog {
+func buildApiAuditLog(ctx context.Context, htr databaseHTTPTransport, err error, latencyMs int64, userRepo repo.UserRepo) *auditv1.ApiAuditLog {
 	req := htr.Request()
 	statusCode, reason, success := statusFromError(err)
 	requestURI := ""
@@ -184,7 +192,7 @@ func buildApiAuditLog(ctx context.Context, htr *httptransport.Transport, err err
 	return out
 }
 
-func buildLoginAuditLog(ctx context.Context, htr *httptransport.Transport, reqData any, replyData any, err error, userRepo repo.UserRepo) *auditv1.LoginAuditLog {
+func buildLoginAuditLog(ctx context.Context, htr databaseHTTPTransport, reqData any, replyData any, err error, userRepo repo.UserRepo) *auditv1.LoginAuditLog {
 	req := htr.Request()
 	_, reason, success := statusFromError(err)
 	action := auditv1.LoginAuditLog_LOGIN
@@ -237,8 +245,22 @@ func buildLoginAuditLog(ctx context.Context, htr *httptransport.Transport, reqDa
 			}
 		}
 	}
+	if socialReq, ok := reqData.(*authenticationv1.CompleteSocialLoginRequest); ok && socialReq != nil {
+		method := auditv1.LoginAuditLog_OIDC_SOCIAL
+		out.LoginMethod = &method
+		if username := socialLoginUsername(replyData); username != "" {
+			out.Username = auditPtr(username)
+		}
+	}
+	if bindReq, ok := reqData.(*authenticationv1.ConfirmBindOrRegisterRequest); ok && bindReq != nil {
+		method := auditv1.LoginAuditLog_OIDC_SOCIAL
+		out.LoginMethod = &method
+		if username := socialLoginUsername(replyData); username != "" {
+			out.Username = auditPtr(username)
+		}
+	}
 	if success && (authInfo == nil || authInfo.UserID == 0 || authInfo.TenantID == 0 || strings.TrimSpace(authInfo.Username) == "") {
-		if loginResp, ok := replyData.(*authenticationv1.LoginResponse); ok && loginResp != nil {
+		if loginResp := socialLoginResponse(replyData); loginResp != nil {
 			if loginUserInfo := resolveLoginResponseUser(loginResp); loginUserInfo != nil {
 				if authInfo == nil {
 					authInfo = loginUserInfo
@@ -339,10 +361,6 @@ func requestGeoLocation(ip string) *auditv1.GeoLocation {
 	if ip == "" {
 		return nil
 	}
-	if isPrivateIP(ip) {
-		remark := "private network"
-		return &auditv1.GeoLocation{AddressRemark: &remark}
-	}
 	if geoIPClient == nil {
 		return nil
 	}
@@ -373,23 +391,23 @@ func clientIP(req *http.Request) string {
 	if req == nil {
 		return ""
 	}
-	if xff := req.Header.Get(headerXForwardedFor); xff != "" {
-		for _, raw := range strings.Split(xff, ",") {
-			ip := strings.TrimSpace(raw)
-			if net.ParseIP(ip) != nil {
-				return ip
-			}
-		}
+	if ip := firstForwardedIP(req.Header.Get(headerForwarded)); ip != "" {
+		return ip
 	}
-	if ip := strings.TrimSpace(req.Header.Get(headerXRealIP)); net.ParseIP(ip) != nil {
+	if ip := firstForwardedIP(req.Header.Get(headerXForwardedFor)); ip != "" {
+		return ip
+	}
+	if ip := normalizeIPString(req.Header.Get(headerXRealIP)); ip != "" {
 		return ip
 	}
 	host, _, err := net.SplitHostPort(req.RemoteAddr)
-	if err == nil && net.ParseIP(host) != nil {
-		return host
+	if err == nil {
+		if ip := normalizeIPString(host); ip != "" {
+			return ip
+		}
 	}
-	if net.ParseIP(req.RemoteAddr) != nil {
-		return req.RemoteAddr
+	if ip := normalizeIPString(req.RemoteAddr); ip != "" {
+		return ip
 	}
 	return ""
 }
@@ -686,14 +704,90 @@ func detectLoginMethod(req *authenticationv1.LoginRequest) *auditv1.LoginAuditLo
 	switch {
 	case req.GetGrantType() == authenticationv1.GrantType_authorization_code:
 		method = auditv1.LoginAuditLog_OIDC_SOCIAL
-	case req.GetClientType() == authenticationv1.ClientType_app && req.GetCode() != "":
+	case req.GetClientType() == authenticationv1.ClientType_app && req.GetCode() != "" && loginUsername(req) == "" && req.GetPassword() == "":
 		method = auditv1.LoginAuditLog_QR_CODE
 	case req.GetMobile() != "" && req.GetPassword() == "":
 		method = auditv1.LoginAuditLog_SMS_CODE
-	case req.GetCode() != "":
-		method = auditv1.LoginAuditLog_SMS_CODE
 	}
 	return &method
+}
+
+func shouldWriteLoginAuditLog(operation string, reply any) bool {
+	switch operation {
+	case adminv1.OperationAuthenticationServiceLogin, adminv1.OperationAuthenticationServiceLogout:
+		return true
+	case adminv1.OperationSocialAuthServiceCompleteSocialLogin:
+		resp, ok := reply.(*authenticationv1.CompleteSocialLoginResponse)
+		return ok && resp != nil && resp.GetStatus() == authenticationv1.SocialAuthStatus_SOCIAL_AUTH_BOUND && resp.GetLogin() != nil
+	case adminv1.OperationSocialAuthServiceConfirmBindOrRegister:
+		resp, ok := reply.(*authenticationv1.ConfirmBindOrRegisterResponse)
+		return ok && resp != nil && resp.GetStatus() == authenticationv1.SocialAuthStatus_SOCIAL_AUTH_BOUND && resp.GetLogin() != nil
+	default:
+		return false
+	}
+}
+
+func socialLoginUsername(replyData any) string {
+	if typed := socialLoginResponse(replyData); typed != nil {
+		if info := resolveLoginResponseUser(typed); info != nil {
+			return strings.TrimSpace(info.Username)
+		}
+	}
+	return ""
+}
+
+func socialLoginResponse(replyData any) *authenticationv1.LoginResponse {
+	switch typed := replyData.(type) {
+	case *authenticationv1.CompleteSocialLoginResponse:
+		if typed != nil {
+			return typed.GetLogin()
+		}
+	case *authenticationv1.ConfirmBindOrRegisterResponse:
+		if typed != nil {
+			return typed.GetLogin()
+		}
+	case *authenticationv1.LoginResponse:
+		return typed
+	}
+	return nil
+}
+
+func firstForwardedIP(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	candidates := strings.Split(raw, ",")
+	for _, candidate := range candidates {
+		for _, part := range strings.Split(candidate, ";") {
+			part = strings.TrimSpace(part)
+			part = strings.TrimPrefix(strings.ToLower(part), "for=")
+			part = strings.Trim(part, "\"")
+			if part == "" || part == "unknown" {
+				continue
+			}
+			if host, _, err := net.SplitHostPort(part); err == nil {
+				part = host
+			} else {
+				part = strings.Trim(part, "[]")
+			}
+			if ip := normalizeIPString(part); ip != "" {
+				return ip
+			}
+		}
+	}
+	return ""
+}
+
+func normalizeIPString(raw string) string {
+	parsed := net.ParseIP(strings.TrimSpace(raw))
+	if parsed == nil {
+		return ""
+	}
+	if ipv4 := parsed.To4(); ipv4 != nil {
+		return ipv4.String()
+	}
+	return parsed.String()
 }
 
 func fillDeviceInfoFromUserAgent(info *auditv1.DeviceInfo, userAgent string) {
@@ -861,29 +955,6 @@ func isEmptyDeviceInfo(info *auditv1.DeviceInfo) bool {
 		info.UserAgent == nil &&
 		info.BrowserName == nil &&
 		info.BrowserVersion == nil
-}
-
-func isPrivateIP(ipStr string) bool {
-	ip := net.ParseIP(strings.TrimSpace(ipStr))
-	if ip == nil {
-		return false
-	}
-	cidrs := []string{
-		"10.0.0.0/8",
-		"172.16.0.0/12",
-		"192.168.0.0/16",
-		"127.0.0.0/8",
-		"169.254.0.0/16",
-		"::1/128",
-		"fc00::/7",
-	}
-	for _, cidr := range cidrs {
-		_, network, parseErr := net.ParseCIDR(cidr)
-		if parseErr == nil && network.Contains(ip) {
-			return true
-		}
-	}
-	return false
 }
 
 func readRequestBody(req *http.Request) string {
