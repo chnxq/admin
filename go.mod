@@ -10,28 +10,28 @@ require (
 	github.com/chnxq/x-crud/entgo v0.0.0-20260411151944-a61448f9f7bc
 	github.com/chnxq/x-crud/viewer v0.0.0-20260411151944-a61448f9f7bc
 	github.com/chnxq/x-swagger v0.0.0-20260529105209-02745c8a5170
-	github.com/chnxq/x-utils v0.0.0-20260430084133-417cf92dc6f1
-	github.com/chnxq/x-utils/copierutil v0.0.0-20260430084133-417cf92dc6f1
-	github.com/chnxq/x-utils/geoip v0.0.0-20260430084133-417cf92dc6f1
-	github.com/chnxq/x-utils/mapper v0.0.0-20260430084133-417cf92dc6f1
+	github.com/chnxq/x-utils v0.0.0-20260612100514-4160a415201a
+	github.com/chnxq/x-utils/copierutil v0.0.0-20260612100514-4160a415201a
+	github.com/chnxq/x-utils/geoip v0.0.0-20260612100514-4160a415201a
+	github.com/chnxq/x-utils/mapper v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/xkitmod v0.0.0-20260529105211-b1cd4c65f020
 	github.com/chnxq/xkitmod/algs v0.0.0-20260529105211-b1cd4c65f020
 	github.com/chnxq/xkitmod/log v0.0.0-20260529105211-b1cd4c65f020
-	github.com/chnxq/xkitpkg/app v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/cache v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/conf v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/config v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/config/consul v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/config/etcd v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/logger v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/logger/fluentd v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/logger/zap v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/middleware v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/registry v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/registry/consul v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/registry/etcd v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/tracer v0.0.0-20260611035626-6d2fabdbc574
-	github.com/chnxq/xkitpkg/transport v0.0.0-20260611035626-6d2fabdbc574
+	github.com/chnxq/xkitpkg/app v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/cache v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/conf v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/config v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/config/consul v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/config/etcd v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/logger v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/logger/fluentd v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/logger/zap v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/middleware v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/registry v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/registry/consul v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/registry/etcd v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/tracer v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/transport v0.0.0-20260611040354-12618fedb015
 	github.com/envoyproxy/protoc-gen-validate v1.3.3
 	github.com/getkin/kin-openapi v0.140.0
 	github.com/go-sql-driver/mysql v1.10.0
@@ -76,7 +76,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.19.0 // indirect
-	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fluent/fluent-logger-golang v1.10.1 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -128,9 +128,9 @@ require (
 	github.com/oschwald/maxminddb-golang v1.13.1 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/redis/go-redis/extra/rediscmd/v9 v9.20.0 // indirect
-	github.com/redis/go-redis/extra/redisotel/v9 v9.20.0 // indirect
-	github.com/redis/go-redis/v9 v9.20.0 // indirect
+	github.com/redis/go-redis/extra/rediscmd/v9 v9.20.1 // indirect
+	github.com/redis/go-redis/extra/redisotel/v9 v9.20.1 // indirect
+	github.com/redis/go-redis/v9 v9.20.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
@@ -172,7 +172,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/exp v0.0.0-20260603202125-055de637280b // indirect
+	golang.org/x/exp v0.0.0-20260611194520-c48552f49976 // indirect
 	golang.org/x/image v0.42.0 // indirect
 	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
@@ -180,7 +180,7 @@ require (
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	golang.org/x/tools v0.45.0 // indirect
+	golang.org/x/tools v0.46.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260610212136-7ab31c22f7ad // indirect
 	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
 	gopkg.in/ini.v1 v1.67.3 // indirect
