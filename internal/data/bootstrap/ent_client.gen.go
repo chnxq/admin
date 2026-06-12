@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 
 	entCrud "github.com/chnxq/x-crud/entgo"
 	"github.com/chnxq/xkitpkg/app"
@@ -34,7 +33,12 @@ func NewEntClient(ctx *app.AppCtx) (*entCrud.EntClient[*ent.Client], func(), err
 		return nil, func() {}, fmt.Errorf("database driver and source are required")
 	}
 
-	drv, err := entsql.Open(database.GetDriver(), database.GetSource())
+	drv, err := entCrud.CreateDriver(
+		database.GetDriver(),
+		database.GetSource(),
+		database.GetEnableTrace(),
+		database.GetEnableMetrics(),
+	)
 	if err != nil {
 		return nil, func() {}, fmt.Errorf("open database: %w", err)
 	}

@@ -17,21 +17,21 @@ require (
 	github.com/chnxq/xkitmod v0.0.0-20260529105211-b1cd4c65f020
 	github.com/chnxq/xkitmod/algs v0.0.0-20260529105211-b1cd4c65f020
 	github.com/chnxq/xkitmod/log v0.0.0-20260529105211-b1cd4c65f020
-	github.com/chnxq/xkitpkg/app v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/cache v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/conf v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/config v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/config/consul v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/config/etcd v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/logger v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/logger/fluentd v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/logger/zap v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/middleware v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/registry v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/registry/consul v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/registry/etcd v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/tracer v0.0.0-20260611040354-12618fedb015
-	github.com/chnxq/xkitpkg/transport v0.0.0-20260611040354-12618fedb015
+	github.com/chnxq/xkitpkg/app v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/cache v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/conf v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/config v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/config/consul v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/config/etcd v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/logger v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/logger/fluentd v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/logger/zap v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/middleware v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/registry v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/registry/consul v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/registry/etcd v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/tracer v0.0.0-20260612150007-4a0b93a9efd2
+	github.com/chnxq/xkitpkg/transport v0.0.0-20260612150007-4a0b93a9efd2
 	github.com/envoyproxy/protoc-gen-validate v1.3.3
 	github.com/getkin/kin-openapi v0.140.0
 	github.com/go-sql-driver/mysql v1.10.0
@@ -51,7 +51,7 @@ require (
 )
 
 require (
-	ariga.io/atlas v1.2.0 // indirect
+	ariga.io/atlas v1.2.2 // indirect
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 // indirect
 	buf.build/go/protovalidate v1.2.0 // indirect
 	cel.dev/expr v0.25.2 // indirect
@@ -68,10 +68,10 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chnxq/x-crud/audit v0.0.0-20260411151944-a61448f9f7bc // indirect
 	github.com/chnxq/x-crud/pagination v0.0.0-20260411151944-a61448f9f7bc // indirect
-	github.com/chnxq/x-utils/id v0.0.0-20260430084133-417cf92dc6f1 // indirect
+	github.com/chnxq/x-utils/id v0.0.0-20260612100514-4160a415201a // indirect
 	github.com/chnxq/xkitmod/config v0.0.0-20260529105211-b1cd4c65f020 // indirect
 	github.com/chnxq/xkitmod/selector v0.0.0-20260529105211-b1cd4c65f020 // indirect
-	github.com/chnxq/xkitpkg v0.0.0-20260529105210-f5ea09d00e89 // indirect
+	github.com/chnxq/xkitpkg v0.0.0-20260612150007-4a0b93a9efd2 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -82,9 +82,9 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-openapi/inflect v0.21.5 // indirect
-	github.com/go-openapi/jsonpointer v0.22.5 // indirect
-	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
+	github.com/go-openapi/inflect v0.21.6 // indirect
+	github.com/go-openapi/jsonpointer v0.23.1 // indirect
+	github.com/go-openapi/swag/jsonname v0.26.1 // indirect
 	github.com/go-playground/form/v4 v4.3.0 // indirect
 	github.com/go-test/deep v1.0.8 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
@@ -109,12 +109,14 @@ require (
 	github.com/hashicorp/hcl/v2 v2.24.0 // indirect
 	github.com/hashicorp/serf v0.10.2 // indirect
 	github.com/hibiken/asynq v0.26.0 // indirect
+	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/klauspost/compress v1.18.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/lithammer/shortuuid/v4 v4.2.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260330125221-c963978e514e // indirect
+	github.com/lyft/protoc-gen-star/v2 v2.0.4 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
@@ -137,6 +139,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/shoenig/go-m1cpu v0.2.1 // indirect
 	github.com/sony/sonyflake v1.3.0 // indirect
+	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/swaggest/swgui v1.8.8 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect

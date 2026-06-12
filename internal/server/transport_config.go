@@ -4,12 +4,14 @@
 package server
 
 import (
+	algRateLimit "github.com/chnxq/xkitmod/algs/ratelimit"
+	"github.com/chnxq/xkitmod/algs/ratelimit/bbr"
 	"github.com/chnxq/xkitpkg/app"
 	conf "github.com/chnxq/xkitpkg/conf/v1"
-	"github.com/chnxq/xkitpkg/middleware"
+	kmiddleware "github.com/chnxq/xkitpkg/middleware"
 	"github.com/chnxq/xkitpkg/middleware/logging"
 	"github.com/chnxq/xkitpkg/middleware/metadata"
-	"github.com/chnxq/xkitpkg/middleware/ratelimit"
+	midratelimit "github.com/chnxq/xkitpkg/middleware/ratelimit"
 	"github.com/chnxq/xkitpkg/middleware/recovery"
 	"github.com/chnxq/xkitpkg/middleware/tracing"
 	"github.com/chnxq/xkitpkg/middleware/validate"
@@ -38,12 +40,12 @@ func grpcConfig(appCtx *app.AppCtx) *conf.Server_GRPC {
 	return cfg.Server.Grpc
 }
 
-func commonServerMiddlewares(appCtx *app.AppCtx, cfg *conf.Middleware) []middleware.Middleware {
+func commonServerMiddlewares(appCtx *app.AppCtx, cfg *conf.Middleware) []kmiddleware.Middleware {
 	if cfg == nil {
 		return nil
 	}
 
-	ms := make([]middleware.Middleware, 0, 7)
+	ms := make([]kmiddleware.Middleware, 0, 7)
 	if cfg.GetEnableRecovery() {
 		ms = append(ms, recovery.Recovery())
 	}
@@ -57,13 +59,40 @@ func commonServerMiddlewares(appCtx *app.AppCtx, cfg *conf.Middleware) []middlew
 		ms = append(ms, metadata.Server())
 	}
 	if cfg.GetLimiter() != nil {
-		ms = append(ms, ratelimit.Server())
+		if limiter := newServerRateLimiter(cfg.GetLimiter()); limiter != nil {
+			ms = append(ms, midratelimit.Server(midratelimit.WithLimiter(limiter)))
+		}
 	}
 	if cfg.GetEnableCircuitBreaker() {
-		ms = append(ms, serverCircuitBreakerMiddleware())
+		ms = append(ms, serverCircuitBreakerMiddleware(cfg.GetCircuitBreaker()))
 	}
 	if cfg.GetEnableLogging() && appCtx != nil {
 		ms = append(ms, logging.Server(appCtx.GetLogger()))
 	}
 	return ms
+}
+
+func newServerRateLimiter(cfg *conf.Middleware_RateLimiter) algRateLimit.Limiter {
+	if cfg == nil {
+		return nil
+	}
+	switch cfg.GetName() {
+	case "", "bbr":
+		opts := make([]bbr.Option, 0, 4)
+		if d := cfg.GetWindow(); d != nil {
+			opts = append(opts, bbr.WithWindow(d.AsDuration()))
+		}
+		if v := cfg.GetBucket(); v > 0 {
+			opts = append(opts, bbr.WithBucket(int(v)))
+		}
+		if v := cfg.GetCpuThreshold(); v > 0 {
+			opts = append(opts, bbr.WithCPUThreshold(v))
+		}
+		if v := cfg.GetCpuQuota(); v > 0 {
+			opts = append(opts, bbr.WithCPUQuota(v))
+		}
+		return bbr.NewLimiter(opts...)
+	default:
+		return nil
+	}
 }

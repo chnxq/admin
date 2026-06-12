@@ -1,0 +1,36 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {} # 对数据进行批量处理，优化性能
+
+exporters:
+  # 导出到控制台，便于直接观察（调试必备）
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+  # 也可配置导出到后端，如 Jaeger (用于追踪)
+  # jaeger:
+  #   endpoint: jaeger:14250
+  #   tls:
+  #     insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug] # 暂时先输出到控制台
+    metrics:
+      receivers: [ otlp ]
+      exporters: [ debug ]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug] # 暂时先输出到控制台

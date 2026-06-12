@@ -1,11 +1,20 @@
 server:
-  # gRPC服务配置
   grpc:
     network: "tcp"
     addr: "0.0.0.0:7790"
     timeout: "10s"
     middleware:
-    # 中间件配置
+      enable_logging: true
+      enable_recovery: true
+      enable_tracing: true
+      enable_validate: true
+      enable_circuit_breaker: true
+      enable_metadata: true
+      circuit_breaker:
+        window: "3s"
+        request: 100
+        bucket: 10
+        success: 0.6
     tls:
     # TLS配置
     # 其他服务配置...
@@ -41,6 +50,11 @@ server:
       enable_validate: true
       enable_circuit_breaker: true
       enable_metadata: true
+      circuit_breaker:
+        window: "3s"
+        request: 100
+        bucket: 10
+        success: 0.6
 #      auth:
 #        method: "HS256"
 #        key: "xA0987654321"
