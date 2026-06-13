@@ -53,6 +53,7 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 			if viewer, ok := crudviewer.FromContext(ctx); ok && viewer != nil && viewer.UserID() > 0 {
 				return next(ctx, req)
 			}
+			protected := isProtectedServerRequest(ctx)
 
 			if authErr != nil {
 				logger.Errorf("%s auth config unavailable: %s", authRequestLogPrefix(ctx, "viewer_auth"), authErr.Error())
@@ -60,7 +61,7 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 			}
 			token := parseBearerToken(ctx)
 			if token == "" {
-				if isProtectedServerRequest(ctx) {
+				if protected {
 					return nil, authenticationv1.ErrorUnauthorized("missing access token")
 				}
 				ctx = ensureDefaultViewerContext(ctx)
@@ -68,11 +69,12 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 			}
 			claims, err := parseAndValidateToken(token, auth, tokenCategoryAccess)
 			if err != nil {
-				logger.Errorf("%s parse access token failed: %s", authRequestLogPrefix(ctx, "viewer_auth"), err.Error())
-				if isProtectedServerRequest(ctx) {
+				if protected {
+					logger.Errorf("%s parse access token failed: %s", authRequestLogPrefix(ctx, "viewer_auth"), err.Error())
 					return nil, err
 				}
-				return nil, err
+				ctx = ensureDefaultViewerContext(ctx)
+				return next(ctx, req)
 			}
 			if !skipTokenCheck {
 				if tokenStoreErr != nil {
@@ -80,8 +82,12 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 					return nil, authenticationv1.ErrorInternalServerError("token store is unavailable")
 				}
 				if err := tokenStore.ValidateAccessToken(token, claims); err != nil {
-					logger.Errorf("%s validate access token failed for user_id=%d jti=%s: %s", authRequestLogPrefix(ctx, "viewer_auth"), claims.UserID, claims.ID, err.Error())
-					return nil, err
+					if protected {
+						logger.Errorf("%s validate access token failed for user_id=%d jti=%s: %s", authRequestLogPrefix(ctx, "viewer_auth"), claims.UserID, claims.ID, err.Error())
+						return nil, err
+					}
+					ctx = ensureDefaultViewerContext(ctx)
+					return next(ctx, req)
 				}
 			}
 			lookupCtx := ensureDefaultViewerContext(ctx)
@@ -94,7 +100,7 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 				} else {
 					logger.Errorf("%s load viewer user returned nil for user_id=%d", authRequestLogPrefix(ctx, "viewer_auth"), claims.UserID)
 				}
-				if isProtectedServerRequest(ctx) {
+				if protected {
 					if err == nil || ent.IsNotFound(err) {
 						return nil, authenticationv1.ErrorUserNotFound("user not found")
 					}

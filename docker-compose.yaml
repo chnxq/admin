@@ -93,6 +93,7 @@ services:
     ports:
       - 16686:16686 # Jaeger UI就是这个端口
       - 14268:14268
+      - 14250:14250
     restart: always
 
   etcd:

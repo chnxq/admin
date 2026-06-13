@@ -891,6 +891,104 @@ func TestAuthViewerMiddlewareRejectsRotatedAccessToken(t *testing.T) {
 	}
 }
 
+func TestAuthViewerMiddlewareAllowsPublicLogoutWithRevokedAccessToken(t *testing.T) {
+	captchaID, captchaCode := mustGenerateCaptcha(t)
+	service := newTestAuthenticationService(t)
+
+	loginResp, err := service.Login(context.Background(), &authenticationv1.LoginRequest{
+		GrantType: authenticationv1.GrantType_password,
+		ClientId:  ptr(captchaID),
+		Code:      ptr(captchaCode),
+		Identifier: &authenticationv1.LoginRequest_Username{
+			Username: "admin",
+		},
+		Password: ptr("123456"),
+	})
+	if err != nil {
+		t.Fatalf("login failed: %v", err)
+	}
+	if err := service.tokenStore.RevokeTokenPairByJTI(parseTestClaims(t, loginResp.GetAccessToken()).ID); err != nil {
+		t.Fatalf("revoke token pair failed: %v", err)
+	}
+
+	data := &testGeneratedData{
+		appCtx:     testAppCtx(),
+		userRepo:   service.userRepo,
+		roleRepo:   testRoleRepo{},
+		permRepo:   testPermissionRepo{},
+		tokenStore: service.tokenStore,
+	}
+	handler := authViewerMiddleware(data)(func(ctx context.Context, req any) (any, error) {
+		viewer, ok := crudviewer.FromContext(ctx)
+		if !ok || viewer == nil {
+			t.Fatalf("expected default viewer context")
+		}
+		if viewer.UserID() != 0 {
+			t.Fatalf("expected anonymous viewer, got user_id=%d", viewer.UserID())
+		}
+		return &emptypb.Empty{}, nil
+	})
+
+	req, err := http.NewRequest(http.MethodPost, "http://localhost/admin/v1/logout", nil)
+	if err != nil {
+		t.Fatalf("new request failed: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+loginResp.GetAccessToken())
+	ctx := transport.NewServerContext(context.Background(), &testHTTPTransport{
+		req:          req,
+		pathTemplate: "/admin/v1/logout",
+	})
+	if _, err := handler(ctx, nil); err != nil {
+		t.Fatalf("expected public logout path to ignore revoked token, got %v", err)
+	}
+}
+
+func TestAuthViewerMiddlewareRejectsRevokedAccessTokenOnProtectedPath(t *testing.T) {
+	captchaID, captchaCode := mustGenerateCaptcha(t)
+	service := newTestAuthenticationService(t)
+
+	loginResp, err := service.Login(context.Background(), &authenticationv1.LoginRequest{
+		GrantType: authenticationv1.GrantType_password,
+		ClientId:  ptr(captchaID),
+		Code:      ptr(captchaCode),
+		Identifier: &authenticationv1.LoginRequest_Username{
+			Username: "admin",
+		},
+		Password: ptr("123456"),
+	})
+	if err != nil {
+		t.Fatalf("login failed: %v", err)
+	}
+	if err := service.tokenStore.RevokeTokenPairByJTI(parseTestClaims(t, loginResp.GetAccessToken()).ID); err != nil {
+		t.Fatalf("revoke token pair failed: %v", err)
+	}
+
+	data := &testGeneratedData{
+		appCtx:     testAppCtx(),
+		userRepo:   service.userRepo,
+		roleRepo:   testRoleRepo{},
+		permRepo:   testPermissionRepo{},
+		tokenStore: service.tokenStore,
+	}
+	handler := authViewerMiddleware(data)(func(ctx context.Context, req any) (any, error) {
+		return &emptypb.Empty{}, nil
+	})
+
+	req, err := http.NewRequest(http.MethodGet, "http://localhost/admin/v1/me", nil)
+	if err != nil {
+		t.Fatalf("new request failed: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+loginResp.GetAccessToken())
+	ctx := transport.NewServerContext(context.Background(), &testHTTPTransport{
+		req:          req,
+		pathTemplate: "/admin/v1/me",
+	})
+	_, err = handler(ctx, nil)
+	if err == nil || !authenticationv1.IsUnauthorized(err) {
+		t.Fatalf("expected revoked access token rejected on protected path, got %v", err)
+	}
+}
+
 func TestManualAuthenticationServiceLogoutRevokesCurrentTokenPair(t *testing.T) {
 	captchaID, captchaCode := mustGenerateCaptcha(t)
 	service := newTestAuthenticationService(t)
@@ -1054,6 +1152,15 @@ func testAuthConfig(t *testing.T) *authConfig {
 		t.Fatalf("load auth config failed: %v", err)
 	}
 	return cfg
+}
+
+func parseTestClaims(t *testing.T, token string) *authTokenClaims {
+	t.Helper()
+	claims, err := parseAndValidateToken(token, testAuthConfig(t), tokenCategoryAccess)
+	if err != nil {
+		t.Fatalf("parse token failed: %v", err)
+	}
+	return claims
 }
 
 func testAppCtx() *app.AppCtx {
