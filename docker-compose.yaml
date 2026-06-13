@@ -83,18 +83,6 @@ services:
       - "4318:4318"   # OTLP HTTP
       - "5679:5679"   # ZPages 调试
     restart: always
-    depends_on:
-      - jaeger
-
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
-    ports:
-      - 16686:16686 # Jaeger UI就是这个端口
-      - 14268:14268
-      - 14250:14250
-    restart: always
 
   etcd:
     container_name: etcd
