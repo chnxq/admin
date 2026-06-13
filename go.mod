@@ -2,6 +2,10 @@ module admin
 
 replace github.com/armon/go-metrics => github.com/hashicorp/go-metrics v0.4.1
 
+replace github.com/chnxq/xkitmod/config => ../xkitmod/config
+replace github.com/chnxq/xkitpkg/config => ../xkitpkg/config
+replace github.com/chnxq/xkitpkg/conf => ../xkitpkg/conf
+
 go 1.26.0
 
 require (
@@ -14,24 +18,24 @@ require (
 	github.com/chnxq/x-utils/copierutil v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/x-utils/geoip v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/x-utils/mapper v0.0.0-20260612100514-4160a415201a
-	github.com/chnxq/xkitmod v0.0.0-20260529105211-b1cd4c65f020
-	github.com/chnxq/xkitmod/algs v0.0.0-20260529105211-b1cd4c65f020
-	github.com/chnxq/xkitmod/log v0.0.0-20260529105211-b1cd4c65f020
-	github.com/chnxq/xkitpkg/app v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/cache v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/conf v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/config v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/config/consul v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/config/etcd v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/logger v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/logger/fluentd v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/logger/zap v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/middleware v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/registry v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/registry/consul v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/registry/etcd v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/tracer v0.0.0-20260613032609-8cf815dcaea2
-	github.com/chnxq/xkitpkg/transport v0.0.0-20260613032609-8cf815dcaea2
+	github.com/chnxq/xkitmod v0.0.0-20260613041109-c180136c5f7e
+	github.com/chnxq/xkitmod/algs v0.0.0-20260613041109-c180136c5f7e
+	github.com/chnxq/xkitmod/log v0.0.0-20260613041109-c180136c5f7e
+	github.com/chnxq/xkitpkg/app v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/cache v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/conf v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/config v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/config/consul v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/config/etcd v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/logger v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/logger/fluentd v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/logger/zap v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/middleware v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/registry v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/registry/consul v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/registry/etcd v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/tracer v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitpkg/transport v0.0.0-20260613042622-08bb39f0c9d1
 	github.com/envoyproxy/protoc-gen-validate v1.3.3
 	github.com/getkin/kin-openapi v0.140.0
 	github.com/go-sql-driver/mysql v1.10.0
@@ -69,8 +73,8 @@ require (
 	github.com/chnxq/x-crud/audit v0.0.0-20260411151944-a61448f9f7bc // indirect
 	github.com/chnxq/x-crud/pagination v0.0.0-20260411151944-a61448f9f7bc // indirect
 	github.com/chnxq/x-utils/id v0.0.0-20260612100514-4160a415201a // indirect
-	github.com/chnxq/xkitmod/config v0.0.0-20260529105211-b1cd4c65f020 // indirect
-	github.com/chnxq/xkitmod/selector v0.0.0-20260529105211-b1cd4c65f020 // indirect
+	github.com/chnxq/xkitmod/config v0.0.0-20260613041109-c180136c5f7e // indirect
+	github.com/chnxq/xkitmod/selector v0.0.0-20260613035154-3cb0d92f7857 // indirect
 	github.com/chnxq/xkitpkg v0.0.0-20260613032609-8cf815dcaea2 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
@@ -123,7 +127,6 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/oasdiff/yaml v0.1.0 // indirect
 	github.com/oasdiff/yaml3 v0.0.13 // indirect
-	github.com/openzipkin/zipkin-go v0.4.3 // indirect
 	github.com/oschwald/geoip2-golang v1.13.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.13.1 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
@@ -155,13 +158,11 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/bridges/otelzap v0.19.0 // indirect
 	go.opentelemetry.io/otel v1.44.0 // indirect
-	go.opentelemetry.io/otel/exporters/jaeger v1.17.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.20.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.44.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.44.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.44.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.44.0 // indirect
-	go.opentelemetry.io/otel/exporters/zipkin v1.44.0 // indirect
 	go.opentelemetry.io/otel/log v0.20.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
