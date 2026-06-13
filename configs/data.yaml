@@ -6,7 +6,7 @@ data:
 #    source: "root:112233@tcp(localhost:3306)/admin?parseTime=true&charset=utf8mb4&loc=Asia%2FShanghai"
     migrate: true
     debug: false
-    enable_trace: true
+    enable_trace: false
     enable_metrics: false
     max_idle_connections: 25
     max_open_connections: 25
@@ -18,3 +18,5 @@ data:
     dial_timeout: 10s
     read_timeout: 0.4s
     write_timeout: 0.6s
+    enable_tracing: false
+    enable_metrics: false

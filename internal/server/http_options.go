@@ -46,6 +46,19 @@ func HTTPServerOptions(appCtx *app.AppCtx, data GeneratedData) ([]httptransport.
 	var cfgMiddleware *conf.Middleware
 	if cfg != nil {
 		cfgMiddleware = cfg.GetMiddleware()
+		if appCtx != nil {
+			appCtx.NewLoggerHelper("transport/http").Debugf(
+				"REST middleware config: logging=%t recovery=%t tracing=%t validate=%t metadata=%t breaker=%t limiter=%t db_logging=%t",
+				cfgMiddleware.GetEnableLogging(),
+				cfgMiddleware.GetEnableRecovery(),
+				cfgMiddleware.GetEnableTracing(),
+				cfgMiddleware.GetEnableValidate(),
+				cfgMiddleware.GetEnableMetadata(),
+				cfgMiddleware.GetEnableCircuitBreaker(),
+				cfgMiddleware.GetLimiter() != nil,
+				cfg.GetEnableDbLogging(),
+			)
+		}
 	}
 	middlewares := commonServerMiddlewares(appCtx, cfgMiddleware)
 	if authViewer := authViewerMiddleware(data); authViewer != nil {

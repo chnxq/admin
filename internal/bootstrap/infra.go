@@ -62,7 +62,19 @@ func NewTracer(appCtx *app.AppCtx) (func(), error) {
 		return func() {}, fmt.Errorf("init tracer: %w", err)
 	}
 
-	helper.Infof("Tracer initialized: %v", serverConfig.GetTrace())
+	traceCfg := serverConfig.GetTrace()
+	helper.Debugf(
+		"Tracer initialized: exporter_enabled=%t exporter=%q endpoint=%q sampler=%v env=%q insecure=%t batcher_options_configured=%t trace_context_configured=%t baggage_configured=%t",
+		traceCfg != nil && traceCfg.GetExporter() != "" && traceCfg.GetEndpoint() != "",
+		traceCfg.GetExporter(),
+		traceCfg.GetEndpoint(),
+		traceCfg.GetSampler(),
+		traceCfg.GetEnv(),
+		traceCfg.GetInsecure(),
+		traceCfg.BatcherOptions != nil,
+		traceCfg.EnableTraceContext != nil,
+		traceCfg.EnableBaggage != nil,
+	)
 	return func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()

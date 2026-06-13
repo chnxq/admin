@@ -35,6 +35,18 @@ func GRPCServerOptions(appCtx *app.AppCtx, data GeneratedData) ([]grpctransport.
 				opts = append(opts, grpctransport.TLSConfig(tlsConfig))
 			}
 		}
+		if appCtx != nil && cfg.GetMiddleware() != nil {
+			appCtx.NewLoggerHelper("transport/grpc").Debugf(
+				"GRPC middleware config: logging=%t recovery=%t tracing=%t validate=%t metadata=%t breaker=%t limiter=%t",
+				cfg.GetMiddleware().GetEnableLogging(),
+				cfg.GetMiddleware().GetEnableRecovery(),
+				cfg.GetMiddleware().GetEnableTracing(),
+				cfg.GetMiddleware().GetEnableValidate(),
+				cfg.GetMiddleware().GetEnableMetadata(),
+				cfg.GetMiddleware().GetEnableCircuitBreaker(),
+				cfg.GetMiddleware().GetLimiter() != nil,
+			)
+		}
 	}
 
 	middlewares := commonServerMiddlewares(appCtx, cfg.GetMiddleware())

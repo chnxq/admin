@@ -42,6 +42,13 @@ func NewEntClient(ctx *app.AppCtx) (*entCrud.EntClient[*ent.Client], func(), err
 	if err != nil {
 		return nil, func() {}, fmt.Errorf("open database: %w", err)
 	}
+	logger.Debugf(
+		"Ent driver initialized: driver=%q trace_enabled=%t metrics_enabled=%t debug=%t",
+		database.GetDriver(),
+		database.GetEnableTrace(),
+		database.GetEnableMetrics(),
+		database.GetDebug(),
+	)
 	clientDrv := any(drv)
 	if database.GetDebug() {
 		clientDrv = dialect.DebugWithContext(drv, func(_ context.Context, args ...any) {
