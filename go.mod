@@ -2,10 +2,6 @@ module admin
 
 replace github.com/armon/go-metrics => github.com/hashicorp/go-metrics v0.4.1
 
-replace github.com/chnxq/xkitmod/config => ../xkitmod/config
-replace github.com/chnxq/xkitpkg/config => ../xkitpkg/config
-replace github.com/chnxq/xkitpkg/conf => ../xkitpkg/conf
-
 go 1.26.0
 
 require (
@@ -18,24 +14,24 @@ require (
 	github.com/chnxq/x-utils/copierutil v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/x-utils/geoip v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/x-utils/mapper v0.0.0-20260612100514-4160a415201a
-	github.com/chnxq/xkitmod v0.0.0-20260613041109-c180136c5f7e
-	github.com/chnxq/xkitmod/algs v0.0.0-20260613041109-c180136c5f7e
-	github.com/chnxq/xkitmod/log v0.0.0-20260613041109-c180136c5f7e
-	github.com/chnxq/xkitpkg/app v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/cache v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/conf v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/config v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/config/consul v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/config/etcd v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/logger v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/logger/fluentd v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/logger/zap v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/middleware v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/registry v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/registry/consul v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/registry/etcd v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/tracer v0.0.0-20260613042622-08bb39f0c9d1
-	github.com/chnxq/xkitpkg/transport v0.0.0-20260613042622-08bb39f0c9d1
+	github.com/chnxq/xkitmod v0.0.0-20260613061637-23d531e87870
+	github.com/chnxq/xkitmod/algs v0.0.0-20260613061637-23d531e87870
+	github.com/chnxq/xkitmod/log v0.0.0-20260613055836-8f88f0807f16
+	github.com/chnxq/xkitpkg/app v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/cache v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/conf v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/config v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/config/consul v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/config/etcd v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/logger v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/logger/fluentd v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/logger/zap v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/middleware v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/registry v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/registry/consul v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/registry/etcd v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/tracer v0.0.0-20260613055836-e8183b9771c8
+	github.com/chnxq/xkitpkg/transport v0.0.0-20260613055836-e8183b9771c8
 	github.com/envoyproxy/protoc-gen-validate v1.3.3
 	github.com/getkin/kin-openapi v0.140.0
 	github.com/go-sql-driver/mysql v1.10.0
@@ -73,9 +69,9 @@ require (
 	github.com/chnxq/x-crud/audit v0.0.0-20260411151944-a61448f9f7bc // indirect
 	github.com/chnxq/x-crud/pagination v0.0.0-20260411151944-a61448f9f7bc // indirect
 	github.com/chnxq/x-utils/id v0.0.0-20260612100514-4160a415201a // indirect
-	github.com/chnxq/xkitmod/config v0.0.0-20260613041109-c180136c5f7e // indirect
-	github.com/chnxq/xkitmod/selector v0.0.0-20260613035154-3cb0d92f7857 // indirect
-	github.com/chnxq/xkitpkg v0.0.0-20260613032609-8cf815dcaea2 // indirect
+	github.com/chnxq/xkitmod/config v0.0.0-20260613061637-23d531e87870 // indirect
+	github.com/chnxq/xkitmod/selector v0.0.0-20260613061637-23d531e87870 // indirect
+	github.com/chnxq/xkitpkg v0.0.0-20260613055836-e8183b9771c8 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -90,7 +86,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.23.1 // indirect
 	github.com/go-openapi/swag/jsonname v0.26.1 // indirect
 	github.com/go-playground/form/v4 v4.3.0 // indirect
-	github.com/go-test/deep v1.0.8 // indirect
+	github.com/go-test/deep v1.1.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
