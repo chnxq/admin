@@ -146,5 +146,10 @@ func registerTaskRuntime(ctx context.Context, components *GeneratedComponents) (
 	if components == nil || components.Services == nil {
 		return func() {}, nil
 	}
-	return taskruntime.RegisterServices(ctx, components.Services.Task, components.Services.TaskGroup)
+	return taskruntime.RegisterServices(
+		ctx,
+		components.Services.Task.TaskScheduler(),
+		components.Services.TaskGroup.TaskScheduler(),
+		components.Services.Task.TaskLogger(),
+	)
 }
