@@ -4,7 +4,10 @@
 
 package bootstrap
 
-import "admin/internal/server"
+import (
+	"admin/internal/server"
+	taskruntime "admin/internal/task"
+)
 
 // Add GeneratedData/GeneratedServices bootstrap hooks here.
 // This file is created once and is never overwritten by xkit.
@@ -20,7 +23,16 @@ func (services *GeneratedServices) afterInit(data *GeneratedData) {
 	if services == nil || data == nil {
 		return
 	}
-	if err := configureTaskRuntime(services, data); err != nil {
+	if err := taskruntime.ConfigureServices(
+		services.Task,
+		services.TaskGroup,
+		data.TaskRepo,
+		data.TaskGroupRepo,
+		data.TaskLogRepo,
+		data.ApiAuditLogRepo,
+		data.LoginAuditLogRepo,
+		data.PermissionAuditLogRepo,
+	); err != nil {
 		panic(err)
 	}
 }

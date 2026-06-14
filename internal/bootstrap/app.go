@@ -7,12 +7,12 @@ import (
 	"context"
 	"fmt"
 
+	databootstrap "admin/internal/data/bootstrap"
+	taskruntime "admin/internal/task"
 	"github.com/chnxq/xkitpkg/app"
 	conf "github.com/chnxq/xkitpkg/conf/v1"
 	"github.com/chnxq/xkitpkg/config"
 	"github.com/chnxq/xkitpkg/transport"
-
-	databootstrap "admin/internal/data/bootstrap"
 )
 
 type Options struct {
@@ -140,4 +140,11 @@ func newTransportServers(appCtx *app.AppCtx, cleanup *CleanupStack) ([]transport
 	servers = append(servers, generatedServers...)
 	servers = append(servers, manualBundle.Servers...)
 	return servers, nil
+}
+
+func registerTaskRuntime(ctx context.Context, components *GeneratedComponents) (func(), error) {
+	if components == nil || components.Services == nil {
+		return func() {}, nil
+	}
+	return taskruntime.RegisterServices(ctx, components.Services.Task, components.Services.TaskGroup)
 }

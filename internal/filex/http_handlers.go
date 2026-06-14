@@ -1,0 +1,384 @@
+package filex
+
+import (
+	"context"
+	"io"
+	"net/http"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	storagev1 "admin/api/gen/storage/v1"
+	"admin/internal/data/repo"
+	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
+	"github.com/chnxq/xkitmod/log"
+	"github.com/chnxq/xkitpkg/app"
+	httptransport "github.com/chnxq/xkitpkg/transport/http"
+)
+
+type BrowserPayload struct {
+	ID            uint32 `json:"id"`
+	FileName      string `json:"fileName"`
+	Extension     string `json:"extension"`
+	Size          uint64 `json:"size"`
+	SizeFormat    string `json:"sizeFormat"`
+	BucketName    string `json:"bucketName"`
+	FileDirectory string `json:"fileDirectory"`
+	ObjectName    string `json:"objectName"`
+	TenantID      uint32 `json:"tenantId,omitempty"`
+	TenantName    string `json:"tenantName,omitempty"`
+	PreviewType   string `json:"previewType"`
+	PreviewURL    string `json:"previewUrl"`
+	DownloadURL   string `json:"downloadUrl"`
+}
+
+func RegisterManualHTTP(srv *httptransport.Server, appCtx *app.AppCtx, fileRepo repo.FileRepo) error {
+	if srv == nil || appCtx == nil || fileRepo == nil {
+		return nil
+	}
+	fileTransferService, err := NewTransferManager(appCtx, fileRepo)
+	if err != nil {
+		return err
+	}
+
+	r := srv.Route("/")
+	r.POST("/admin/v1/files/upload-multipart", func(ctx httptransport.Context) error {
+		httptransport.SetOperation(ctx, "/admin.service.manual.FileBrowser/UploadMultipart")
+		h := ctx.Middleware(func(inner context.Context, _ interface{}) (interface{}, error) {
+			return handleFileMultipartUpload(inner, ctx, fileTransferService, fileRepo)
+		})
+		out, err := h(ctx, nil)
+		if err != nil {
+			return err
+		}
+		return ctx.JSON(http.StatusOK, out)
+	})
+	r.GET("/admin/v1/files/{id}/preview", func(ctx httptransport.Context) error {
+		httptransport.SetOperation(ctx, "/admin.service.manual.FileBrowser/Preview")
+		h := ctx.Middleware(func(inner context.Context, _ interface{}) (interface{}, error) {
+			return nil, handleFilePreview(inner, ctx, fileTransferService, fileRepo)
+		})
+		_, err := h(ctx, nil)
+		return err
+	})
+	r.GET("/admin/v1/files/{id}/download", func(ctx httptransport.Context) error {
+		httptransport.SetOperation(ctx, "/admin.service.manual.FileBrowser/Download")
+		h := ctx.Middleware(func(inner context.Context, _ interface{}) (interface{}, error) {
+			return nil, handleFileDownload(inner, ctx, fileTransferService, fileRepo)
+		})
+		_, err := h(ctx, nil)
+		return err
+	})
+	r.GET("/admin/v1/files/{id}/browser", func(ctx httptransport.Context) error {
+		httptransport.SetOperation(ctx, "/admin.service.manual.FileBrowser/GetBrowserInfo")
+		h := ctx.Middleware(func(inner context.Context, _ interface{}) (interface{}, error) {
+			return handleFileBrowserInfo(inner, fileRepo)
+		})
+		out, err := h(ctx, nil)
+		if err != nil {
+			return err
+		}
+		return ctx.JSON(http.StatusOK, out)
+	})
+	r.DELETE("/admin/v1/files/{id}/binary", func(ctx httptransport.Context) error {
+		httptransport.SetOperation(ctx, "/admin.service.manual.FileBrowser/DeleteBinary")
+		h := ctx.Middleware(func(inner context.Context, _ interface{}) (interface{}, error) {
+			return nil, handleFileBinaryDelete(inner, fileTransferService)
+		})
+		_, err := h(ctx, nil)
+		if err != nil {
+			return err
+		}
+		return ctx.Result(http.StatusOK, map[string]bool{"success": true})
+	})
+	return nil
+}
+
+func handleFileMultipartUpload(
+	ctx context.Context,
+	httpCtx httptransport.Context,
+	fileTransferService *TransferManager,
+	fileRepo repo.FileRepo,
+) (*BrowserPayload, error) {
+	req := httpCtx.Request()
+	if err := req.ParseMultipartForm(32 << 20); err != nil {
+		log.Errorf("chain=manual_file.upload_multipart operation=/admin.service.manual.FileBrowser/UploadMultipart parse multipart form failed: %s", err.Error())
+		return nil, storagev1.ErrorBadRequest("invalid multipart form")
+	}
+	file, header, err := req.FormFile("file")
+	if err != nil {
+		return nil, storagev1.ErrorBadRequest("file field is required")
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		log.Errorf("chain=manual_file.upload_multipart operation=/admin.service.manual.FileBrowser/UploadMultipart read upload content failed file_name=%s: %s", header.Filename, err.Error())
+		return nil, storagev1.ErrorUploadFailed("%v", err)
+	}
+
+	uploadReq := &storagev1.UploadFileRequest{
+		StorageObject:  &storagev1.StorageObject{},
+		Source:         &storagev1.UploadFileRequest_File{File: content},
+		SourceFileName: StringPtr(header.Filename),
+		Mime:           StringPtr(header.Header.Get("Content-Type")),
+		Size:           Int64Ptr(int64(len(content))),
+	}
+	if folder := strings.TrimSpace(req.FormValue("folder")); folder != "" {
+		uploadReq.StorageObject.FileDirectory = StringPtr(folder)
+	}
+	if bucket := strings.TrimSpace(req.FormValue("bucketName")); bucket != "" {
+		uploadReq.StorageObject.BucketName = StringPtr(bucket)
+	}
+
+	uploadResp, err := fileTransferService.UploadFile(ctx, uploadReq)
+	if err != nil {
+		log.Errorf("chain=manual_file.upload_multipart operation=/admin.service.manual.FileBrowser/UploadMultipart upload file failed file_name=%s: %s", header.Filename, err.Error())
+		return nil, err
+	}
+
+	listResp, err := fileRepo.List(ctx, pagingRequestNoPaging)
+	if err != nil {
+		log.Errorf("chain=manual_file.upload_multipart operation=/admin.service.manual.FileBrowser/UploadMultipart list uploaded file metadata failed file_name=%s object_name=%s: %s", header.Filename, uploadResp.GetObjectName(), err.Error())
+		return nil, err
+	}
+	targetObjectName := uploadResp.GetObjectName()
+	for i := len(listResp.GetItems()) - 1; i >= 0; i-- {
+		item := listResp.GetItems()[i]
+		if item == nil || item.GetFileName() != header.Filename {
+			continue
+		}
+		if targetObjectName != "" && JoinStoredObjectPath(item.GetFileDirectory(), item.GetSaveFileName()) != targetObjectName {
+			continue
+		}
+		return BuildBrowserPayload(item), nil
+	}
+	log.Errorf("chain=manual_file.upload_multipart operation=/admin.service.manual.FileBrowser/UploadMultipart uploaded file metadata not found file_name=%s object_name=%s", header.Filename, targetObjectName)
+	return nil, storagev1.ErrorInternalServerError("uploaded file metadata not found")
+}
+
+func handleFilePreview(
+	ctx context.Context,
+	httpCtx httptransport.Context,
+	fileTransferService *TransferManager,
+	fileRepo repo.FileRepo,
+) error {
+	fileID, err := parsePathID(httpCtx)
+	if err != nil {
+		return err
+	}
+	record, err := fileRepo.Get(ctx, &storagev1.GetFileRequest{
+		QueryBy: &storagev1.GetFileRequest_Id{Id: fileID},
+	})
+	if err != nil {
+		log.Errorf("chain=manual_file.preview operation=/admin.service.manual.FileBrowser/Preview file_id=%d load file metadata failed: %s", fileID, err.Error())
+		return err
+	}
+	downloadResp, err := fileTransferService.DownloadFile(ctx, &storagev1.DownloadFileRequest{
+		Selector:    &storagev1.DownloadFileRequest_FileId{FileId: fileID},
+		Disposition: StringPtr("inline"),
+	})
+	if err != nil {
+		log.Errorf("chain=manual_file.preview operation=/admin.service.manual.FileBrowser/Preview file_id=%d download file failed: %s", fileID, err.Error())
+		return err
+	}
+
+	if url := downloadResp.GetDownloadUrl(); url != "" {
+		http.Redirect(httpCtx.Response(), httpCtx.Request(), url, http.StatusTemporaryRedirect)
+		return nil
+	}
+	contentType := DetectPreviewContentType(record, downloadResp.GetMime())
+	httpCtx.Response().Header().Set("Content-Disposition", BuildInlineDisposition(record.GetFileName()))
+	httpCtx.Response().Header().Set("Cache-Control", "private, max-age=60")
+	return httpCtx.Blob(http.StatusOK, contentType, downloadResp.GetFile())
+}
+
+func handleFileDownload(
+	ctx context.Context,
+	httpCtx httptransport.Context,
+	fileTransferService *TransferManager,
+	fileRepo repo.FileRepo,
+) error {
+	fileID, err := parsePathID(httpCtx)
+	if err != nil {
+		return err
+	}
+	record, err := fileRepo.Get(ctx, &storagev1.GetFileRequest{
+		QueryBy: &storagev1.GetFileRequest_Id{Id: fileID},
+	})
+	if err != nil {
+		log.Errorf("chain=manual_file.download operation=/admin.service.manual.FileBrowser/Download file_id=%d load file metadata failed: %s", fileID, err.Error())
+		return err
+	}
+	downloadResp, err := fileTransferService.DownloadFile(ctx, &storagev1.DownloadFileRequest{
+		Selector:    &storagev1.DownloadFileRequest_FileId{FileId: fileID},
+		Disposition: StringPtr("attachment"),
+	})
+	if err != nil {
+		log.Errorf("chain=manual_file.download operation=/admin.service.manual.FileBrowser/Download file_id=%d download file failed: %s", fileID, err.Error())
+		return err
+	}
+	if url := downloadResp.GetDownloadUrl(); url != "" {
+		http.Redirect(httpCtx.Response(), httpCtx.Request(), url, http.StatusTemporaryRedirect)
+		return nil
+	}
+	httpCtx.Response().Header().Set("Content-Disposition", BuildAttachmentDisposition(record.GetFileName()))
+	return httpCtx.Blob(http.StatusOK, DetectPreviewContentType(record, downloadResp.GetMime()), downloadResp.GetFile())
+}
+
+func handleFileBrowserInfo(ctx context.Context, fileRepo repo.FileRepo) (*BrowserPayload, error) {
+	fileID, err := parseContextPathID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	record, err := fileRepo.Get(ctx, &storagev1.GetFileRequest{
+		QueryBy: &storagev1.GetFileRequest_Id{Id: fileID},
+	})
+	if err != nil {
+		log.Errorf("chain=manual_file.browser_info operation=/admin.service.manual.FileBrowser/GetBrowserInfo file_id=%d load file metadata failed: %s", fileID, err.Error())
+		return nil, err
+	}
+	return BuildBrowserPayload(record), nil
+}
+
+func handleFileBinaryDelete(ctx context.Context, fileTransferService *TransferManager) error {
+	fileID, err := parseContextPathID(ctx)
+	if err != nil {
+		return err
+	}
+	if err := fileTransferService.DeleteFile(ctx, fileID); err != nil {
+		log.Errorf("chain=manual_file.delete_binary operation=/admin.service.manual.FileBrowser/DeleteBinary file_id=%d delete binary failed: %s", fileID, err.Error())
+		return err
+	}
+	return nil
+}
+
+func BuildBrowserPayload(file *storagev1.File) *BrowserPayload {
+	if file == nil {
+		return nil
+	}
+	objectName := JoinStoredObjectPath(file.GetFileDirectory(), file.GetSaveFileName())
+	return &BrowserPayload{
+		ID:            file.GetId(),
+		FileName:      file.GetFileName(),
+		Extension:     file.GetExtension(),
+		Size:          file.GetSize(),
+		SizeFormat:    file.GetSizeFormat(),
+		BucketName:    file.GetBucketName(),
+		FileDirectory: file.GetFileDirectory(),
+		ObjectName:    objectName,
+		TenantID:      file.GetTenantId(),
+		TenantName:    file.GetTenantName(),
+		PreviewType:   DetectPreviewType(file.GetExtension(), file.GetFileName()),
+		PreviewURL:    "/admin/v1/files/" + strconv.FormatUint(uint64(file.GetId()), 10) + "/preview",
+		DownloadURL:   "/admin/v1/files/" + strconv.FormatUint(uint64(file.GetId()), 10) + "/download",
+	}
+}
+
+func DetectPreviewType(extension string, fileName string) string {
+	ext := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(extension)), ".")
+	if ext == "" {
+		ext = strings.TrimPrefix(strings.ToLower(filepath.Ext(fileName)), ".")
+	}
+	switch ext {
+	case "jpg", "jpeg", "png", "gif", "webp", "bmp", "svg":
+		return "image"
+	case "pdf":
+		return "pdf"
+	case "md", "markdown":
+		return "markdown"
+	case "drawio", "xml":
+		return "drawio"
+	case "txt", "json", "yaml", "yml":
+		return "text"
+	default:
+		return "binary"
+	}
+}
+
+func DetectPreviewContentType(file *storagev1.File, fallback string) string {
+	contentType := strings.TrimSpace(fallback)
+	if contentType != "" {
+		return contentType
+	}
+	switch DetectPreviewType(file.GetExtension(), file.GetFileName()) {
+	case "image":
+		return imagePreviewMime(file.GetExtension())
+	case "pdf":
+		return "application/pdf"
+	case "markdown":
+		return "text/markdown; charset=utf-8"
+	case "drawio":
+		return "application/xml; charset=utf-8"
+	case "text":
+		return "text/plain; charset=utf-8"
+	default:
+		return "application/octet-stream"
+	}
+}
+
+func BuildInlineDisposition(fileName string) string {
+	return buildContentDisposition("inline", fileName)
+}
+
+func BuildAttachmentDisposition(fileName string) string {
+	return buildContentDisposition("attachment", fileName)
+}
+
+var pagingRequestNoPaging = buildPagingRequestNoPaging()
+
+func buildPagingRequestNoPaging() *paginationv1.PagingRequest {
+	value := true
+	return &paginationv1.PagingRequest{NoPaging: &value}
+}
+
+func parsePathID(ctx httptransport.Context) (uint32, error) {
+	return parseUint32(ctx.Vars().Get("id"))
+}
+
+func parseContextPathID(ctx context.Context) (uint32, error) {
+	req, ok := httptransport.RequestFromServerContext(ctx)
+	if !ok || req == nil {
+		return 0, storagev1.ErrorBadRequest("request context is unavailable")
+	}
+	parts := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
+	if len(parts) < 4 {
+		return 0, storagev1.ErrorBadRequest("invalid path")
+	}
+	return parseUint32(parts[3])
+}
+
+func parseUint32(value string) (uint32, error) {
+	parsed, err := strconv.ParseUint(strings.TrimSpace(value), 10, 32)
+	if err != nil {
+		return 0, storagev1.ErrorBadRequest("invalid file id")
+	}
+	return uint32(parsed), nil
+}
+
+func imagePreviewMime(extension string) string {
+	switch strings.TrimPrefix(strings.ToLower(extension), ".") {
+	case "jpg", "jpeg":
+		return "image/jpeg"
+	case "png":
+		return "image/png"
+	case "gif":
+		return "image/gif"
+	case "webp":
+		return "image/webp"
+	case "bmp":
+		return "image/bmp"
+	case "svg":
+		return "image/svg+xml"
+	default:
+		return "application/octet-stream"
+	}
+}
+
+func buildContentDisposition(mode string, fileName string) string {
+	name := strings.TrimSpace(fileName)
+	if name == "" {
+		name = "file"
+	}
+	return mode + `; filename="` + strings.ReplaceAll(name, `"`, `'`) + `"`
+}

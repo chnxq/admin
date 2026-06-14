@@ -10,29 +10,27 @@ require (
 	github.com/chnxq/x-crud/entgo v0.0.0-20260411151944-a61448f9f7bc
 	github.com/chnxq/x-crud/viewer v0.0.0-20260411151944-a61448f9f7bc
 	github.com/chnxq/x-swagger v0.0.0-20260529105209-02745c8a5170
-	github.com/chnxq/x-utils v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/x-utils/copierutil v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/x-utils/geoip v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/x-utils/mapper v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/xkitmod v0.0.0-20260613061637-23d531e87870
-	github.com/chnxq/xkitmod/algs v0.0.0-20260613061637-23d531e87870
 	github.com/chnxq/xkitmod/log v0.0.0-20260613061637-23d531e87870
-	github.com/chnxq/xkitpkg/app v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/cache v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/conf v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/config v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/config/consul v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/config/etcd v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/logger v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/logger/fluentd v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/logger/zap v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/middleware v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/registry v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/registry/consul v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/registry/etcd v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/server_utils v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/tracer v0.0.0-20260614083338-09ce480c23d5
-	github.com/chnxq/xkitpkg/transport v0.0.0-20260614083338-09ce480c23d5
+	github.com/chnxq/xkitpkg/app v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/cache v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/conf v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/config v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/config/consul v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/config/etcd v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/logger v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/logger/fluentd v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/logger/zap v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/middleware v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/registry v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/registry/consul v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/registry/etcd v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/server_utils v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/tracer v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/transport v0.0.0-20260614100214-da276b9ddf99
 	github.com/envoyproxy/protoc-gen-validate v1.3.3
 	github.com/getkin/kin-openapi v0.140.0
 	github.com/go-sql-driver/mysql v1.10.0
@@ -69,10 +67,12 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chnxq/x-crud/audit v0.0.0-20260411151944-a61448f9f7bc // indirect
 	github.com/chnxq/x-crud/pagination v0.0.0-20260411151944-a61448f9f7bc // indirect
+	github.com/chnxq/x-utils v0.0.0-20260612100514-4160a415201a // indirect
 	github.com/chnxq/x-utils/id v0.0.0-20260612100514-4160a415201a // indirect
+	github.com/chnxq/xkitmod/algs v0.0.0-20260613061637-23d531e87870 // indirect
 	github.com/chnxq/xkitmod/config v0.0.0-20260613061637-23d531e87870 // indirect
 	github.com/chnxq/xkitmod/selector v0.0.0-20260613061637-23d531e87870 // indirect
-	github.com/chnxq/xkitpkg v0.0.0-20260614083338-09ce480c23d5 // indirect
+	github.com/chnxq/xkitpkg v0.0.0-20260614100214-da276b9ddf99 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect

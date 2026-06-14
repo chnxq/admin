@@ -1,4 +1,4 @@
-package bootstrap
+package dblog
 
 import (
 	"context"
@@ -16,11 +16,11 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-type stubBootstrapUserRepo struct {
+type stubUserRepo struct {
 	users []*identityv1.User
 }
 
-func (r stubBootstrapUserRepo) List(_ context.Context, req *paginationv1.PagingRequest) (*identityv1.ListUserResponse, error) {
+func (r stubUserRepo) List(_ context.Context, req *paginationv1.PagingRequest) (*identityv1.ListUserResponse, error) {
 	if req == nil || req.GetFilterExpr() == nil || len(req.GetFilterExpr().GetConditions()) == 0 {
 		return &identityv1.ListUserResponse{Items: r.users}, nil
 	}
@@ -45,7 +45,7 @@ func (r stubBootstrapUserRepo) List(_ context.Context, req *paginationv1.PagingR
 	return &identityv1.ListUserResponse{Items: items}, nil
 }
 
-func (r stubBootstrapUserRepo) Get(_ context.Context, req *identityv1.GetUserRequest) (*identityv1.User, error) {
+func (r stubUserRepo) Get(_ context.Context, req *identityv1.GetUserRequest) (*identityv1.User, error) {
 	if req == nil {
 		return nil, nil
 	}
@@ -66,53 +66,53 @@ func (r stubBootstrapUserRepo) Get(_ context.Context, req *identityv1.GetUserReq
 	return nil, nil
 }
 
-func (stubBootstrapUserRepo) Create(context.Context, *identityv1.CreateUserRequest) (*emptypb.Empty, error) {
+func (stubUserRepo) Create(context.Context, *identityv1.CreateUserRequest) (*emptypb.Empty, error) {
 	return nil, nil
 }
 
-func (stubBootstrapUserRepo) Update(context.Context, *identityv1.UpdateUserRequest) (*emptypb.Empty, error) {
+func (stubUserRepo) Update(context.Context, *identityv1.UpdateUserRequest) (*emptypb.Empty, error) {
 	return nil, nil
 }
 
-func (stubBootstrapUserRepo) Delete(context.Context, *identityv1.DeleteUserRequest) (*emptypb.Empty, error) {
+func (stubUserRepo) Delete(context.Context, *identityv1.DeleteUserRequest) (*emptypb.Empty, error) {
 	return nil, nil
 }
 
-func (stubBootstrapUserRepo) UserExists(context.Context, *identityv1.UserExistsRequest) (*identityv1.UserExistsResponse, error) {
+func (stubUserRepo) UserExists(context.Context, *identityv1.UserExistsRequest) (*identityv1.UserExistsResponse, error) {
 	return nil, nil
 }
 
-var _ repo.UserRepo = (*stubBootstrapUserRepo)(nil)
+var _ repo.UserRepo = (*stubUserRepo)(nil)
 
-type bootstrapTestHeader struct {
+type testHeader struct {
 	header http.Header
 }
 
-func (h bootstrapTestHeader) Get(key string) string      { return h.header.Get(key) }
-func (h bootstrapTestHeader) Set(key, value string)      { h.header.Set(key, value) }
-func (h bootstrapTestHeader) Add(key, value string)      { h.header.Add(key, value) }
-func (h bootstrapTestHeader) Keys() []string             { keys := make([]string, 0, len(h.header)); for k := range h.header { keys = append(keys, k) }; return keys }
-func (h bootstrapTestHeader) Values(key string) []string { return h.header.Values(key) }
+func (h testHeader) Get(key string) string      { return h.header.Get(key) }
+func (h testHeader) Set(key, value string)      { h.header.Set(key, value) }
+func (h testHeader) Add(key, value string)      { h.header.Add(key, value) }
+func (h testHeader) Keys() []string             { keys := make([]string, 0, len(h.header)); for k := range h.header { keys = append(keys, k) }; return keys }
+func (h testHeader) Values(key string) []string { return h.header.Values(key) }
 
-type bootstrapTestHTTPTransport struct {
+type testHTTPTransport struct {
 	req          *http.Request
 	pathTemplate string
 }
 
-func (t *bootstrapTestHTTPTransport) Kind() transport.Kind { return transport.KindHTTP }
-func (t *bootstrapTestHTTPTransport) Endpoint() string     { return "http://localhost:7788" }
-func (t *bootstrapTestHTTPTransport) Operation() string    { return t.pathTemplate }
-func (t *bootstrapTestHTTPTransport) RequestHeader() transport.Header {
+func (t *testHTTPTransport) Kind() transport.Kind { return transport.KindHTTP }
+func (t *testHTTPTransport) Endpoint() string     { return "http://localhost:7788" }
+func (t *testHTTPTransport) Operation() string    { return t.pathTemplate }
+func (t *testHTTPTransport) RequestHeader() transport.Header {
 	if t.req == nil {
-		return bootstrapTestHeader{header: make(http.Header)}
+		return testHeader{header: make(http.Header)}
 	}
-	return bootstrapTestHeader{header: t.req.Header}
+	return testHeader{header: t.req.Header}
 }
-func (t *bootstrapTestHTTPTransport) ReplyHeader() transport.Header {
-	return bootstrapTestHeader{header: make(http.Header)}
+func (t *testHTTPTransport) ReplyHeader() transport.Header {
+	return testHeader{header: make(http.Header)}
 }
-func (t *bootstrapTestHTTPTransport) Request() *http.Request { return t.req }
-func (t *bootstrapTestHTTPTransport) PathTemplate() string   { return t.pathTemplate }
+func (t *testHTTPTransport) Request() *http.Request { return t.req }
+func (t *testHTTPTransport) PathTemplate() string   { return t.pathTemplate }
 
 func TestResolveLoginRequestUserByEmail(t *testing.T) {
 	user := &identityv1.User{
@@ -125,7 +125,7 @@ func TestResolveLoginRequestUserByEmail(t *testing.T) {
 		Identifier: &authenticationv1.LoginRequest_Email{
 			Email: "alice@example.com",
 		},
-	}, stubBootstrapUserRepo{users: []*identityv1.User{user}})
+	}, stubUserRepo{users: []*identityv1.User{user}})
 	if info == nil {
 		t.Fatalf("expected user info for email login")
 	}
@@ -151,7 +151,7 @@ func TestResolveLoginRequestUserByMobile(t *testing.T) {
 		Identifier: &authenticationv1.LoginRequest_Mobile{
 			Mobile: "13800138000",
 		},
-	}, stubBootstrapUserRepo{users: []*identityv1.User{user}})
+	}, stubUserRepo{users: []*identityv1.User{user}})
 	if info == nil {
 		t.Fatalf("expected user info for mobile login")
 	}
@@ -173,7 +173,7 @@ func TestShouldWriteLoginAuditLogForBoundSocialLogin(t *testing.T) {
 			AccessToken: "header.eyJ1c2VybmFtZSI6ImdpdGh1Yl91c2VyIiwidWlkIjoxMDEsInRpZCI6OSwiY2xpZW50X2lkIjoiYWRtaW4iLCJkZXZpY2VfaWQiOiJicm93c2VyIn0.sig",
 		},
 	}
-	if !shouldWriteLoginAuditLog(adminv1.OperationSocialAuthServiceCompleteSocialLogin, reply) {
+	if !ShouldWriteLoginAuditLog(adminv1.OperationSocialAuthServiceCompleteSocialLogin, reply) {
 		t.Fatalf("expected bound social login to write login audit log")
 	}
 }
@@ -181,12 +181,12 @@ func TestShouldWriteLoginAuditLogForBoundSocialLogin(t *testing.T) {
 func TestBuildLoginAuditLogFromCompleteSocialLoginResponse(t *testing.T) {
 	req := httptest.NewRequest("POST", "/admin/v1/social-auth:complete", nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0")
-	tr := &bootstrapTestHTTPTransport{
+	tr := &testHTTPTransport{
 		req:          req,
 		pathTemplate: adminv1.OperationSocialAuthServiceCompleteSocialLogin,
 	}
 
-	logEntry := buildLoginAuditLog(
+	logEntry := BuildLoginAuditLog(
 		context.Background(),
 		tr,
 		&authenticationv1.CompleteSocialLoginRequest{ClientType: authenticationv1.ClientType_admin.Enum()},
