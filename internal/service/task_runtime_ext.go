@@ -7,6 +7,8 @@ import (
 	"admin/internal/data/repo"
 	taskpkg "admin/internal/task"
 	taskruntime "admin/internal/task/runtime"
+
+	"github.com/chnxq/xkitmod/log"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -50,4 +52,25 @@ func (s *TaskGroupService) SetTaskRuntimeDeps(taskRepo repo.TaskRepo, _ repo.Tas
 	s.taskRepo = taskRepo
 	s.runtimeRunner = runner
 	s.scheduler = scheduler
+}
+
+func (s *TaskService) TaskScheduler() *taskruntime.Scheduler {
+	if s == nil {
+		return nil
+	}
+	return s.scheduler
+}
+
+func (s *TaskService) TaskLogger() *log.Helper {
+	if s == nil {
+		return nil
+	}
+	return s.log
+}
+
+func (s *TaskGroupService) TaskScheduler() *taskruntime.Scheduler {
+	if s == nil {
+		return nil
+	}
+	return s.scheduler
 }
