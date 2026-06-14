@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/chnxq/xkitpkg/app"
+	serverutils "github.com/chnxq/xkitpkg/server_utils"
 	grpctransport "github.com/chnxq/xkitpkg/transport/grpc"
 )
 
@@ -27,7 +28,7 @@ func GRPCServerOptions(appCtx *app.AppCtx, data GeneratedData) ([]grpctransport.
 			opts = append(opts, grpctransport.Timeout(cfg.GetTimeout().AsDuration()))
 		}
 		if cfg.GetTls() != nil {
-			tlsConfig, err := loadServerTLSConfig(cfg.GetTls())
+			tlsConfig, err := serverutils.LoadServerTLSConfig(cfg.GetTls())
 			if err != nil {
 				return nil, fmt.Errorf("load grpc tls config: %w", err)
 			}

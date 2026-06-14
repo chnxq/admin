@@ -8,6 +8,7 @@ import (
 
 	"github.com/chnxq/xkitpkg/app"
 	conf "github.com/chnxq/xkitpkg/conf/v1"
+	serverutils "github.com/chnxq/xkitpkg/server_utils"
 	asynqtransport "github.com/chnxq/xkitpkg/transport/asynq"
 )
 
@@ -85,7 +86,7 @@ func asynqConfigOptions(cfg *conf.Server_Asynq) ([]asynqtransport.ServerOption, 
 		opts = append(opts, asynqtransport.WithJanitorBatchSize(cfg.GetJanitorBatchSize()))
 	}
 	if cfg.GetTls() != nil {
-		tlsConfig, err := loadClientTLSConfig(cfg.GetTls())
+		tlsConfig, err := serverutils.LoadClientTLSConfig(cfg.GetTls())
 		if err != nil {
 			return nil, fmt.Errorf("load asynq tls config: %w", err)
 		}

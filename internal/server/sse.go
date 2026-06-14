@@ -8,6 +8,7 @@ import (
 
 	"github.com/chnxq/xkitpkg/app"
 	conf "github.com/chnxq/xkitpkg/conf/v1"
+	serverutils "github.com/chnxq/xkitpkg/server_utils"
 	ssetransport "github.com/chnxq/xkitpkg/transport/sse"
 )
 
@@ -59,7 +60,7 @@ func newConfiguredSSEServer(appCtx *app.AppCtx, cfg *conf.Server_SSE) (*ssetrans
 	if cfg == nil {
 		return nil, nil
 	}
-	opts, err := SSEServerOptions(appCtx, cfg)
+	opts, err := serverutils.SSEServerOptions(appCtx, cfg)
 	if err != nil {
 		return nil, err
 	}
