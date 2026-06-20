@@ -1,5 +1,5 @@
 // Code generated from: xkit-template.
-// generated at        2026-05-25 16:32:33 CST.
+// generated at        2026-06-20 12:52:15 CST.
 
 package bootstrap
 
@@ -62,19 +62,7 @@ func NewTracer(appCtx *app.AppCtx) (func(), error) {
 		return func() {}, fmt.Errorf("init tracer: %w", err)
 	}
 
-	traceCfg := serverConfig.GetTrace()
-	helper.Debugf(
-		"Tracer initialized: exporter_enabled=%t exporter=%q endpoint=%q sampler=%v env=%q insecure=%t batcher_options_configured=%t trace_context_configured=%t baggage_configured=%t",
-		traceCfg != nil && traceCfg.GetExporter() != "" && traceCfg.GetEndpoint() != "",
-		traceCfg.GetExporter(),
-		traceCfg.GetEndpoint(),
-		traceCfg.GetSampler(),
-		traceCfg.GetEnv(),
-		traceCfg.GetInsecure(),
-		traceCfg.BatcherOptions != nil,
-		traceCfg.EnableTraceContext != nil,
-		traceCfg.EnableBaggage != nil,
-	)
+	helper.Infof("Tracer initialized: %v", serverConfig.GetTrace())
 	return func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()

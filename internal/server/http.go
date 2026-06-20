@@ -1,5 +1,5 @@
 // Code generated from: xkit-template.
-// generated at        2026-05-25 16:32:33 CST.
+// generated at        2026-06-20 12:52:15 CST.
 
 package server
 

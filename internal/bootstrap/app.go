@@ -1,5 +1,5 @@
 // Code generated from: xkit-template.
-// generated at        2026-05-25 16:32:33 CST.
+// generated at        2026-06-20 12:52:15 CST.
 
 package bootstrap
 
@@ -7,12 +7,13 @@ import (
 	"context"
 	"fmt"
 
-	databootstrap "admin/internal/data/bootstrap"
 	taskruntime "admin/internal/task"
 	"github.com/chnxq/xkitpkg/app"
 	conf "github.com/chnxq/xkitpkg/conf/v1"
 	"github.com/chnxq/xkitpkg/config"
 	"github.com/chnxq/xkitpkg/transport"
+
+	databootstrap "admin/internal/data/bootstrap"
 )
 
 type Options struct {

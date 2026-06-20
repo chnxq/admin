@@ -1,3 +1,6 @@
+// Code generated from: xkit-template.
+// generated at        2026-06-20 12:52:15 CST.
+
 package bootstrap
 
 import (
@@ -6,7 +9,7 @@ import (
 	"time"
 
 	"github.com/chnxq/xkitpkg/app"
-	"github.com/chnxq/xkitpkg/conf/v1"
+	conf "github.com/chnxq/xkitpkg/conf/v1"
 	kconfig "github.com/chnxq/xkitpkg/config"
 	"github.com/chnxq/xkitpkg/tracer"
 )
@@ -21,10 +24,7 @@ func registerRuntimeConfigAppliers(appCtx *app.AppCtx) {
 }
 
 func applyRuntimeTraceConfig(appCtx *app.AppCtx, cfg *conf.ServerConfig) (bool, error) {
-	if cfg == nil || cfg.GetTrace() == nil {
-		return false, nil
-	}
-	if appCtx == nil || appCtx.GetAppInfo() == nil {
+	if cfg == nil || cfg.GetTrace() == nil || appCtx == nil || appCtx.GetAppInfo() == nil {
 		return false, nil
 	}
 
@@ -36,6 +36,5 @@ func applyRuntimeTraceConfig(appCtx *app.AppCtx, cfg *conf.ServerConfig) (bool, 
 	} else if shutdown != nil {
 		_ = shutdown
 	}
-
 	return true, nil
 }

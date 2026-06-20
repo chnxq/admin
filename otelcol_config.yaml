@@ -15,11 +15,6 @@ exporters:
     verbosity: detailed
     sampling_initial: 5
     sampling_thereafter: 200
-  # 把原来的jaeger exporter替换成otlp，地址还是用docker服务名
-  otlp:
-    endpoint: jaeger:14250
-    tls:
-      insecure: true
   # 也可配置导出到后端，如 Jaeger (用于追踪)
   # jaeger:
   #   endpoint: jaeger:14250
@@ -31,7 +26,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp,debug] # 暂时先输出到控制台
+      exporters: [debug] # 暂时先输出到控制台
     metrics:
       receivers: [ otlp ]
       exporters: [ debug ]
