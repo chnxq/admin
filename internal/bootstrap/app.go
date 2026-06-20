@@ -120,7 +120,12 @@ func newTransportServers(appCtx *app.AppCtx, cleanup *CleanupStack) ([]transport
 		return nil, err
 	}
 
-	generatedServers, err := components.Servers(appCtx)
+	moduleRuntimes, err := loadHostModules(appCtx, cleanup)
+	if err != nil {
+		return nil, err
+	}
+
+	generatedServers, err := components.Servers(appCtx, moduleRuntimes)
 	if err != nil {
 		return nil, err
 	}

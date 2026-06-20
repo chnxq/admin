@@ -238,12 +238,12 @@ func NewGeneratedComponents(appCtx *app.AppCtx) (*GeneratedComponents, func(), e
 	}, cleanup, nil
 }
 
-func (components *GeneratedComponents) Servers(appCtx *app.AppCtx) ([]transport.Server, error) {
-	httpServer, err := server.NewHTTPServer(appCtx, components.Services.HTTP(), components.Data)
+func (components *GeneratedComponents) Servers(appCtx *app.AppCtx, modules []hostModuleRuntime) ([]transport.Server, error) {
+	httpServer, err := server.NewHTTPServer(appCtx, components.Services.HTTP(), components.Data, hostModuleHTTPRegistrars(modules))
 	if err != nil {
 		return nil, fmt.Errorf("new generated http server: %w", err)
 	}
-	grpcServer, err := server.NewGRPCServer(appCtx, components.Services.GRPC(), components.Data)
+	grpcServer, err := server.NewGRPCServer(appCtx, components.Services.GRPC(), components.Data, hostModuleGRPCRegistrars(modules))
 	if err != nil {
 		return nil, fmt.Errorf("new generated grpc server: %w", err)
 	}
@@ -256,7 +256,7 @@ func NewGeneratedServers(appCtx *app.AppCtx) ([]transport.Server, func(), error)
 		return nil, cleanup, err
 	}
 
-	servers, err := components.Servers(appCtx)
+	servers, err := components.Servers(appCtx, nil)
 	if err != nil {
 		return nil, cleanup, err
 	}
