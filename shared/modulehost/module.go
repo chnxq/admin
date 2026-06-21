@@ -27,7 +27,7 @@ type Module interface {
 	RegisterGRPC(grpc.ServiceRegistrar, any)
 
 	OpenAPIDocuments() []OpenAPIDocument
-	SyncResources(context.Context, *app.AppCtx, any) error
+	SyncResources(context.Context, *app.AppCtx, any, ResourceSyncer) error
 	SeedDefaultData(context.Context, *app.AppCtx, any) error
 }
 
@@ -36,6 +36,38 @@ type OpenAPIDocument struct {
 	FileName string
 	Format   string
 	Data     []byte
+}
+
+type MenuType string
+
+const (
+	MenuTypeCatalog  MenuType = "catalog"
+	MenuTypeMenu     MenuType = "menu"
+	MenuTypeEmbedded MenuType = "embedded"
+	MenuTypeLink     MenuType = "link"
+	MenuTypeButton   MenuType = "button"
+)
+
+type MenuMeta struct {
+	Authority       []string
+	Icon            *string
+	Link            *string
+	OpenInNewWindow *bool
+	Title           *string
+}
+
+type MenuResource struct {
+	Children  []MenuResource
+	Component string
+	Meta      MenuMeta
+	Name      string
+	Path      string
+	Redirect  string
+	Type      MenuType
+}
+
+type ResourceSyncer interface {
+	UpsertMenus(context.Context, []MenuResource) error
 }
 
 func RegisterModule(module Module) {

@@ -6,6 +6,9 @@ import (
 	"strings"
 	"time"
 
+	_ "admin/modules"
+	modulehost "admin/shared/modulehost"
+
 	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
 	entCrud "github.com/chnxq/x-crud/entgo"
 	crudviewer "github.com/chnxq/x-crud/viewer"
@@ -46,10 +49,17 @@ const (
 )
 
 type defaultDataSeed struct {
-	appCtx    *app.AppCtx
-	entClient *entCrud.EntClient[*ent.Client]
-	now       time.Time
-	log       *log.Helper
+	appCtx         *app.AppCtx
+	entClient      *entCrud.EntClient[*ent.Client]
+	now            time.Time
+	log            *log.Helper
+	moduleRuntimes []seedModuleRuntime
+}
+
+type seedModuleRuntime struct {
+	module     modulehost.Module
+	moduleData any
+	moduleSrv  any
 }
 
 type seedViewerContext struct{}
@@ -85,10 +95,16 @@ func ensureDefaultData(appCtx *app.AppCtx, entClient *entCrud.EntClient[*ent.Cli
 		return nil
 	}
 
+	moduleRuntimes, err := loadSeedHostModules(appCtx)
+	if err != nil {
+		return err
+	}
+
 	seed := &defaultDataSeed{
-		appCtx:    appCtx,
-		entClient: entClient,
-		now:       time.Now(),
+		appCtx:         appCtx,
+		entClient:      entClient,
+		now:            time.Now(),
+		moduleRuntimes: moduleRuntimes,
 	}
 	seed.log = appCtx.NewLoggerHelper("data/DefaultData")
 
@@ -118,6 +134,9 @@ func (s *defaultDataSeed) run() error {
 
 	if err := s.ensureTaskSeeds(ctx); err != nil {
 		return err
+	}
+	if err := seedHostModulesDefaultData(ctx, s.appCtx, s.moduleRuntimes); err != nil {
+		return fmt.Errorf("seed host module default data: %w", err)
 	}
 
 	tenantEntity, err := s.ensureDefaultTenant(ctx)
@@ -335,6 +354,9 @@ func (s *defaultDataSeed) syncResources(ctx context.Context) error {
 	if err := menuRepo.SyncDefaultNavigation(ctx); err != nil {
 		return fmt.Errorf("sync default menus: %w", err)
 	}
+	if err := syncHostModuleResources(ctx, s.appCtx, s.entClient, s.moduleRuntimes); err != nil {
+		return fmt.Errorf("sync host module resources: %w", err)
+	}
 
 	apiRepo := repo.NewApiRepo(s.appCtx, s.entClient)
 	if err := apiRepo.SyncApisFromOpenAPI(ctx); err != nil {
@@ -349,6 +371,57 @@ func (s *defaultDataSeed) syncResources(ctx context.Context) error {
 		return fmt.Errorf("sync permissions: %w", err)
 	}
 
+	return nil
+}
+
+func loadSeedHostModules(appCtx *app.AppCtx) ([]seedModuleRuntime, error) {
+	if appCtx == nil {
+		return nil, nil
+	}
+	items := modulehost.GetRegisteredHostModules()
+	runtimes := make([]seedModuleRuntime, 0, len(items))
+	for _, item := range items {
+		if item == nil {
+			continue
+		}
+		data, cleanup, err := item.RegisterData(appCtx)
+		if cleanup != nil {
+			cleanup()
+		}
+		if err != nil {
+			return nil, err
+		}
+		runtimes = append(runtimes, seedModuleRuntime{
+			module:     item,
+			moduleData: data,
+			moduleSrv:  item.RegisterServices(appCtx, data),
+		})
+	}
+	return runtimes, nil
+}
+
+func syncHostModuleResources(ctx context.Context, appCtx *app.AppCtx, entClient *entCrud.EntClient[*ent.Client], runtimes []seedModuleRuntime) error {
+	resourceSyncer := newHostResourceSyncer(entClient, time.Now())
+	for _, runtime := range runtimes {
+		if runtime.module == nil {
+			continue
+		}
+		if err := runtime.module.SyncResources(ctx, appCtx, runtime.moduleData, resourceSyncer); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func seedHostModulesDefaultData(ctx context.Context, appCtx *app.AppCtx, runtimes []seedModuleRuntime) error {
+	for _, runtime := range runtimes {
+		if runtime.module == nil {
+			continue
+		}
+		if err := runtime.module.SeedDefaultData(ctx, appCtx, runtime.moduleData); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

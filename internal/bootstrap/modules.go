@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"context"
+
 	"admin/internal/server"
 	_ "admin/modules"
 	modulehost "admin/shared/modulehost"
@@ -11,6 +13,9 @@ import (
 )
 
 type hostModuleRuntime struct {
+	module       modulehost.Module
+	moduleData   any
+	moduleSrv    any
 	registerHTTP func(*httptransport.Server)
 	registerGRPC func(grpc.ServiceRegistrar)
 }
@@ -60,6 +65,9 @@ func initHostModule(module modulehost.Module, appCtx *app.AppCtx, cleanup *Clean
 
 	moduleServices := module.RegisterServices(appCtx, moduleData)
 	return &hostModuleRuntime{
+		module:     module,
+		moduleData: moduleData,
+		moduleSrv:  moduleServices,
 		registerHTTP: func(srv *httptransport.Server) {
 			module.RegisterHTTP(srv, moduleServices)
 		},
@@ -67,6 +75,34 @@ func initHostModule(module modulehost.Module, appCtx *app.AppCtx, cleanup *Clean
 			module.RegisterGRPC(registrar, moduleServices)
 		},
 	}, nil
+}
+
+func SyncHostModuleResources(ctx context.Context, appCtx *app.AppCtx, runtimes []hostModuleRuntime) error {
+	for _, runtime := range runtimes {
+		if runtime.module == nil {
+			continue
+		}
+		if err := runtime.module.SyncResources(ctx, appCtx, runtime.moduleData, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func SeedHostModulesDefaultData(ctx context.Context, appCtx *app.AppCtx, runtimes []hostModuleRuntime) error {
+	for _, runtime := range runtimes {
+		if runtime.module == nil {
+			continue
+		}
+		if err := runtime.module.SeedDefaultData(ctx, appCtx, runtime.moduleData); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func LoadHostModulesForSeed(appCtx *app.AppCtx) ([]hostModuleRuntime, error) {
+	return loadHostModules(appCtx, nil)
 }
 
 func hostModuleHTTPRegistrars(runtimes []hostModuleRuntime) []server.ModuleHTTPRegistrar {

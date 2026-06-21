@@ -886,6 +886,35 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 		}
 	}
 
+	for _, menu := range menus {
+		if menu == nil || menu.GetStatus() != resourcev1.Menu_ON {
+			continue
+		}
+		if menu.GetType() != resourcev1.Menu_LINK && menu.GetType() != resourcev1.Menu_EMBEDDED {
+			continue
+		}
+		codes := menuAuthorityCodes(menu)
+		if len(codes) == 0 {
+			continue
+		}
+		feature := resolveFeatureDescriptorForMenu(menu.GetId(), menuByID, parentByID, featureByModule)
+		groupModule := uncategorizedPermissionGroup
+		if feature != nil && feature.groupModule != "" {
+			groupModule = feature.groupModule
+		}
+		displayName := firstNonEmpty(displayMenuTitle(menu), menu.GetName())
+		for _, code := range codes {
+			current := ensureDesiredPermission(desired, code, explicitFeaturePermissionDisplayName(displayName, code), groupModule)
+			if current == nil {
+				continue
+			}
+			current.menuIDs = appendUniqueUint32(current.menuIDs, menu.GetId())
+			if feature != nil && explicitAgg[feature.groupModule][code] != nil {
+				current.apiIDs = mergeUniqueUint32(current.apiIDs, explicitAgg[feature.groupModule][code].apiIDs)
+			}
+		}
+	}
+
 	for _, feature := range descriptors {
 		for action, aggregate := range apiAgg[feature.groupModule] {
 			code := firstCodeForAction(apiAgg[feature.groupModule], action)

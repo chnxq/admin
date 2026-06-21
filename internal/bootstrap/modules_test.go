@@ -1,9 +1,12 @@
 package bootstrap
 
-import "testing"
+import (
+	modulehost "admin/shared/modulehost"
+	"testing"
+)
 
 func TestRegisteredHostModulesIncludesXDev(t *testing.T) {
-	modules := registeredHostModules()
+	modules := modulehost.GetRegisteredHostModules()
 	if len(modules) == 0 {
 		t.Fatalf("expected at least one registered host module")
 	}
