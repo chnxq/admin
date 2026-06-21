@@ -2,8 +2,9 @@ package bootstrap
 
 import (
 	"admin/internal/server"
-	xdev "admin/modules/xdev"
+	"admin/modules"
 	modulehost "admin/shared/modulehost"
+
 	"github.com/chnxq/xkitpkg/app"
 	httptransport "github.com/chnxq/xkitpkg/transport/http"
 	"google.golang.org/grpc"
@@ -26,20 +27,14 @@ func (r hostModuleRuntime) RegisterGRPC(registrar grpc.ServiceRegistrar) {
 	}
 }
 
-func registeredHostModules() []modulehost.Module {
-	return []modulehost.Module{
-		&xdev.Module{},
-	}
-}
-
 func loadHostModules(appCtx *app.AppCtx, cleanup *CleanupStack) ([]hostModuleRuntime, error) {
 	if appCtx == nil {
 		return nil, nil
 	}
 
-	modules := registeredHostModules()
-	runtimes := make([]hostModuleRuntime, 0, len(modules))
-	for _, module := range modules {
+	hostModules := modules.RegisteredHostModules()
+	runtimes := make([]hostModuleRuntime, 0, len(hostModules))
+	for _, module := range hostModules {
 		if module == nil {
 			continue
 		}
