@@ -5,7 +5,6 @@
 package modulex
 
 import (
-	identityv1 "admin/api/gen/identity/v1"
 	"admin/internal/data/ent"
 	"admin/internal/data/ent/tenant"
 	"context"
@@ -14,6 +13,7 @@ import (
 
 	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
 	crudviewer "github.com/chnxq/x-crud/viewer"
+	"github.com/chnxq/xkitmod/errors"
 )
 
 const (
@@ -38,7 +38,7 @@ func RequirePlatformContext(ctx context.Context, action string) (crudviewer.Cont
 		return nil, err
 	}
 	if viewer.IsTenantContext() {
-		return nil, identityv1.ErrorForbidden("%s requires platform context", action)
+		return nil, errors.New(403, "300 [(errors.code) = 403]", fmt.Sprintf("%s requires platform context", action))
 	}
 	return viewer, nil
 }
@@ -224,7 +224,7 @@ func EnsureTenantAccessible(ctx context.Context, resourceTenantID *uint32) error
 		return nil
 	}
 	if resourceTenantID == nil || *resourceTenantID != *viewerTenant {
-		return identityv1.ErrorForbidden("cross-tenant access is forbidden")
+		return errors.New(403, "300 [(errors.code) = 403]", "cross-tenant access is forbidden")
 	}
 	return nil
 }
@@ -244,7 +244,7 @@ func EnsureHybridTenantAccessible(ctx context.Context, resourceTenantID *uint32)
 	if HybridTenantVisible(resourceTenantID, viewerTenant) {
 		return nil
 	}
-	return identityv1.ErrorForbidden("cross-tenant access is forbidden")
+	return errors.New(403, "300 [(errors.code) = 403]", "cross-tenant access is forbidden")
 }
 
 func EnsureHybridTenantMutable(ctx context.Context, resourceTenantID *uint32) error {
@@ -255,12 +255,12 @@ func EnsureHybridTenantMutable(ctx context.Context, resourceTenantID *uint32) er
 	if resourceTenantID != nil && *resourceTenantID == *viewerTenant {
 		return nil
 	}
-	return identityv1.ErrorForbidden("cross-tenant access is forbidden")
+	return errors.New(403, "300 [(errors.code) = 403]", "cross-tenant access is forbidden")
 }
 
 func EnsurePlatformOnlyMutable(ctx context.Context) error {
 	if ViewerTenantID(ctx) != nil {
-		return identityv1.ErrorForbidden("cross-tenant access is forbidden")
+		return errors.New(403, "300 [(errors.code) = 403]", "cross-tenant access is forbidden")
 	}
 	return nil
 }
@@ -274,7 +274,7 @@ func ResolveCreateTenantID(ctx context.Context, requestedTenantID *uint32) (*uin
 		return viewerTenant, nil
 	}
 	if *requestedTenantID != *viewerTenant {
-		return nil, identityv1.ErrorForbidden("cross-tenant access is forbidden")
+		return nil, errors.New(403, "300 [(errors.code) = 403]", "cross-tenant access is forbidden")
 	}
 	return requestedTenantID, nil
 }
