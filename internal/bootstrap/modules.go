@@ -2,7 +2,7 @@ package bootstrap
 
 import (
 	"admin/internal/server"
-	"admin/modules"
+	_ "admin/modules"
 	modulehost "admin/shared/modulehost"
 
 	"github.com/chnxq/xkitpkg/app"
@@ -32,7 +32,7 @@ func loadHostModules(appCtx *app.AppCtx, cleanup *CleanupStack) ([]hostModuleRun
 		return nil, nil
 	}
 
-	hostModules := modules.RegisteredHostModules()
+	hostModules := modulehost.GetRegisteredHostModules()
 	runtimes := make([]hostModuleRuntime, 0, len(hostModules))
 	for _, module := range hostModules {
 		if module == nil {
