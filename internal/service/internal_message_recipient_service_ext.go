@@ -22,11 +22,16 @@ import (
 // Keep this file for future non-generated extension logic.
 
 func (s *InternalMessageRecipientService) listUserInboxImpl(ctx context.Context, req *paginationv1.PagingRequest) (*v11.ListUserInboxResponse, error) {
-	if s == nil || s.internalMessageRecipientRepo == nil {
+	if s == nil {
+		return nil, fmt.Errorf("internal message recipient service is not initialized")
+	}
+	if s.internalMessageRecipientRepo == nil {
+		s.log.Errorf("list user inbox failed: internal message recipient repo is not initialized")
 		return nil, fmt.Errorf("internal message recipient repo is not initialized")
 	}
 	userID, err := currentInboxUserID(ctx, 0)
 	if err != nil {
+		s.log.Errorf("list user inbox failed: resolve current user: %s", err.Error())
 		return nil, err
 	}
 	if req == nil {
@@ -40,14 +45,23 @@ func (s *InternalMessageRecipientService) listUserInboxImpl(ctx context.Context,
 	if offset == 0 && req.GetPage() > 1 && pageSize > 0 {
 		offset = int((req.GetPage() - 1) * req.GetPageSize())
 	}
-	return s.internalMessageRecipientRepo.ListUserInbox(ctx, userID, repo.InboxPagingRequest{
+	resp, err := s.internalMessageRecipientRepo.ListUserInbox(ctx, userID, repo.InboxPagingRequest{
 		Limit:  pageSize,
 		Offset: offset,
 	})
+	if err != nil {
+		s.log.Errorf("list user inbox failed: user_id=%d limit=%d offset=%d: %s", userID, pageSize, offset, err.Error())
+		return nil, err
+	}
+	return resp, nil
 }
 
 func (s *InternalMessageRecipientService) deleteNotificationFromInboxImpl(ctx context.Context, req *v11.DeleteNotificationFromInboxRequest) (*emptypb.Empty, error) {
-	if s == nil || s.internalMessageRecipientRepo == nil {
+	if s == nil {
+		return nil, fmt.Errorf("internal message recipient service is not initialized")
+	}
+	if s.internalMessageRecipientRepo == nil {
+		s.log.Errorf("delete notification from inbox failed: internal message recipient repo is not initialized")
 		return nil, fmt.Errorf("internal message recipient repo is not initialized")
 	}
 	if req == nil {
@@ -55,16 +69,22 @@ func (s *InternalMessageRecipientService) deleteNotificationFromInboxImpl(ctx co
 	}
 	userID, err := currentInboxUserID(ctx, req.GetUserId())
 	if err != nil {
+		s.log.Errorf("delete notification from inbox failed: resolve current user requested_user_id=%d: %s", req.GetUserId(), err.Error())
 		return nil, err
 	}
 	if err := s.internalMessageRecipientRepo.DeleteFromInbox(ctx, userID, req.GetRecipientIds()); err != nil {
+		s.log.Errorf("delete notification from inbox failed: user_id=%d recipient_ids=%v: %s", userID, req.GetRecipientIds(), err.Error())
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
 }
 
 func (s *InternalMessageRecipientService) markNotificationAsReadImpl(ctx context.Context, req *v11.MarkNotificationAsReadRequest) (*emptypb.Empty, error) {
-	if s == nil || s.internalMessageRecipientRepo == nil {
+	if s == nil {
+		return nil, fmt.Errorf("internal message recipient service is not initialized")
+	}
+	if s.internalMessageRecipientRepo == nil {
+		s.log.Errorf("mark notification as read failed: internal message recipient repo is not initialized")
 		return nil, fmt.Errorf("internal message recipient repo is not initialized")
 	}
 	if req == nil {
@@ -72,9 +92,11 @@ func (s *InternalMessageRecipientService) markNotificationAsReadImpl(ctx context
 	}
 	userID, err := currentInboxUserID(ctx, req.GetUserId())
 	if err != nil {
+		s.log.Errorf("mark notification as read failed: resolve current user requested_user_id=%d: %s", req.GetUserId(), err.Error())
 		return nil, err
 	}
 	if err := s.internalMessageRecipientRepo.MarkAsRead(ctx, userID, req.GetRecipientIds()); err != nil {
+		s.log.Errorf("mark notification as read failed: user_id=%d recipient_ids=%v: %s", userID, req.GetRecipientIds(), err.Error())
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

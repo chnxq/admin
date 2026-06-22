@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package admin.service.v1;
+
+import "gnostic/openapi/v3/annotations.proto";
+import "google/api/annotations.proto";
+
+import "authentication/v1/social_auth.proto";
+
+// 管理端第三方登录入口服务
+service SocialAuthService {
+  // 开始第三方登录流程
+  rpc StartSocialLogin(authentication.service.v1.StartSocialLoginRequest) returns (authentication.service.v1.StartSocialLoginResponse) {
+    option (google.api.http) = {
+      post: "/admin/v1/social-auth:start"
+      body: "*"
+    };
+
+    option (gnostic.openapi.v3.operation) = {
+      security: {}
+    };
+  }
+
+  // 完成网页回调式第三方登录
+  rpc CompleteSocialLogin(authentication.service.v1.CompleteSocialLoginRequest) returns (authentication.service.v1.CompleteSocialLoginResponse) {
+    option (google.api.http) = {
+      post: "/admin/v1/social-auth:complete"
+      body: "*"
+    };
+
+    option (gnostic.openapi.v3.operation) = {
+      security: {}
+    };
+  }
+
+  // 处理小程序 code 或 authCode 换取登录结果
+  rpc ExchangeMiniAppCode(authentication.service.v1.ExchangeMiniAppCodeRequest) returns (authentication.service.v1.ExchangeMiniAppCodeResponse) {
+    option (google.api.http) = {
+      post: "/admin/v1/social-auth/miniapp:exchange-code"
+      body: "*"
+    };
+
+    option (gnostic.openapi.v3.operation) = {
+      security: {}
+    };
+  }
+
+  // 确认绑定已有账号或创建并绑定新账号
+  rpc ConfirmBindOrRegister(authentication.service.v1.ConfirmBindOrRegisterRequest) returns (authentication.service.v1.ConfirmBindOrRegisterResponse) {
+    option (google.api.http) = {
+      post: "/admin/v1/social-auth:confirm-bind-or-register"
+      body: "*"
+    };
+
+    option (gnostic.openapi.v3.operation) = {
+      security: {}
+    };
+  }
+}

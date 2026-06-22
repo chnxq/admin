@@ -14,6 +14,7 @@ import (
 
 	crudviewer "github.com/chnxq/x-crud/viewer"
 	kerrors "github.com/chnxq/xkitmod/errors"
+	"github.com/chnxq/xkitmod/log"
 	"github.com/chnxq/xkitpkg/app"
 	"github.com/chnxq/xkitpkg/middleware"
 )
@@ -26,11 +27,16 @@ type viewerDataSource interface {
 	PermissionRepoProvider() repo.PermissionRepo
 }
 
+type tokenStoreProvider interface {
+	TokenStoreProvider() *tokenStore
+}
+
 func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 	source, ok := data.(viewerDataSource)
 	if !ok {
 		return nil
 	}
+	logger := log.NewHelper(log.With(log.GetLogger(), "module", "authentication/server"))
 
 	userRepo := source.UserRepoProvider()
 	roleReader, _ := source.RoleRepoProvider().(repo.RolePermissionReader)
@@ -39,19 +45,23 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 		return nil
 	}
 	auth, authErr := loadAuthConfigFromGeneratedData(data)
+	tokenStore, tokenStoreErr := loadTokenStoreFromGeneratedData(data)
+	skipTokenCheck := shouldSkipAccessTokenStoreCheck(data)
 
 	return func(next middleware.Handler) middleware.Handler {
 		return func(ctx context.Context, req any) (any, error) {
 			if viewer, ok := crudviewer.FromContext(ctx); ok && viewer != nil && viewer.UserID() > 0 {
 				return next(ctx, req)
 			}
+			protected := isProtectedServerRequest(ctx)
 
 			if authErr != nil {
+				logger.Errorf("%s auth config unavailable: %s", authRequestLogPrefix(ctx, "viewer_auth"), authErr.Error())
 				return nil, authenticationv1.ErrorInternalServerError("auth config is unavailable")
 			}
 			token := parseBearerToken(ctx)
 			if token == "" {
-				if isProtectedServerRequest(ctx) {
+				if protected {
 					return nil, authenticationv1.ErrorUnauthorized("missing access token")
 				}
 				ctx = ensureDefaultViewerContext(ctx)
@@ -59,17 +69,38 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 			}
 			claims, err := parseAndValidateToken(token, auth, tokenCategoryAccess)
 			if err != nil {
-				if isProtectedServerRequest(ctx) {
+				if protected {
+					logger.Errorf("%s parse access token failed: %s", authRequestLogPrefix(ctx, "viewer_auth"), err.Error())
 					return nil, err
 				}
-				return nil, err
+				ctx = ensureDefaultViewerContext(ctx)
+				return next(ctx, req)
+			}
+			if !skipTokenCheck {
+				if tokenStoreErr != nil {
+					logger.Errorf("%s token store unavailable: %s", authRequestLogPrefix(ctx, "viewer_auth"), tokenStoreErr.Error())
+					return nil, authenticationv1.ErrorInternalServerError("token store is unavailable")
+				}
+				if err := tokenStore.ValidateAccessToken(token, claims); err != nil {
+					if protected {
+						logger.Errorf("%s validate access token failed for user_id=%d jti=%s: %s", authRequestLogPrefix(ctx, "viewer_auth"), claims.UserID, claims.ID, err.Error())
+						return nil, err
+					}
+					ctx = ensureDefaultViewerContext(ctx)
+					return next(ctx, req)
+				}
 			}
 			lookupCtx := ensureDefaultViewerContext(ctx)
 			user, err := userRepo.Get(lookupCtx, &identityv1.GetUserRequest{
 				QueryBy: &identityv1.GetUserRequest_Id{Id: claims.UserID},
 			})
 			if err != nil || user == nil {
-				if isProtectedServerRequest(ctx) {
+				if err != nil {
+					logger.Errorf("%s load viewer user failed for user_id=%d: %s", authRequestLogPrefix(ctx, "viewer_auth"), claims.UserID, err.Error())
+				} else {
+					logger.Errorf("%s load viewer user returned nil for user_id=%d", authRequestLogPrefix(ctx, "viewer_auth"), claims.UserID)
+				}
+				if protected {
 					if err == nil || ent.IsNotFound(err) {
 						return nil, authenticationv1.ErrorUserNotFound("user not found")
 					}
@@ -103,6 +134,34 @@ func loadAuthConfigFromGeneratedData(data GeneratedData) (*authConfig, error) {
 		return loadAuthConfig(provider.GetAppCtx())
 	}
 	return nil, kerrors.InternalServer("AUTH_CONFIG", "app context is unavailable")
+}
+
+func loadTokenStoreFromGeneratedData(data GeneratedData) (*tokenStore, error) {
+	if provider, ok := data.(tokenStoreProvider); ok {
+		if store := provider.TokenStoreProvider(); store != nil {
+			return store, nil
+		}
+	}
+	if provider, ok := data.(interface{ GetAppCtx() *app.AppCtx }); ok {
+		return newTokenStore(loadDataConfig(provider.GetAppCtx()))
+	}
+	return nil, kerrors.InternalServer("TOKEN_STORE", "app context is unavailable")
+}
+
+func shouldSkipAccessTokenStoreCheck(data GeneratedData) bool {
+	provider, ok := data.(interface{ GetAppCtx() *app.AppCtx })
+	if !ok {
+		return false
+	}
+	appCtx := provider.GetAppCtx()
+	if appCtx == nil || appCtx.GetConfig() == nil || appCtx.GetConfig().GetServer() == nil {
+		return false
+	}
+	restCfg := appCtx.GetConfig().GetServer().GetRest()
+	if restCfg == nil {
+		return false
+	}
+	return restCfg.GetSkipRedisTokenCheck()
 }
 
 type userViewerContext struct {

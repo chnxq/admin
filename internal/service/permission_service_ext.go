@@ -70,6 +70,9 @@ func (s *PermissionService) syncPermissions(ctx context.Context) error {
 		return err
 	}
 	if s == nil || s.permissionRepo == nil || s.permissionGroupRepo == nil || s.menuRepo == nil || s.apiRepo == nil {
+		if s != nil && s.log != nil {
+			s.log.Errorf("sync permissions failed: permission sync dependencies are incomplete")
+		}
 		return fmt.Errorf("permission sync dependencies are incomplete")
 	}
 	ctx = repo.WithPermissionAuditDisabled(ctx)
@@ -98,16 +101,21 @@ func (s *PermissionService) syncPermissions(ctx context.Context) error {
 	if err := s.reconcilePermissions(ctx, permissions); err != nil {
 		return err
 	}
-	return s.reconcileDefaultRolePermissions(ctx)
+	if err := s.reconcileDefaultRolePermissions(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *PermissionService) collectDesiredPermissionGroups(ctx context.Context) ([]desiredPermissionGroup, error) {
 	apiResp, err := s.apiRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
+		s.log.Errorf("collect desired permission groups failed: list apis: %s", err.Error())
 		return nil, err
 	}
 	menuResp, err := s.menuRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
+		s.log.Errorf("collect desired permission groups failed: list menus: %s", err.Error())
 		return nil, err
 	}
 
@@ -156,10 +164,12 @@ func (s *PermissionService) collectDesiredPermissionGroups(ctx context.Context) 
 func (s *PermissionService) collectDesiredPermissions(ctx context.Context) ([]desiredPermission, error) {
 	menuResp, err := s.menuRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
+		s.log.Errorf("collect desired permissions failed: list menus: %s", err.Error())
 		return nil, err
 	}
 	apiResp, err := s.apiRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
+		s.log.Errorf("collect desired permissions failed: list apis: %s", err.Error())
 		return nil, err
 	}
 
@@ -238,6 +248,7 @@ func (s *PermissionService) collectDesiredPermissions(ctx context.Context) ([]de
 func (s *PermissionService) reconcilePermissionGroups(ctx context.Context, desired []desiredPermissionGroup) (map[string]uint32, error) {
 	existingResp, err := s.permissionGroupRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
+		s.log.Errorf("reconcile permission groups failed: list existing groups: %s", err.Error())
 		return nil, err
 	}
 
@@ -291,6 +302,7 @@ func (s *PermissionService) reconcilePermissionGroups(ctx context.Context, desir
 					},
 				})
 				if err != nil {
+					s.log.Errorf("reconcile permission groups failed: update module=%q id=%d: %s", group.module, existing.GetId(), err.Error())
 					return nil, err
 				}
 				progressed = true
@@ -307,12 +319,14 @@ func (s *PermissionService) reconcilePermissionGroups(ctx context.Context, desir
 					Path:      stringPtr(path),
 				},
 			}); err != nil {
+				s.log.Errorf("reconcile permission groups failed: create module=%q name=%q: %s", group.module, group.name, err.Error())
 				return nil, err
 			}
 			progressed = true
 
 			refreshedResp, refreshErr := s.permissionGroupRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 			if refreshErr != nil {
+				s.log.Errorf("reconcile permission groups failed: refresh list after create module=%q: %s", group.module, refreshErr.Error())
 				return nil, refreshErr
 			}
 			for _, item := range refreshedResp.GetItems() {
@@ -328,6 +342,7 @@ func (s *PermissionService) reconcilePermissionGroups(ctx context.Context, desir
 			}
 		}
 		if !progressed {
+			s.log.Errorf("reconcile permission groups failed: permission group reconciliation stalled, remaining=%d", len(remaining))
 			return nil, fmt.Errorf("permission group reconciliation stalled")
 		}
 		pending = remaining
@@ -339,6 +354,7 @@ func (s *PermissionService) reconcilePermissionGroups(ctx context.Context, desir
 func (s *PermissionService) reconcilePermissions(ctx context.Context, desired []desiredPermission) error {
 	existingResp, err := s.permissionRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
+		s.log.Errorf("reconcile permissions failed: list existing permissions: %s", err.Error())
 		return err
 	}
 
@@ -375,11 +391,13 @@ func (s *PermissionService) reconcilePermissions(ctx context.Context, desired []
 				},
 			})
 			if err != nil {
+				s.log.Errorf("reconcile permissions failed: update code=%q id=%d: %s", item.code, existing.GetId(), err.Error())
 				return err
 			}
 			continue
 		}
 		if _, err = s.permissionRepo.Create(ctx, &permissionv1.CreatePermissionRequest{Data: data}); err != nil {
+			s.log.Errorf("reconcile permissions failed: create code=%q group_id=%d: %s", item.code, item.id, err.Error())
 			return err
 		}
 	}
@@ -868,6 +886,35 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 		}
 	}
 
+	for _, menu := range menus {
+		if menu == nil || menu.GetStatus() != resourcev1.Menu_ON {
+			continue
+		}
+		if menu.GetType() != resourcev1.Menu_LINK && menu.GetType() != resourcev1.Menu_EMBEDDED {
+			continue
+		}
+		codes := menuAuthorityCodes(menu)
+		if len(codes) == 0 {
+			continue
+		}
+		feature := resolveFeatureDescriptorForMenu(menu.GetId(), menuByID, parentByID, featureByModule)
+		groupModule := uncategorizedPermissionGroup
+		if feature != nil && feature.groupModule != "" {
+			groupModule = feature.groupModule
+		}
+		displayName := firstNonEmpty(displayMenuTitle(menu), menu.GetName())
+		for _, code := range codes {
+			current := ensureDesiredPermission(desired, code, explicitFeaturePermissionDisplayName(displayName, code), groupModule)
+			if current == nil {
+				continue
+			}
+			current.menuIDs = appendUniqueUint32(current.menuIDs, menu.GetId())
+			if feature != nil && explicitAgg[feature.groupModule][code] != nil {
+				current.apiIDs = mergeUniqueUint32(current.apiIDs, explicitAgg[feature.groupModule][code].apiIDs)
+			}
+		}
+	}
+
 	for _, feature := range descriptors {
 		for action, aggregate := range apiAgg[feature.groupModule] {
 			code := firstCodeForAction(apiAgg[feature.groupModule], action)
@@ -1345,6 +1392,7 @@ func (s *PermissionService) reconcileDefaultRolePermissions(ctx context.Context)
 
 	groupResp, err := s.permissionGroupRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
+		s.log.Errorf("reconcile default role permissions failed: list permission groups: %s", err.Error())
 		return err
 	}
 	groupParentByID := make(map[uint32]uint32, len(groupResp.GetItems()))
@@ -1359,12 +1407,14 @@ func (s *PermissionService) reconcileDefaultRolePermissions(ctx context.Context)
 		groupParentByID[groupID] = item.GetParentId()
 		if groupModule == permissionGroupModuleFeature {
 			if featureRootID != 0 && featureRootID != groupID {
+				s.log.Errorf("reconcile default role permissions failed: multiple active feature root permission groups detected: %d and %d", featureRootID, groupID)
 				return fmt.Errorf("multiple active feature root permission groups detected: %d and %d", featureRootID, groupID)
 			}
 			featureRootID = groupID
 		}
 		if groupModule == permissionGroupModuleExport {
 			if exportGroupID != 0 && exportGroupID != groupID {
+				s.log.Errorf("reconcile default role permissions failed: multiple active export permission groups detected: %d and %d", exportGroupID, groupID)
 				return fmt.Errorf("multiple active export permission groups detected: %d and %d", exportGroupID, groupID)
 			}
 			exportGroupID = groupID
@@ -1391,6 +1441,7 @@ func (s *PermissionService) reconcileDefaultRolePermissions(ctx context.Context)
 
 	permissionResp, err := s.permissionRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
+		s.log.Errorf("reconcile default role permissions failed: list permissions: %s", err.Error())
 		return err
 	}
 
@@ -1414,6 +1465,7 @@ func (s *PermissionService) reconcileDefaultRolePermissions(ctx context.Context)
 
 	roleResp, err := s.roleRepo.List(ctx, &paginationv1.PagingRequest{NoPaging: boolPtr(true)})
 	if err != nil {
+		s.log.Errorf("reconcile default role permissions failed: list roles: %s", err.Error())
 		return err
 	}
 	for _, item := range roleResp.GetItems() {
@@ -1474,6 +1526,9 @@ func (s *PermissionService) updateRolePermissions(ctx context.Context, current *
 			Paths: []string{"permissions"},
 		},
 	})
+	if err != nil {
+		s.log.Errorf("update role permissions failed: role_id=%d code=%q permission_count=%d: %s", current.GetId(), current.GetCode(), len(permissionIDs), err.Error())
+	}
 	return err
 }
 

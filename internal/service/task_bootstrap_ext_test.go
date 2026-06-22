@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	taskv1 "admin/api/gen/task/v1"
+	taskpkg "admin/internal/task"
 	taskruntime "admin/internal/task/runtime"
+	"github.com/chnxq/xkitmod/log"
 )
 
 type bootstrapTestExecutor struct {
@@ -45,9 +47,12 @@ func (s *fakeSchedulerStore) UpdateTaskRuntimeState(context.Context, uint64, tas
 }
 
 func TestResolveTaskSchedulerRejectsInconsistentSchedulers(t *testing.T) {
-	taskService := &TaskService{scheduler: taskruntime.NewScheduler(&fakeSchedulerStore{}, nil)}
-	taskGroupService := &TaskGroupService{scheduler: taskruntime.NewScheduler(&fakeSchedulerStore{}, nil)}
-	_, err := resolveTaskScheduler(taskService, taskGroupService)
+	logger := log.NewHelper(log.NewStdLogger(taskTestingWriter{t: t}))
+	_, err := taskpkg.ResolveScheduler(
+		logger,
+		taskruntime.NewScheduler(&fakeSchedulerStore{}, nil),
+		taskruntime.NewScheduler(&fakeSchedulerStore{}, nil),
+	)
 	if err == nil || !strings.Contains(err.Error(), "inconsistent") {
 		t.Fatalf("expected inconsistent scheduler error, got %v", err)
 	}
@@ -71,18 +76,10 @@ func TestRegisterTaskSchedulerAllowsPartialRestoreFailures(t *testing.T) {
 		},
 	}, runner)
 
-	taskService := &TaskService{
-		runtimeRunner: runner,
-		scheduler:     scheduler,
-	}
-	taskGroupService := &TaskGroupService{
-		runtimeRunner: runner,
-		scheduler:     scheduler,
-	}
-
-	cleanup, err := RegisterTaskScheduler(context.Background(), taskService, taskGroupService)
+	logger := log.NewHelper(log.NewStdLogger(taskTestingWriter{t: t}))
+	cleanup, err := taskpkg.RegisterScheduler(context.Background(), logger, scheduler, scheduler)
 	if err != nil {
-		t.Fatalf("RegisterTaskScheduler failed: %v", err)
+		t.Fatalf("RegisterScheduler failed: %v", err)
 	}
 	if cleanup == nil {
 		t.Fatalf("expected cleanup func")
@@ -92,4 +89,15 @@ func TestRegisterTaskSchedulerAllowsPartialRestoreFailures(t *testing.T) {
 
 func bootstrapStringPtr(value string) *string {
 	return &value
+}
+
+type taskTestingWriter struct {
+	t *testing.T
+}
+
+func (w taskTestingWriter) Write(p []byte) (int, error) {
+	if w.t != nil {
+		w.t.Log(string(p))
+	}
+	return len(p), nil
 }

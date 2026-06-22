@@ -1,6 +1,6 @@
 trace:
   exporter: "otlp-grpc"
-  endpoint: "localhost:4317"
+  endpoint: ""
   sampler: 1.0
   env: "dev"
   insecure: true

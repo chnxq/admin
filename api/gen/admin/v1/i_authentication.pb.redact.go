@@ -64,6 +64,17 @@ func (s *redactedAuthenticationServiceServer) Logout(ctx context.Context, in *em
 	return res, err
 }
 
+// RegisterUser is the redacted wrapper for the actual AuthenticationServiceServer.RegisterUser method
+// Unary RPC
+func (s *redactedAuthenticationServiceServer) RegisterUser(ctx context.Context, in *authentication.RegisterUserRequest) (*authentication.RegisterUserResponse, error) {
+	res, err := s.srv.RegisterUser(ctx, in)
+	if !s.bypass.CheckInternal(ctx) {
+		// Apply redaction to the response
+		redact.Apply(res)
+	}
+	return res, err
+}
+
 // RefreshToken is the redacted wrapper for the actual AuthenticationServiceServer.RefreshToken method
 // Unary RPC
 func (s *redactedAuthenticationServiceServer) RefreshToken(ctx context.Context, in *authentication.LoginRequest) (*authentication.LoginResponse, error) {

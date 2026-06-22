@@ -261,8 +261,8 @@ func (x *ValidateTokenResponse) Redact() string {
 	return x.String()
 }
 
-// Redact method implementation for RegisterUserRequest
-func (x *RegisterUserRequest) Redact() string {
+// Redact method implementation for RegisterByUsernameRequest
+func (x *RegisterByUsernameRequest) Redact() string {
 	if x == nil {
 		return ""
 	}
@@ -271,11 +271,67 @@ func (x *RegisterUserRequest) Redact() string {
 
 	// Safe field: Password
 
-	// Safe field: TenantCode
+	// Safe field: Email
+
+	// Safe field: Mobile
+
+	// Safe field: CaptchaId
+
+	// Safe field: CaptchaCode
+	return x.String()
+}
+
+// Redact method implementation for RegisterByEmailRequest
+func (x *RegisterByEmailRequest) Redact() string {
+	if x == nil {
+		return ""
+	}
 
 	// Safe field: Email
 
+	// Safe field: EmailCode
+
+	// Safe field: Password
+
+	// Safe field: Username
+
+	// Safe field: CaptchaId
+
+	// Safe field: CaptchaCode
+	return x.String()
+}
+
+// Redact method implementation for RegisterByMobileRequest
+func (x *RegisterByMobileRequest) Redact() string {
+	if x == nil {
+		return ""
+	}
+
+	// Safe field: Mobile
+
+	// Safe field: MobileCode
+
+	// Safe field: Password
+
+	// Safe field: Username
+
+	// Safe field: CaptchaId
+
+	// Safe field: CaptchaCode
+	return x.String()
+}
+
+// Redact method implementation for RegisterUserRequest
+func (x *RegisterUserRequest) Redact() string {
+	if x == nil {
+		return ""
+	}
+
+	// Safe field: TenantCode
+
 	// Safe field: ClientType
+
+	// Safe field: DeviceId
 	return x.String()
 }
 
@@ -286,6 +342,8 @@ func (x *RegisterUserResponse) Redact() string {
 	}
 
 	// Safe field: UserId
+
+	// Safe field: Login
 	return x.String()
 }
 

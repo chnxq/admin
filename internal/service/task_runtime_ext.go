@@ -2,184 +2,75 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	taskv1 "admin/api/gen/task/v1"
 	"admin/internal/data/repo"
+	taskpkg "admin/internal/task"
 	taskruntime "admin/internal/task/runtime"
+
+	"github.com/chnxq/xkitmod/log"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-func BindTaskServices(
-	taskService *TaskService,
-	taskGroupService *TaskGroupService,
-	taskRepo repo.TaskRepo,
-	taskGroupRepo repo.TaskGroupRepo,
-	runner *taskruntime.Runner,
-	scheduler *taskruntime.Scheduler,
-) error {
-	if runner == nil {
-		return fmt.Errorf("task runner is not configured")
+func (s *TaskService) SetTaskRuntimeDeps(_ repo.TaskRepo, taskGroupRepo repo.TaskGroupRepo, runner *taskruntime.Runner, scheduler *taskruntime.Scheduler) {
+	if s == nil {
+		return
 	}
-	if scheduler == nil {
-		return fmt.Errorf("task scheduler is not configured")
-	}
-	if taskService != nil {
-		taskService.taskGroupRepo = taskGroupRepo
-		taskService.runtimeRunner = runner
-		taskService.scheduler = scheduler
-	}
-	if taskGroupService != nil {
-		taskGroupService.taskRepo = taskRepo
-		taskGroupService.runtimeRunner = runner
-		taskGroupService.scheduler = scheduler
-	}
-	return nil
+	s.taskGroupRepo = taskGroupRepo
+	s.runtimeRunner = runner
+	s.scheduler = scheduler
 }
 
 func (s *TaskService) start(ctx context.Context, req *taskv1.StartTaskRequest) (*emptypb.Empty, error) {
-	if req == nil || req.GetId() == 0 {
-		return nil, fmt.Errorf("invalid parameter")
-	}
-	taskItem, err := loadTask(ctx, s.taskRepo, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	status := taskv1.Task_RUNNING
-	taskItem.Status = &status
-	if err := validateCronExpression(taskItem.GetCronExpression(), taskItem.GetStatus()); err != nil {
-		return nil, err
-	}
-	if err := s.syncTaskSchedule(ctx, taskItem); err != nil {
-		return nil, err
-	}
-	return &emptypb.Empty{}, nil
+	return taskpkg.StartTask(ctx, s.log, s.taskRepo, s.scheduler, req)
 }
 
 func (s *TaskService) stop(ctx context.Context, req *taskv1.StopTaskRequest) (*emptypb.Empty, error) {
-	if req == nil || req.GetId() == 0 {
-		return nil, fmt.Errorf("invalid parameter")
-	}
-	if err := s.stopScheduledTask(ctx, req.GetId()); err != nil {
-		return nil, err
-	}
-	status := taskv1.Task_STOPPED
-	entryID := uint32(0)
-	if err := updateTaskRuntimeState(ctx, s.taskRepo, req.GetId(), status, &entryID); err != nil {
-		return nil, err
-	}
-	return &emptypb.Empty{}, nil
+	return taskpkg.StopTask(ctx, s.log, s.taskRepo, s.scheduler, req)
 }
 
 func (s *TaskService) runOnce(ctx context.Context, req *taskv1.RunTaskOnceRequest) (*emptypb.Empty, error) {
-	if req == nil || req.GetId() == 0 {
-		return nil, fmt.Errorf("invalid parameter")
-	}
-
-	taskItem, err := loadTask(ctx, s.taskRepo, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	if s.scheduler != nil {
-		if err := s.scheduler.RunTaskNow(ctx, taskItem, req.GetInput()); err != nil {
-			return nil, err
-		}
-		return &emptypb.Empty{}, nil
-	}
-	if s.runtimeRunner == nil {
-		return nil, fmt.Errorf("task runner is not configured")
-	}
-	if err := s.runtimeRunner.RunTask(ctx, taskItem, req.GetInput()); err != nil {
-		return nil, err
-	}
-	return &emptypb.Empty{}, nil
+	return taskpkg.RunTaskOnce(ctx, s.log, s.taskRepo, s.runtimeRunner, s.scheduler, req)
 }
 
 func (s *TaskGroupService) start(ctx context.Context, req *taskv1.StartTaskGroupRequest) (*emptypb.Empty, error) {
-	if req == nil || req.GetId() == 0 {
-		return nil, fmt.Errorf("invalid parameter")
-	}
-	items, err := listTasksByGroup(ctx, s.taskRepo, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	for _, item := range items {
-		status := taskv1.Task_RUNNING
-		item.Status = &status
-		if err := s.syncTaskSchedule(ctx, item); err != nil {
-			return nil, err
-		}
-	}
-	return &emptypb.Empty{}, nil
+	return taskpkg.StartTaskGroup(ctx, s.log, s.taskRepo, s.scheduler, req)
 }
 
 func (s *TaskGroupService) stop(ctx context.Context, req *taskv1.StopTaskGroupRequest) (*emptypb.Empty, error) {
-	if req == nil || req.GetId() == 0 {
-		return nil, fmt.Errorf("invalid parameter")
-	}
-	items, err := listTasksByGroup(ctx, s.taskRepo, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	for _, item := range items {
-		if err := s.stopScheduledTask(ctx, item.GetId()); err != nil {
-			return nil, err
-		}
-		status := taskv1.Task_STOPPED
-		entryID := uint32(0)
-		if err := updateTaskRuntimeState(ctx, s.taskRepo, item.GetId(), status, &entryID); err != nil {
-			return nil, err
-		}
-	}
-	return &emptypb.Empty{}, nil
+	return taskpkg.StopTaskGroup(ctx, s.log, s.taskRepo, s.scheduler, req)
 }
 
 func (s *TaskGroupService) runOnce(ctx context.Context, req *taskv1.RunTaskGroupOnceRequest) (*emptypb.Empty, error) {
-	if req == nil || req.GetId() == 0 {
-		return nil, fmt.Errorf("invalid parameter")
-	}
-	items, err := listTasksByGroup(ctx, s.taskRepo, req.GetId())
-	if err != nil {
-		return nil, err
-	}
-	for _, item := range items {
-		if s.scheduler != nil {
-			if err := s.scheduler.RunTaskNow(ctx, item, req.GetInput()); err != nil {
-				return nil, err
-			}
-			continue
-		}
-		if s.runtimeRunner == nil {
-			return nil, fmt.Errorf("task runner is not configured")
-		}
-		if err := s.runtimeRunner.RunTask(ctx, item, req.GetInput()); err != nil {
-			return nil, err
-		}
-	}
-	return &emptypb.Empty{}, nil
+	return taskpkg.RunTaskGroupOnce(ctx, s.log, s.taskRepo, s.runtimeRunner, s.scheduler, req)
 }
 
-func loadTask(ctx context.Context, taskRepo repo.TaskRepo, taskID uint64) (*taskv1.Task, error) {
-	if taskRepo == nil {
-		return nil, fmt.Errorf("task repo is not configured")
+func (s *TaskGroupService) SetTaskRuntimeDeps(taskRepo repo.TaskRepo, _ repo.TaskGroupRepo, runner *taskruntime.Runner, scheduler *taskruntime.Scheduler) {
+	if s == nil {
+		return
 	}
-	return taskRepo.Get(ctx, &taskv1.GetTaskRequest{
-		QueryBy: &taskv1.GetTaskRequest_Id{Id: taskID},
-	})
+	s.taskRepo = taskRepo
+	s.runtimeRunner = runner
+	s.scheduler = scheduler
 }
 
-func listTasksByGroup(ctx context.Context, taskRepo repo.TaskRepo, groupID uint64) ([]*taskv1.Task, error) {
-	runtimeRepo, ok := taskRepo.(repo.TaskRuntimeRepo)
-	if !ok {
-		return nil, fmt.Errorf("task runtime repo is not configured")
+func (s *TaskService) TaskScheduler() *taskruntime.Scheduler {
+	if s == nil {
+		return nil
 	}
-	return runtimeRepo.ListTasksByGroupID(ctx, groupID)
+	return s.scheduler
 }
 
-func updateTaskRuntimeState(ctx context.Context, taskRepo repo.TaskRepo, taskID uint64, status taskv1.Task_Status, entryID *uint32) error {
-	runtimeRepo, ok := taskRepo.(repo.TaskRuntimeRepo)
-	if !ok {
-		return fmt.Errorf("task runtime repo is not configured")
+func (s *TaskService) TaskLogger() *log.Helper {
+	if s == nil {
+		return nil
 	}
-	return runtimeRepo.UpdateTaskRuntimeState(ctx, taskID, status, entryID)
+	return s.log
+}
+
+func (s *TaskGroupService) TaskScheduler() *taskruntime.Scheduler {
+	if s == nil {
+		return nil
+	}
+	return s.scheduler
 }

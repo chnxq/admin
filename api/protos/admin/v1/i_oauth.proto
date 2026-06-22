@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package admin.service.v1;
+
+import "gnostic/openapi/v3/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+import "authentication/v1/oauth.proto";
+
+// 管理端第三方账号绑定服务
+service OAuthService {
+  // 查询当前用户已绑定的第三方账号列表
+  rpc ListLinkedAccounts(authentication.service.v1.ListLinkedAccountsRequest) returns (authentication.service.v1.ListLinkedAccountsResponse) {
+    option (google.api.http) = {
+      get: "/admin/v1/oauth/linked-accounts"
+    };
+  }
+
+  // 开始第三方账号绑定流程
+  rpc StartLinkOAuth(authentication.service.v1.StartLinkOAuthRequest) returns (authentication.service.v1.StartLinkOAuthResponse) {
+    option (google.api.http) = {
+      post: "/admin/v1/oauth:start-link"
+      body: "*"
+    };
+  }
+
+  // 确认第三方账号绑定
+  rpc ConfirmLinkOAuth(authentication.service.v1.ConfirmLinkOAuthRequest) returns (authentication.service.v1.ConfirmLinkOAuthResponse) {
+    option (google.api.http) = {
+      post: "/admin/v1/oauth:confirm-link"
+      body: "*"
+    };
+  }
+
+  // 解除第三方账号绑定
+  rpc UnlinkOAuth(authentication.service.v1.UnlinkOAuthRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/admin/v1/oauth:unlink"
+      body: "*"
+    };
+  }
+
+  // 查询支持的第三方登录提供商列表
+  rpc ListProviders(authentication.service.v1.ListProvidersRequest) returns (authentication.service.v1.ListProvidersResponse) {
+    option (google.api.http) = {
+      get: "/admin/v1/oauth/providers"
+    };
+  }
+}

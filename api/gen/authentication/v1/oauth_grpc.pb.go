@@ -37,29 +37,29 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// OAuth 服务接口
+// 第三方账号绑定服务
 type OAuthServiceClient interface {
-	// 列出当前用户所有已关联第三方账号（支持分页）
+	// 查询当前用户已绑定的第三方账号列表
 	ListLinkedAccounts(ctx context.Context, in *ListLinkedAccountsRequest, opts ...grpc.CallOption) (*ListLinkedAccountsResponse, error)
-	// 获取单个已关联账号详情（不返回明文 refresh/access）
+	// 查询单个已绑定第三方账号详情
 	GetLinkedAccount(ctx context.Context, in *GetLinkedAccountRequest, opts ...grpc.CallOption) (*GetLinkedAccountResponse, error)
-	// 开始关联流程（返回 authorization_url 或 verification_id 等）
+	// 开始第三方账号绑定流程
 	StartLinkOAuth(ctx context.Context, in *StartLinkOAuthRequest, opts ...grpc.CallOption) (*StartLinkOAuthResponse, error)
-	// 确认关联：前端使用 code/token/verification_id 提交以完成关联
+	// 确认第三方账号绑定
 	ConfirmLinkOAuth(ctx context.Context, in *ConfirmLinkOAuthRequest, opts ...grpc.CallOption) (*ConfirmLinkOAuthResponse, error)
-	// 兼容：直接关联（若已有 oauth_token/code 可直接创建）
+	// 直接绑定第三方账号
 	LinkOAuth(ctx context.Context, in *LinkOAuthRequest, opts ...grpc.CallOption) (*LinkOAuthResponse, error)
-	// 解除关联（按 provider 或已关联凭证 id）
+	// 解除第三方账号绑定
 	UnlinkOAuth(ctx context.Context, in *UnlinkOAuthRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// 撤销指定已关联凭证的所有令牌/访问权（偏向安全/强制撤销）
+	// 撤销指定已绑定账号的访问授权
 	RevokeLinkedAccount(ctx context.Context, in *RevokeLinkedAccountRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// 使用 refresh token 刷新 access token（实现可选择只返回元信息）
+	// 刷新第三方访问令牌
 	RefreshOAuthToken(ctx context.Context, in *RefreshOAuthTokenRequest, opts ...grpc.CallOption) (*RefreshOAuthTokenResponse, error)
-	// 使用服务端接收到的 code 交换 token（常用于 server-side OAuth 流程）
+	// 使用授权码交换第三方访问令牌
 	ExchangeOAuthCode(ctx context.Context, in *ExchangeOAuthCodeRequest, opts ...grpc.CallOption) (*ExchangeOAuthCodeResponse, error)
-	// 列出支持的 OAuth 提供商与其元信息（授权端点、scope 建议等）
+	// 查询支持的第三方提供商列表
 	ListProviders(ctx context.Context, in *ListProvidersRequest, opts ...grpc.CallOption) (*ListProvidersResponse, error)
-	// 获取单个提供商元信息
+	// 查询单个第三方提供商元信息
 	GetProviderMetadata(ctx context.Context, in *GetProviderMetadataRequest, opts ...grpc.CallOption) (*ProviderMetadata, error)
 }
 
@@ -185,29 +185,29 @@ func (c *oAuthServiceClient) GetProviderMetadata(ctx context.Context, in *GetPro
 // All implementations must embed UnimplementedOAuthServiceServer
 // for forward compatibility.
 //
-// OAuth 服务接口
+// 第三方账号绑定服务
 type OAuthServiceServer interface {
-	// 列出当前用户所有已关联第三方账号（支持分页）
+	// 查询当前用户已绑定的第三方账号列表
 	ListLinkedAccounts(context.Context, *ListLinkedAccountsRequest) (*ListLinkedAccountsResponse, error)
-	// 获取单个已关联账号详情（不返回明文 refresh/access）
+	// 查询单个已绑定第三方账号详情
 	GetLinkedAccount(context.Context, *GetLinkedAccountRequest) (*GetLinkedAccountResponse, error)
-	// 开始关联流程（返回 authorization_url 或 verification_id 等）
+	// 开始第三方账号绑定流程
 	StartLinkOAuth(context.Context, *StartLinkOAuthRequest) (*StartLinkOAuthResponse, error)
-	// 确认关联：前端使用 code/token/verification_id 提交以完成关联
+	// 确认第三方账号绑定
 	ConfirmLinkOAuth(context.Context, *ConfirmLinkOAuthRequest) (*ConfirmLinkOAuthResponse, error)
-	// 兼容：直接关联（若已有 oauth_token/code 可直接创建）
+	// 直接绑定第三方账号
 	LinkOAuth(context.Context, *LinkOAuthRequest) (*LinkOAuthResponse, error)
-	// 解除关联（按 provider 或已关联凭证 id）
+	// 解除第三方账号绑定
 	UnlinkOAuth(context.Context, *UnlinkOAuthRequest) (*emptypb.Empty, error)
-	// 撤销指定已关联凭证的所有令牌/访问权（偏向安全/强制撤销）
+	// 撤销指定已绑定账号的访问授权
 	RevokeLinkedAccount(context.Context, *RevokeLinkedAccountRequest) (*emptypb.Empty, error)
-	// 使用 refresh token 刷新 access token（实现可选择只返回元信息）
+	// 刷新第三方访问令牌
 	RefreshOAuthToken(context.Context, *RefreshOAuthTokenRequest) (*RefreshOAuthTokenResponse, error)
-	// 使用服务端接收到的 code 交换 token（常用于 server-side OAuth 流程）
+	// 使用授权码交换第三方访问令牌
 	ExchangeOAuthCode(context.Context, *ExchangeOAuthCodeRequest) (*ExchangeOAuthCodeResponse, error)
-	// 列出支持的 OAuth 提供商与其元信息（授权端点、scope 建议等）
+	// 查询支持的第三方提供商列表
 	ListProviders(context.Context, *ListProvidersRequest) (*ListProvidersResponse, error)
-	// 获取单个提供商元信息
+	// 查询单个第三方提供商元信息
 	GetProviderMetadata(context.Context, *GetProviderMetadataRequest) (*ProviderMetadata, error)
 	mustEmbedUnimplementedOAuthServiceServer()
 }

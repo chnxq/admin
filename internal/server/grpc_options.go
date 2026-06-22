@@ -1,5 +1,5 @@
 // Code generated from: xkit-template.
-// generated at        2026-05-01 09:46:07 CST.
+// generated at        2026-06-20 12:52:15 CST.
 
 package server
 
@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/chnxq/xkitpkg/app"
+	serverutils "github.com/chnxq/xkitpkg/server_utils"
 	grpctransport "github.com/chnxq/xkitpkg/transport/grpc"
 )
 
@@ -27,13 +28,25 @@ func GRPCServerOptions(appCtx *app.AppCtx, data GeneratedData) ([]grpctransport.
 			opts = append(opts, grpctransport.Timeout(cfg.GetTimeout().AsDuration()))
 		}
 		if cfg.GetTls() != nil {
-			tlsConfig, err := loadServerTLSConfig(cfg.GetTls())
+			tlsConfig, err := serverutils.LoadServerTLSConfig(cfg.GetTls())
 			if err != nil {
 				return nil, fmt.Errorf("load grpc tls config: %w", err)
 			}
 			if tlsConfig != nil {
 				opts = append(opts, grpctransport.TLSConfig(tlsConfig))
 			}
+		}
+		if appCtx != nil && cfg.GetMiddleware() != nil {
+			appCtx.NewLoggerHelper("transport/grpc").Debugf(
+				"GRPC middleware config: logging=%t recovery=%t tracing=%t validate=%t metadata=%t breaker=%t limiter=%t",
+				cfg.GetMiddleware().GetEnableLogging(),
+				cfg.GetMiddleware().GetEnableRecovery(),
+				cfg.GetMiddleware().GetEnableTracing(),
+				cfg.GetMiddleware().GetEnableValidate(),
+				cfg.GetMiddleware().GetEnableMetadata(),
+				cfg.GetMiddleware().GetEnableCircuitBreaker(),
+				cfg.GetMiddleware().GetLimiter() != nil,
+			)
 		}
 	}
 

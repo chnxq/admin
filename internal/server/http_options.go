@@ -1,19 +1,19 @@
 // Code generated from: xkit-template.
-// generated at        2026-05-01 09:46:07 CST.
+// generated at        2026-06-20 12:52:15 CST.
 
 package server
 
 import (
 	"fmt"
 
+	modulehost "admin/shared/modulehost"
 	swaggerUI "github.com/chnxq/x-swagger"
 	"github.com/chnxq/xkitpkg/app"
 	conf "github.com/chnxq/xkitpkg/conf/v1"
+	serverutils "github.com/chnxq/xkitpkg/server_utils"
 	httptransport "github.com/chnxq/xkitpkg/transport/http"
 	httppprof "github.com/chnxq/xkitpkg/transport/http/pprof"
 	"github.com/gorilla/handlers"
-
-	"admin/cmd/server/assets"
 )
 
 func HTTPServerOptions(appCtx *app.AppCtx, data GeneratedData) ([]httptransport.ServerOption, error) {
@@ -33,7 +33,7 @@ func HTTPServerOptions(appCtx *app.AppCtx, data GeneratedData) ([]httptransport.
 			opts = append(opts, httptransport.Timeout(cfg.GetTimeout().AsDuration()))
 		}
 		if cfg.GetTls() != nil {
-			tlsConfig, err := loadServerTLSConfig(cfg.GetTls())
+			tlsConfig, err := serverutils.LoadServerTLSConfig(cfg.GetTls())
 			if err != nil {
 				return nil, fmt.Errorf("load rest tls config: %w", err)
 			}
@@ -46,6 +46,19 @@ func HTTPServerOptions(appCtx *app.AppCtx, data GeneratedData) ([]httptransport.
 	var cfgMiddleware *conf.Middleware
 	if cfg != nil {
 		cfgMiddleware = cfg.GetMiddleware()
+		if appCtx != nil {
+			appCtx.NewLoggerHelper("transport/http").Debugf(
+				"REST middleware config: logging=%t recovery=%t tracing=%t validate=%t metadata=%t breaker=%t limiter=%t db_logging=%t",
+				cfgMiddleware.GetEnableLogging(),
+				cfgMiddleware.GetEnableRecovery(),
+				cfgMiddleware.GetEnableTracing(),
+				cfgMiddleware.GetEnableValidate(),
+				cfgMiddleware.GetEnableMetadata(),
+				cfgMiddleware.GetEnableCircuitBreaker(),
+				cfgMiddleware.GetLimiter() != nil,
+				cfg.GetEnableDbLogging(),
+			)
+		}
 	}
 	middlewares := commonServerMiddlewares(appCtx, cfgMiddleware)
 	if authViewer := authViewerMiddleware(data); authViewer != nil {
@@ -53,7 +66,9 @@ func HTTPServerOptions(appCtx *app.AppCtx, data GeneratedData) ([]httptransport.
 	}
 	middlewares = append(middlewares, HTTPMiddlewares(appCtx)...)
 	if cfg != nil && cfg.GetEnableDbLogging() {
-		middlewares = append(middlewares, databaseLoggingMiddleware(data))
+		if provider, ok := any(data).(serverutils.DatabaseLoggingData); ok {
+			middlewares = append(middlewares, serverutils.DatabaseLoggingMiddleware(provider))
+		}
 	}
 	if len(middlewares) > 0 {
 		opts = append(opts, httptransport.Middleware(middlewares...))
@@ -79,12 +94,22 @@ func RegisterConfiguredHTTPHandlers(srv *httptransport.Server, appCtx *app.AppCt
 		srv.HandlePrefix("/debug/pprof/", handler)
 	}
 
-	if cfg.GetEnableSwagger() && len(assets.OpenApiData) > 0 {
+	if cfg.GetEnableSwagger() {
+		openAPIData, err := modulehost.MarshalRegisteredOpenAPIDocument("yaml")
+		if err != nil {
+			if appCtx != nil {
+				appCtx.NewLoggerHelper("transport/http").Errorf("load merged OpenAPI document failed: %v", err)
+			}
+			return
+		}
+		if len(openAPIData) == 0 {
+			return
+		}
 		swaggerUI.RegisterSwaggerUIServerWithOption(
 			srv,
 			swaggerUI.WithTitle("API文档"),
 			swaggerUI.WithBasePath("/docs/"),
-			swaggerUI.WithMemoryData(assets.OpenApiData, "yaml"),
+			swaggerUI.WithMemoryData(openAPIData, "yaml"),
 		)
 	}
 }

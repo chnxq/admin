@@ -3,7 +3,7 @@
 // - protoc-gen-go-http v2.9.8
 // - protoc             34.0
 // source: admin/v1/i_authentication.proto
-// generated at        2026-06-03 23:29:27
+// generated at        2026-06-11 12:02:33
 
 package admin
 
@@ -25,6 +25,7 @@ const _ = http.SupportPackageIsVersion1
 const OperationAuthenticationServiceLogin = "/admin.service.v1.AuthenticationService/Login"
 const OperationAuthenticationServiceLogout = "/admin.service.v1.AuthenticationService/Logout"
 const OperationAuthenticationServiceRefreshToken = "/admin.service.v1.AuthenticationService/RefreshToken"
+const OperationAuthenticationServiceRegisterUser = "/admin.service.v1.AuthenticationService/RegisterUser"
 
 type AuthenticationServiceHTTPServer interface {
 	// Login 登录
@@ -33,12 +34,15 @@ type AuthenticationServiceHTTPServer interface {
 	Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	// RefreshToken 刷新认证令牌
 	RefreshToken(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error)
+	// RegisterUser 注册用户
+	RegisterUser(context.Context, *v1.RegisterUserRequest) (*v1.RegisterUserResponse, error)
 }
 
 func RegisterAuthenticationServiceHTTPServer(s *http.Server, srv AuthenticationServiceHTTPServer) {
 	r := s.Route("/")
 	r.POST("/admin/v1/login", _AuthenticationService_Login0_HTTP_Handler(srv))
 	r.POST("/admin/v1/logout", _AuthenticationService_Logout0_HTTP_Handler(srv))
+	r.POST("/admin/v1/register", _AuthenticationService_RegisterUser0_HTTP_Handler(srv))
 	r.POST("/admin/v1/refresh-token", _AuthenticationService_RefreshToken0_HTTP_Handler(srv))
 }
 
@@ -86,6 +90,28 @@ func _AuthenticationService_Logout0_HTTP_Handler(srv AuthenticationServiceHTTPSe
 	}
 }
 
+func _AuthenticationService_RegisterUser0_HTTP_Handler(srv AuthenticationServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in v1.RegisterUserRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAuthenticationServiceRegisterUser)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.RegisterUser(ctx, req.(*v1.RegisterUserRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*v1.RegisterUserResponse)
+		return ctx.Result(200, reply)
+	}
+}
+
 func _AuthenticationService_RefreshToken0_HTTP_Handler(srv AuthenticationServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v1.LoginRequest
@@ -112,6 +138,7 @@ type AuthenticationServiceHTTPClient interface {
 	Login(ctx context.Context, req *v1.LoginRequest, opts ...http.CallOption) (rsp *v1.LoginResponse, err error)
 	Logout(ctx context.Context, req *emptypb.Empty, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
 	RefreshToken(ctx context.Context, req *v1.LoginRequest, opts ...http.CallOption) (rsp *v1.LoginResponse, err error)
+	RegisterUser(ctx context.Context, req *v1.RegisterUserRequest, opts ...http.CallOption) (rsp *v1.RegisterUserResponse, err error)
 }
 
 type AuthenticationServiceHTTPClientImpl struct {
@@ -153,6 +180,19 @@ func (c *AuthenticationServiceHTTPClientImpl) RefreshToken(ctx context.Context, 
 	pattern := "/admin/v1/refresh-token"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationAuthenticationServiceRefreshToken))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *AuthenticationServiceHTTPClientImpl) RegisterUser(ctx context.Context, in *v1.RegisterUserRequest, opts ...http.CallOption) (*v1.RegisterUserResponse, error) {
+	var out v1.RegisterUserResponse
+	pattern := "/admin/v1/register"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationAuthenticationServiceRegisterUser))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
 	if err != nil {

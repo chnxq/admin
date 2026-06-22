@@ -15,6 +15,7 @@ import (
 	"admin/internal/data/ent/orgunit"
 	"admin/internal/data/ent/position"
 	"admin/internal/data/ent/role"
+	"admin/internal/data/ent/tenant"
 	"admin/internal/data/ent/user"
 	"admin/internal/data/ent/usercredential"
 	"admin/internal/data/ent/userorgunit"
@@ -464,6 +465,7 @@ func (r *userRepo) userCustomUpdate(ctx context.Context, req *identityv1.UpdateU
 	}
 
 	builder := tx.Client().User.UpdateOneID(req.GetId())
+	effectiveTenantID := existing.TenantID
 	if req.Data.Nickname != nil {
 		builder.SetNillableNickname(req.Data.Nickname)
 	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "nickname") {
@@ -539,6 +541,13 @@ func (r *userRepo) userCustomUpdate(ctx context.Context, req *identityv1.UpdateU
 	} else if req.GetUpdateMask() != nil && userFieldMaskContains(req.GetUpdateMask().GetPaths(), "remark") {
 		builder.ClearRemark()
 	}
+	if req.Data.TenantId != nil {
+		effectiveTenantID = req.Data.TenantId
+		if err := validateTargetTenantID(ctx, tx.Client(), *effectiveTenantID); err != nil {
+			return nil, err
+		}
+		builder.Mutation().SetTenantID(*effectiveTenantID)
+	}
 	builder.SetUpdatedBy(uint32(viewer.UserID()))
 	builder.SetUpdatedAt(now)
 
@@ -549,17 +558,22 @@ func (r *userRepo) userCustomUpdate(ctx context.Context, req *identityv1.UpdateU
 	}
 
 	if mask := req.GetUpdateMask(); mask == nil || userFieldMaskContains(mask.GetPaths(), "orgUnitIds", "org_unit_ids") {
-		if err := r.replaceUserOrgUnits(ctx, tx.Client(), now, viewer, entity.ID, entity.TenantID, req.Data.GetOrgUnitIds()); err != nil {
+		if err := r.replaceUserOrgUnits(ctx, tx.Client(), now, viewer, entity.ID, effectiveTenantID, req.Data.GetOrgUnitIds()); err != nil {
 			return nil, err
 		}
 	}
 	if mask := req.GetUpdateMask(); mask == nil || userFieldMaskContains(mask.GetPaths(), "positionIds", "position_ids") {
-		if err := r.replaceUserPositions(ctx, tx.Client(), now, viewer, entity.ID, entity.TenantID, req.Data.GetPositionIds()); err != nil {
+		if err := r.replaceUserPositions(ctx, tx.Client(), now, viewer, entity.ID, effectiveTenantID, req.Data.GetPositionIds()); err != nil {
 			return nil, err
 		}
 	}
 	if mask := req.GetUpdateMask(); mask == nil || userFieldMaskContains(mask.GetPaths(), "roleIds", "role_ids") {
-		if err := r.replaceUserRoles(ctx, tx.Client(), now, viewer, entity.ID, entity.TenantID, req.Data.GetRoleIds()); err != nil {
+		if err := r.replaceUserRoles(ctx, tx.Client(), now, viewer, entity.ID, effectiveTenantID, req.Data.GetRoleIds()); err != nil {
+			return nil, err
+		}
+	}
+	if req.Data.TenantId != nil {
+		if err := r.reassignUserCredentialTenant(ctx, tx.Client(), entity.ID, effectiveTenantID); err != nil {
 			return nil, err
 		}
 	}
@@ -702,9 +716,13 @@ func (r *userRepo) createOrUpdateUserCredential(ctx context.Context, txClient *e
 			SetCredential(string(normalizedPassword)).
 			SetStatus(usercredential.StatusEnabled).
 			Save(ctx)
+		if err != nil {
+			r.log.Errorf("update user credential failed: user_id=%d credential_id=%d username=%q: %s", userID, existing.ID, username, err.Error())
+		}
 		return err
 	}
 	if err != nil && !ent.IsNotFound(err) {
+		r.log.Errorf("load user credential failed: user_id=%d username=%q: %s", userID, username, err.Error())
 		return err
 	}
 
@@ -720,7 +738,28 @@ func (r *userRepo) createOrUpdateUserCredential(ctx context.Context, txClient *e
 		builder.SetTenantID(*tenantID)
 	}
 	_, err = builder.Save(ctx)
+	if err != nil {
+		r.log.Errorf("create user credential failed: user_id=%d username=%q: %s", userID, username, err.Error())
+	}
 	return err
+}
+
+func (r *userRepo) reassignUserCredentialTenant(ctx context.Context, txClient *ent.Client, userID uint32, tenantID *uint32) error {
+	if userID == 0 {
+		return nil
+	}
+	builder := txClient.UserCredential.Update().
+		Where(usercredential.UserIDEQ(userID))
+	if tenantID != nil {
+		builder.Mutation().SetTenantID(*tenantID)
+	} else {
+		builder.Mutation().ClearTenantID()
+	}
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("reassign user credential tenant failed: user_id=%d: %s", userID, err.Error())
+		return err
+	}
+	return nil
 }
 
 func (r *userRepo) replaceUserOrgUnits(ctx context.Context, txClient *ent.Client, now time.Time, viewer crudviewer.Context, userID uint32, tenantID *uint32, orgUnitIDs []uint32) error {
@@ -728,6 +767,7 @@ func (r *userRepo) replaceUserOrgUnits(ctx context.Context, txClient *ent.Client
 		return err
 	}
 	if _, err := txClient.UserOrgUnit.Delete().Where(userorgunit.UserIDEQ(userID)).Exec(ctx); err != nil {
+		r.log.Errorf("delete user org unit relations failed: user_id=%d: %s", userID, err.Error())
 		return err
 	}
 	for index, orgUnitID := range orgUnitIDs {
@@ -744,6 +784,7 @@ func (r *userRepo) replaceUserOrgUnits(ctx context.Context, txClient *ent.Client
 			builder.SetTenantID(*tenantID)
 		}
 		if _, err := builder.Save(ctx); err != nil {
+			r.log.Errorf("create user org unit relation failed: user_id=%d org_unit_id=%d: %s", userID, orgUnitID, err.Error())
 			return err
 		}
 	}
@@ -755,6 +796,7 @@ func (r *userRepo) replaceUserPositions(ctx context.Context, txClient *ent.Clien
 		return err
 	}
 	if _, err := txClient.UserPosition.Delete().Where(userposition.UserIDEQ(userID)).Exec(ctx); err != nil {
+		r.log.Errorf("delete user position relations failed: user_id=%d: %s", userID, err.Error())
 		return err
 	}
 	for index, positionID := range positionIDs {
@@ -771,6 +813,7 @@ func (r *userRepo) replaceUserPositions(ctx context.Context, txClient *ent.Clien
 			builder.SetTenantID(*tenantID)
 		}
 		if _, err := builder.Save(ctx); err != nil {
+			r.log.Errorf("create user position relation failed: user_id=%d position_id=%d: %s", userID, positionID, err.Error())
 			return err
 		}
 	}
@@ -782,6 +825,7 @@ func (r *userRepo) replaceUserRoles(ctx context.Context, txClient *ent.Client, n
 		return err
 	}
 	if _, err := txClient.UserRole.Delete().Where(userrole.UserIDEQ(userID)).Exec(ctx); err != nil {
+		r.log.Errorf("delete user role relations failed: user_id=%d: %s", userID, err.Error())
 		return err
 	}
 	for index, roleID := range roleIDs {
@@ -798,6 +842,7 @@ func (r *userRepo) replaceUserRoles(ctx context.Context, txClient *ent.Client, n
 			builder.SetTenantID(*tenantID)
 		}
 		if _, err := builder.Save(ctx); err != nil {
+			r.log.Errorf("create user role relation failed: user_id=%d role_id=%d: %s", userID, roleID, err.Error())
 			return err
 		}
 	}
@@ -850,6 +895,20 @@ func validateTenantScopedOrgUnitIDs(ctx context.Context, txClient *ent.Client, t
 		if row == nil || row.TenantID == nil || *row.TenantID != *tenantID {
 			return identityv1.ErrorForbidden("cross-tenant access is forbidden")
 		}
+	}
+	return nil
+}
+
+func validateTargetTenantID(ctx context.Context, txClient *ent.Client, tenantID uint32) error {
+	if tenantID == 0 {
+		return identityv1.ErrorForbidden("target tenant is required")
+	}
+	_, err := txClient.Tenant.Query().Where(tenant.IDEQ(tenantID)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return identityv1.ErrorForbidden("target tenant does not exist")
+		}
+		return err
 	}
 	return nil
 }

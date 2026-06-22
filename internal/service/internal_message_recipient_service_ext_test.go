@@ -8,6 +8,7 @@ import (
 	"admin/internal/data/repo"
 	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
 	crudviewer "github.com/chnxq/x-crud/viewer"
+	"github.com/chnxq/xkitmod/log"
 )
 
 type internalMessageRecipientServiceTestViewer struct {
@@ -27,8 +28,10 @@ func (v internalMessageRecipientServiceTestViewer) TraceID() string             
 func (v internalMessageRecipientServiceTestViewer) HasPermission(string, string) bool { return true }
 func (v internalMessageRecipientServiceTestViewer) IsPlatformContext() bool           { return v.platform }
 func (v internalMessageRecipientServiceTestViewer) IsTenantContext() bool             { return v.tenant }
-func (v internalMessageRecipientServiceTestViewer) IsSystemContext() bool             { return v.platform && !v.tenant }
-func (v internalMessageRecipientServiceTestViewer) ShouldAudit() bool                 { return false }
+func (v internalMessageRecipientServiceTestViewer) IsSystemContext() bool {
+	return v.platform && !v.tenant
+}
+func (v internalMessageRecipientServiceTestViewer) ShouldAudit() bool { return false }
 
 type stubInternalMessageRecipientRepo struct {
 	lastDeleteRecipientIDs []uint32
@@ -68,7 +71,10 @@ func TestInternalMessageRecipientServiceListUserInboxUsesViewerUserID(t *testing
 			Items: []*v11.InternalMessageRecipient{{Id: uint32Ptr(99)}},
 		},
 	}
-	svc := &InternalMessageRecipientService{internalMessageRecipientRepo: repoStub}
+	svc := &InternalMessageRecipientService{
+		log:                          log.NewHelper(log.NewStdLogger(testingWriter{t: t})),
+		internalMessageRecipientRepo: repoStub,
+	}
 	ctx := crudviewer.WithContext(context.Background(), internalMessageRecipientServiceTestViewer{
 		userID:   88,
 		platform: true,
@@ -94,7 +100,10 @@ func TestInternalMessageRecipientServiceListUserInboxUsesViewerUserID(t *testing
 
 func TestInternalMessageRecipientServiceDeleteAndReadUseViewerUserIDWhenRequestIsZero(t *testing.T) {
 	repoStub := &stubInternalMessageRecipientRepo{}
-	svc := &InternalMessageRecipientService{internalMessageRecipientRepo: repoStub}
+	svc := &InternalMessageRecipientService{
+		log:                          log.NewHelper(log.NewStdLogger(testingWriter{t: t})),
+		internalMessageRecipientRepo: repoStub,
+	}
 	ctx := crudviewer.WithContext(context.Background(), internalMessageRecipientServiceTestViewer{
 		userID:   66,
 		platform: true,
@@ -132,4 +141,15 @@ func TestCurrentInboxUserIDRejectsMissingViewerUser(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error for missing viewer user id")
 	}
+}
+
+type testingWriter struct {
+	t *testing.T
+}
+
+func (w testingWriter) Write(p []byte) (int, error) {
+	if w.t != nil {
+		w.t.Log(string(p))
+	}
+	return len(p), nil
 }

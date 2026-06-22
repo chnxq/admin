@@ -71,6 +71,7 @@ enum TokenType {
 enum ClientType {
   admin = 0; // 管理端
   app = 1; // APP
+  miniapp = 2; // 小程序
 }
 
 // 令牌类别
@@ -321,7 +322,7 @@ message ValidateTokenResponse {
   ]; // 令牌是否被阻塞/列入黑名单
 }
 
-message RegisterUserRequest {
+message RegisterByUsernameRequest {
   string username = 1 [
     json_name = "username",
     (gnostic.openapi.v3.property) = {
@@ -332,36 +333,182 @@ message RegisterUserRequest {
   string password = 2 [
     json_name = "password",
     (gnostic.openapi.v3.property) = {
-      description: "登入密码"
+      description: "注册密码"
     }
-  ]; // 登入密码
+  ]; // 注册密码
 
-  string tenant_code = 3 [
-    json_name = "tenantCode",
+  optional string email = 3 [
+    json_name = "email",
     (gnostic.openapi.v3.property) = {
-      description: "租户代码"
+      description: "可选邮箱"
     }
-  ]; // 租户代码
+  ]; // 可选邮箱
 
-  optional string email = 4 [
+  optional string mobile = 4 [
+    json_name = "mobile",
+    (gnostic.openapi.v3.property) = {
+      description: "可选手机号"
+    }
+  ]; // 可选手机号
+
+  optional string captcha_id = 5 [
+    json_name = "captchaId",
+    (gnostic.openapi.v3.property) = {
+      description: "图形验证码ID"
+    }
+  ]; // 图形验证码ID
+
+  optional string captcha_code = 6 [
+    json_name = "captchaCode",
+    (gnostic.openapi.v3.property) = {
+      description: "图形验证码"
+    }
+  ]; // 图形验证码
+}
+
+message RegisterByEmailRequest {
+  string email = 1 [
     json_name = "email",
     (gnostic.openapi.v3.property) = {
       description: "电子邮件地址"
     }
   ]; // 电子邮件地址
 
-  optional ClientType client_type = 5 [
-    json_name = "client_type",
+  string email_code = 2 [
+    json_name = "emailCode",
+    (gnostic.openapi.v3.property) = {
+      description: "邮箱验证码"
+    }
+  ]; // 邮箱验证码
+
+  string password = 3 [
+    json_name = "password",
+    (gnostic.openapi.v3.property) = {
+      description: "注册密码"
+    }
+  ]; // 注册密码
+
+  optional string username = 4 [
+    json_name = "username",
+    (gnostic.openapi.v3.property) = {
+      description: "可选用户名"
+    }
+  ]; // 可选用户名
+
+  optional string captcha_id = 5 [
+    json_name = "captchaId",
+    (gnostic.openapi.v3.property) = {
+      description: "图形验证码ID"
+    }
+  ]; // 图形验证码ID
+
+  optional string captcha_code = 6 [
+    json_name = "captchaCode",
+    (gnostic.openapi.v3.property) = {
+      description: "图形验证码"
+    }
+  ]; // 图形验证码
+}
+
+message RegisterByMobileRequest {
+  string mobile = 1 [
+    json_name = "mobile",
+    (gnostic.openapi.v3.property) = {
+      description: "手机号"
+    }
+  ]; // 手机号
+
+  string mobile_code = 2 [
+    json_name = "mobileCode",
+    (gnostic.openapi.v3.property) = {
+      description: "手机验证码"
+    }
+  ]; // 手机验证码
+
+  optional string password = 3 [
+    json_name = "password",
+    (gnostic.openapi.v3.property) = {
+      description: "可选注册密码"
+    }
+  ]; // 可选注册密码
+
+  optional string username = 4 [
+    json_name = "username",
+    (gnostic.openapi.v3.property) = {
+      description: "可选用户名"
+    }
+  ]; // 可选用户名
+
+  optional string captcha_id = 5 [
+    json_name = "captchaId",
+    (gnostic.openapi.v3.property) = {
+      description: "图形验证码ID"
+    }
+  ]; // 图形验证码ID
+
+  optional string captcha_code = 6 [
+    json_name = "captchaCode",
+    (gnostic.openapi.v3.property) = {
+      description: "图形验证码"
+    }
+  ]; // 图形验证码
+}
+
+message RegisterUserRequest {
+  string tenant_code = 1 [
+    json_name = "tenantCode",
+    (gnostic.openapi.v3.property) = {
+      description: "租户代码"
+    }
+  ]; // 租户代码
+
+  optional ClientType client_type = 2 [
+    json_name = "clientType",
     (gnostic.openapi.v3.property) = {
       description: "客户端类型"
     }
   ]; // 客户端类型
+
+  optional string device_id = 3 [
+    json_name = "deviceId",
+    (gnostic.openapi.v3.property) = {
+      description: "设备ID"
+    }
+  ]; // 设备ID
+
+  oneof register_by {
+    RegisterByUsernameRequest by_username = 10 [
+      json_name = "byUsername",
+      (gnostic.openapi.v3.property) = {
+        description: "按用户名注册"
+      }
+    ];
+    RegisterByEmailRequest by_email = 11 [
+      json_name = "byEmail",
+      (gnostic.openapi.v3.property) = {
+        description: "按邮箱注册"
+      }
+    ];
+    RegisterByMobileRequest by_mobile = 12 [
+      json_name = "byMobile",
+      (gnostic.openapi.v3.property) = {
+        description: "按手机号注册"
+      }
+    ];
+  }
 }
 message RegisterUserResponse {
   uint32 user_id = 1 [
     json_name = "userId",
     (gnostic.openapi.v3.property) = {
       description: "用户ID"
+    }
+  ];
+
+  optional LoginResponse login = 2 [
+    json_name = "login",
+    (gnostic.openapi.v3.property) = {
+      description: "注册成功后直接返回的登录结果"
     }
   ];
 }

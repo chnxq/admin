@@ -1,5 +1,5 @@
 // Code generated from: xkit-template.
-// generated at        2026-05-25 16:32:33 CST.
+// generated at        2026-06-20 12:52:15 CST.
 
 package bootstrap
 
@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	taskruntime "admin/internal/task"
 	"github.com/chnxq/xkitpkg/app"
 	conf "github.com/chnxq/xkitpkg/conf/v1"
 	"github.com/chnxq/xkitpkg/config"
@@ -99,6 +100,7 @@ func newAppContext(ctx context.Context, opts Options, serverConfig *conf.ServerC
 	if err != nil {
 		return nil, err
 	}
+	registerRuntimeConfigAppliers(appCtx)
 	return appCtx, nil
 }
 
@@ -119,7 +121,12 @@ func newTransportServers(appCtx *app.AppCtx, cleanup *CleanupStack) ([]transport
 		return nil, err
 	}
 
-	generatedServers, err := components.Servers(appCtx)
+	moduleRuntimes, err := loadHostModules(appCtx, cleanup)
+	if err != nil {
+		return nil, err
+	}
+
+	generatedServers, err := components.Servers(appCtx, moduleRuntimes)
 	if err != nil {
 		return nil, err
 	}
@@ -139,4 +146,16 @@ func newTransportServers(appCtx *app.AppCtx, cleanup *CleanupStack) ([]transport
 	servers = append(servers, generatedServers...)
 	servers = append(servers, manualBundle.Servers...)
 	return servers, nil
+}
+
+func registerTaskRuntime(ctx context.Context, components *GeneratedComponents) (func(), error) {
+	if components == nil || components.Services == nil {
+		return func() {}, nil
+	}
+	return taskruntime.RegisterServices(
+		ctx,
+		components.Services.Task.TaskScheduler(),
+		components.Services.TaskGroup.TaskScheduler(),
+		components.Services.Task.TaskLogger(),
+	)
 }

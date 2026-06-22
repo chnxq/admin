@@ -12,9 +12,9 @@ import (
 	"time"
 
 	resourcev1 "admin/api/gen/resource/v1"
-	"admin/cmd/server/assets"
 	"admin/internal/data/ent"
 	"admin/internal/data/ent/api"
+	modulehost "admin/shared/modulehost"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -219,10 +219,9 @@ func (r *apiRepo) GetOpenAPIRouteData(_ context.Context) (*resourcev1.ListApiRes
 }
 
 func (r *apiRepo) openAPIRoutes() ([]openAPIRoute, error) {
-	loader := openapi3.NewLoader()
-	doc, err := loader.LoadFromData(assets.OpenApiData)
+	doc, err := modulehost.MergeRegisteredOpenAPIDocument()
 	if err != nil {
-		return nil, fmt.Errorf("load OpenAPI document: %w", err)
+		return nil, fmt.Errorf("load merged OpenAPI document: %w", err)
 	}
 	if doc == nil || doc.Paths == nil {
 		return nil, fmt.Errorf("OpenAPI document has no paths")

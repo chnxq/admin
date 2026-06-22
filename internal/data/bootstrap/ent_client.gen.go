@@ -5,10 +5,11 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	entsql "entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect"
 
 	entCrud "github.com/chnxq/x-crud/entgo"
 	"github.com/chnxq/xkitpkg/app"
@@ -32,12 +33,30 @@ func NewEntClient(ctx *app.AppCtx) (*entCrud.EntClient[*ent.Client], func(), err
 		return nil, func() {}, fmt.Errorf("database driver and source are required")
 	}
 
-	drv, err := entsql.Open(database.GetDriver(), database.GetSource())
+	drv, err := entCrud.CreateDriver(
+		database.GetDriver(),
+		database.GetSource(),
+		database.GetEnableTrace(),
+		database.GetEnableMetrics(),
+	)
 	if err != nil {
 		return nil, func() {}, fmt.Errorf("open database: %w", err)
 	}
+	logger.Debugf(
+		"Ent driver initialized: driver=%q trace_enabled=%t metrics_enabled=%t debug=%t",
+		database.GetDriver(),
+		database.GetEnableTrace(),
+		database.GetEnableMetrics(),
+		database.GetDebug(),
+	)
+	clientDrv := any(drv)
+	if database.GetDebug() {
+		clientDrv = dialect.DebugWithContext(drv, func(_ context.Context, args ...any) {
+			logger.Infof("[sql] %s", fmt.Sprint(args...))
+		})
+	}
 
-	client := ent.NewClient(ent.Driver(drv))
+	client := ent.NewClient(ent.Driver(clientDrv.(dialect.Driver)))
 	entClient := entCrud.NewEntClient[*ent.Client](client, drv)
 	if database.GetMaxIdleConnections() > 0 || database.GetMaxOpenConnections() > 0 || database.GetConnectionMaxLifetime() != nil {
 		entClient.SetConnectionOption(
