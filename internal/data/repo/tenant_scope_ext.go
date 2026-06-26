@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"strings"
 
 	identityv1 "admin/api/gen/identity/v1"
 	"admin/internal/data/ent"
@@ -22,11 +23,11 @@ func displayTenantName(tenantID *uint32, tenantName *string) *string {
 	if tenantName == nil {
 		return nil
 	}
-	trimmed := *tenantName
+	trimmed := strings.TrimSpace(*tenantName)
 	if trimmed == "" {
 		return nil
 	}
-	return tenantName
+	return tenantNamePtr(trimmed)
 }
 
 func collectTenantIDs(values ...*uint32) []uint32 {
