@@ -6,9 +6,9 @@ go 1.26.0
 
 require (
 	entgo.io/ent v0.14.6
-	github.com/chnxq/x-crud/api v0.0.0-20260411151944-a61448f9f7bc
-	github.com/chnxq/x-crud/entgo v0.0.0-20260411151944-a61448f9f7bc
-	github.com/chnxq/x-crud/viewer v0.0.0-20260411151944-a61448f9f7bc
+	github.com/chnxq/x-crud/api v0.0.0-20260626173211-00e5d4bacd0d
+	github.com/chnxq/x-crud/entgo v0.0.0-20260626173211-00e5d4bacd0d
+	github.com/chnxq/x-crud/viewer v0.0.0-20260626173211-00e5d4bacd0d
 	github.com/chnxq/x-swagger v0.0.0-20260529105209-02745c8a5170
 	github.com/chnxq/x-utils/copierutil v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/x-utils/geoip v0.0.0-20260612100514-4160a415201a
@@ -40,11 +40,11 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/mattn/go-sqlite3 v1.14.47
 	github.com/menta2k/protoc-gen-redact/v3 v3.0.0-20260213125431-7688a38967d4
-	github.com/minio/minio-go/v7 v7.2.0
+	github.com/minio/minio-go/v7 v7.2.1
 	github.com/mojocn/base64Captcha v1.3.8
 	github.com/robfig/cron/v3 v3.0.1
 	golang.org/x/crypto v0.53.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20260618152121-87f3d3e198d3
+	google.golang.org/genproto/googleapis/api v0.0.0-20260622175928-b703f567277d
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
@@ -67,7 +67,7 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chnxq/x-crud/audit v0.0.0-20260411151944-a61448f9f7bc // indirect
-	github.com/chnxq/x-crud/pagination v0.0.0-20260411151944-a61448f9f7bc // indirect
+	github.com/chnxq/x-crud/pagination v0.0.0-20260626173211-00e5d4bacd0d // indirect
 	github.com/chnxq/x-utils v0.0.0-20260612100514-4160a415201a // indirect
 	github.com/chnxq/x-utils/id v0.0.0-20260612100514-4160a415201a // indirect
 	github.com/chnxq/xkitmod/algs v0.0.0-20260613061637-23d531e87870 // indirect
@@ -104,7 +104,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
-	github.com/hashicorp/go-metrics v0.5.4 // indirect
+	github.com/hashicorp/go-metrics v0.6.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
@@ -129,14 +129,14 @@ require (
 	github.com/oschwald/maxminddb-golang v1.13.1 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/redis/go-redis/extra/rediscmd/v9 v9.20.1 // indirect
-	github.com/redis/go-redis/extra/redisotel/v9 v9.20.1 // indirect
-	github.com/redis/go-redis/v9 v9.20.1 // indirect
+	github.com/redis/go-redis/extra/rediscmd/v9 v9.21.0 // indirect
+	github.com/redis/go-redis/extra/redisotel/v9 v9.21.0 // indirect
+	github.com/redis/go-redis/v9 v9.21.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
-	github.com/shoenig/go-m1cpu v0.2.1 // indirect
+	github.com/shoenig/go-m1cpu v0.2.2 // indirect
 	github.com/sony/sonyflake v1.3.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/swaggest/swgui v1.8.8 // indirect
@@ -179,8 +179,8 @@ require (
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	golang.org/x/tools v0.46.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260618152121-87f3d3e198d3 // indirect
+	golang.org/x/tools v0.47.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260622175928-b703f567277d // indirect
 	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
 	gopkg.in/ini.v1 v1.67.3 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
