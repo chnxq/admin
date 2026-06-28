@@ -111,6 +111,33 @@ func FirstSorting(req *paginationv1.PagingRequest) (string, paginationv1.Sorting
 	return field, direction, nil
 }
 
+func NormalizeDeleteConstraintError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Code(err) == 409 {
+		return err
+	}
+
+	message := strings.ToLower(strings.TrimSpace(err.Error()))
+	if message == "" {
+		return err
+	}
+
+	if strings.Contains(message, "violates foreign key constraint") ||
+		strings.Contains(message, "foreign key constraint fails") ||
+		strings.Contains(message, "constraint failed") ||
+		strings.Contains(message, "is still referenced") ||
+		strings.Contains(message, "23503") {
+		return errors.Conflict(
+			"RESOURCE_IN_USE",
+			"当前数据已被其他记录引用，无法删除，请先解除关联",
+		).WithCause(err)
+	}
+
+	return err
+}
+
 func DisplayTenantName(tenantID *uint32, tenantName *string) *string {
 	if tenantID != nil && *tenantID == PlatformTenantID {
 		return TenantNamePtr(PlatformTenantName)
