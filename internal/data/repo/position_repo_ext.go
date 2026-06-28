@@ -6,9 +6,13 @@ package repo
 
 import (
 	"context"
+	"fmt"
 
 	identityv1 "admin/api/gen/identity/v1"
 	"admin/internal/data/ent"
+	"admin/internal/data/ent/position"
+
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 func (r *positionRepo) enrichPositionTenantNamesWithContext(ctx context.Context, entities []*ent.Position) []*identityv1.Position {
@@ -41,4 +45,159 @@ func (r *positionRepo) positionEnrichListDTOs(ctx context.Context, entities []*e
 
 func (r *positionRepo) positionEnrichGetDTO(ctx context.Context, entities []*ent.Position) ([]*identityv1.Position, error) {
 	return r.enrichPositionTenantNamesWithContext(ctx, entities), nil
+}
+
+func (r *positionRepo) positionCustomCreate(ctx context.Context, req *identityv1.CreatePositionRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+	tenantID, err := resolveCreateTenantID(ctx, req.Data.TenantId)
+	if err != nil {
+		return nil, err
+	}
+	if err := ensureTenantMutable(ctx, tenantID); err != nil {
+		return nil, err
+	}
+
+	builder := r.entClient.Client().Position.Create()
+	now, viewer := r.generatedAuditContext(ctx)
+	builder.SetName(req.Data.GetName())
+	builder.SetCode(req.Data.GetCode())
+	builder.SetOrgUnitID(req.Data.GetOrgUnitId())
+	builder.SetNillableReportsToPositionID(req.Data.ReportsToPositionId)
+	builder.SetNillableDescription(req.Data.Description)
+	builder.SetNillableJobFamily(req.Data.JobFamily)
+	builder.SetNillableJobGrade(req.Data.JobGrade)
+	builder.SetNillableLevel(req.Data.Level)
+	builder.SetHeadcount(req.Data.GetHeadcount())
+	builder.SetIsKeyPosition(req.Data.GetIsKeyPosition())
+	builder.SetType(position.Type(req.Data.GetType().String()))
+	builder.SetNillableStartAt(positionTimePtrFromProto(req.Data.StartAt))
+	builder.SetNillableEndAt(positionTimePtrFromProto(req.Data.EndAt))
+	builder.SetNillableSortOrder(req.Data.SortOrder)
+	builder.SetNillableRemark(req.Data.Remark)
+	builder.SetNillableTenantID(tenantID)
+	builder.SetStatus(position.Status(req.Data.GetStatus().String()))
+	builder.SetCreatedAt(now)
+	builder.SetCreatedBy(uint32(viewer.UserID()))
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("insert position failed: %s", err.Error())
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (r *positionRepo) positionCustomUpdate(ctx context.Context, req *identityv1.UpdatePositionRequest) (*emptypb.Empty, error) {
+	if req == nil || req.Data == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+	current, err := r.entClient.Client().Position.Get(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	if err := ensureTenantMutable(ctx, current.TenantID); err != nil {
+		return nil, err
+	}
+
+	builder := r.entClient.Client().Position.UpdateOneID(req.GetId())
+	now, viewer := r.generatedAuditContext(ctx)
+	builder.SetName(req.Data.GetName())
+	builder.SetCode(req.Data.GetCode())
+	builder.SetOrgUnitID(req.Data.GetOrgUnitId())
+	if req.Data.ReportsToPositionId != nil {
+		builder.SetNillableReportsToPositionID(req.Data.ReportsToPositionId)
+	} else if req.GetUpdateMask() != nil && positionFieldMaskContains(req.GetUpdateMask().GetPaths(), "reports_to_position_id", "reportsToPositionId") {
+		builder.ClearReportsToPositionID()
+	}
+	if req.Data.Description != nil {
+		builder.SetNillableDescription(req.Data.Description)
+	} else if req.GetUpdateMask() != nil && positionFieldMaskContains(req.GetUpdateMask().GetPaths(), "description") {
+		builder.ClearDescription()
+	}
+	if req.Data.JobFamily != nil {
+		builder.SetNillableJobFamily(req.Data.JobFamily)
+	} else if req.GetUpdateMask() != nil && positionFieldMaskContains(req.GetUpdateMask().GetPaths(), "job_family", "jobFamily") {
+		builder.ClearJobFamily()
+	}
+	if req.Data.JobGrade != nil {
+		builder.SetNillableJobGrade(req.Data.JobGrade)
+	} else if req.GetUpdateMask() != nil && positionFieldMaskContains(req.GetUpdateMask().GetPaths(), "job_grade", "jobGrade") {
+		builder.ClearJobGrade()
+	}
+	if req.Data.Level != nil {
+		builder.SetNillableLevel(req.Data.Level)
+	} else if req.GetUpdateMask() != nil && positionFieldMaskContains(req.GetUpdateMask().GetPaths(), "level") {
+		builder.ClearLevel()
+	}
+	builder.SetHeadcount(req.Data.GetHeadcount())
+	builder.SetIsKeyPosition(req.Data.GetIsKeyPosition())
+	builder.SetType(position.Type(req.Data.GetType().String()))
+	if req.Data.StartAt != nil {
+		builder.SetNillableStartAt(positionTimePtrFromProto(req.Data.StartAt))
+	} else if req.GetUpdateMask() != nil && positionFieldMaskContains(req.GetUpdateMask().GetPaths(), "start_at", "startAt") {
+		builder.ClearStartAt()
+	}
+	if req.Data.EndAt != nil {
+		builder.SetNillableEndAt(positionTimePtrFromProto(req.Data.EndAt))
+	} else if req.GetUpdateMask() != nil && positionFieldMaskContains(req.GetUpdateMask().GetPaths(), "end_at", "endAt") {
+		builder.ClearEndAt()
+	}
+	if req.Data.SortOrder != nil {
+		builder.SetNillableSortOrder(req.Data.SortOrder)
+	} else if req.GetUpdateMask() != nil && positionFieldMaskContains(req.GetUpdateMask().GetPaths(), "sort_order", "sortOrder") {
+		builder.ClearSortOrder()
+	}
+	if req.Data.Remark != nil {
+		builder.SetNillableRemark(req.Data.Remark)
+	} else if req.GetUpdateMask() != nil && positionFieldMaskContains(req.GetUpdateMask().GetPaths(), "remark") {
+		builder.ClearRemark()
+	}
+	builder.SetStatus(position.Status(req.Data.GetStatus().String()))
+	builder.SetUpdatedAt(now)
+	builder.SetUpdatedBy(uint32(viewer.UserID()))
+
+	if _, err := builder.Save(ctx); err != nil {
+		r.log.Errorf("update position failed: %s", err.Error())
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (r *positionRepo) positionCustomDelete(ctx context.Context, req *identityv1.DeletePositionRequest) (*emptypb.Empty, error) {
+	if req == nil {
+		return nil, fmt.Errorf("invalid parameter")
+	}
+	switch typedReq := any(req).(type) {
+	case interface{ GetId() uint32 }:
+		current, err := r.entClient.Client().Position.Get(ctx, typedReq.GetId())
+		if err != nil {
+			return nil, err
+		}
+		if err := ensureTenantMutable(ctx, current.TenantID); err != nil {
+			return nil, err
+		}
+		if err := r.entClient.Client().Position.DeleteOneID(typedReq.GetId()).Exec(ctx); err != nil {
+			r.log.Errorf("delete position failed: %s", err.Error())
+			return nil, err
+		}
+	case interface{ GetIds() []uint32 }:
+		entities, err := r.entClient.Client().Position.Query().Where(position.IDIn(typedReq.GetIds()...)).All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, entity := range entities {
+			if entity == nil {
+				continue
+			}
+			if err := ensureTenantMutable(ctx, entity.TenantID); err != nil {
+				return nil, err
+			}
+		}
+		if _, err := r.entClient.Client().Position.Delete().Where(position.IDIn(typedReq.GetIds()...)).Exec(ctx); err != nil {
+			r.log.Errorf("delete position failed: %s", err.Error())
+			return nil, err
+		}
+	}
+	return &emptypb.Empty{}, nil
 }

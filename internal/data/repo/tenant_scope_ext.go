@@ -104,6 +104,10 @@ func tenantNamePtr(value string) *string {
 	return &value
 }
 
+func tenantIDPtr(value uint32) *uint32 {
+	return &value
+}
+
 func viewerTenantID(ctx context.Context) *uint32 {
 	viewer, ok := crudviewer.FromContext(ctx)
 	if !ok || viewer == nil {
@@ -122,6 +126,29 @@ func viewerTenantID(ctx context.Context) *uint32 {
 func ensureTenantAccessible(ctx context.Context, resourceTenantID *uint32) error {
 	viewerTenant := viewerTenantID(ctx)
 	if viewerTenant == nil {
+		return nil
+	}
+	if resourceTenantID == nil || *resourceTenantID != *viewerTenant {
+		return identityv1.ErrorForbidden("cross-tenant access is forbidden")
+	}
+	return nil
+}
+
+func viewerWriteTenantID(ctx context.Context) *uint32 {
+	viewer, ok := crudviewer.FromContext(ctx)
+	if !ok || viewer == nil {
+		return tenantIDPtr(platformTenantID)
+	}
+	tenantID := uint32(viewer.TenantID())
+	return &tenantID
+}
+
+func ensureTenantMutable(ctx context.Context, resourceTenantID *uint32) error {
+	viewerTenant := viewerWriteTenantID(ctx)
+	if viewerTenant == nil {
+		return identityv1.ErrorForbidden("cross-tenant access is forbidden")
+	}
+	if *viewerTenant == platformTenantID && resourceTenantID == nil {
 		return nil
 	}
 	if resourceTenantID == nil || *resourceTenantID != *viewerTenant {
