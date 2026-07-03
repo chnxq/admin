@@ -9,6 +9,7 @@ import (
 	"admin/internal/data/ent"
 	"admin/internal/data/ent/menu"
 	"admin/internal/data/ent/predicate"
+	"admin/internal/service"
 	modulehost "admin/shared/modulehost"
 
 	entCrud "github.com/chnxq/x-crud/entgo"
@@ -48,11 +49,13 @@ func (s *hostResourceSyncer) ensureMenu(ctx context.Context, item modulehost.Men
 		if err != nil {
 			return nil, err
 		}
+		service.AddMenuTitleDisplayName(*item.Meta.Title, *item.Meta.TitleAux)
 	} else {
 		existing, err = s.updateMenu(ctx, existing, item, parentID)
 		if err != nil {
 			return nil, err
 		}
+		service.AddMenuTitleDisplayName(*item.Meta.Title, *item.Meta.TitleAux)
 	}
 	for _, child := range item.Children {
 		if _, err := s.ensureMenu(ctx, child, &existing.ID); err != nil {

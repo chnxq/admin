@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"unicode"
 
 	permissionv1 "admin/api/gen/permission/v1"
@@ -1193,6 +1194,17 @@ func resolveMenuTitleKey(value string) string {
 	return value
 }
 
+func AddMenuTitleDisplayName(key, value string) {
+	key = strings.TrimSpace(key)
+	value = strings.TrimSpace(value)
+	if key == "" || value == "" {
+		return
+	}
+	menuTitleDisplayNamesMu.Lock()
+	defaultMenuTitleDisplayNames[key] = value
+	menuTitleDisplayNamesMu.Unlock()
+}
+
 const (
 	defaultRoleCodePlatformSuperAdmin = "PLATFORM_SUPER_ADMIN"
 	defaultRoleCodeSuperAdmin         = "SUPER_ADMIN"
@@ -1224,6 +1236,8 @@ func trimFeatureNameSuffix(value string) string {
 		return value
 	}
 }
+
+var menuTitleDisplayNamesMu sync.RWMutex
 
 var defaultMenuTitleDisplayNames = map[string]string{
 	"page.dashboard.title":                 "仪表盘",

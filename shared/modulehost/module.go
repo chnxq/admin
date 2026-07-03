@@ -54,6 +54,7 @@ type MenuMeta struct {
 	Link            *string
 	OpenInNewWindow *bool
 	Title           *string
+	TitleAux        *string
 }
 
 type MenuResource struct {
