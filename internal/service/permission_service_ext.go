@@ -483,6 +483,35 @@ func apiPermissionCode(method, path string) string {
 	return resource + ":" + apiActionFromMethod(method, path)
 }
 
+func apiModulePermissionCode(method, path string) string {
+	module, resource := modulePermissionResourceFromPath(path)
+	if module == "" || resource == "" {
+		return ""
+	}
+	if !isModulePermissionResource(resource) {
+		return ""
+	}
+	action := apiActionFromMethod(method, path)
+	if action == "" {
+		return ""
+	}
+	return module + ":" + singularResourceName(resource) + ":" + action
+}
+
+func apiModuleExportPermissionCode(method, path string) string {
+	if apiExportPermissionCode(method, path) == "" {
+		return ""
+	}
+	module, resource := modulePermissionResourceFromPath(path)
+	if module == "" || resource == "" {
+		return ""
+	}
+	if !isModulePermissionResource(resource) {
+		return ""
+	}
+	return module + ":" + singularResourceName(resource) + ":export"
+}
+
 func apiResourceFromPath(path string) string {
 	segments := apiPathSegments(path)
 	if len(segments) == 0 {
@@ -551,6 +580,82 @@ func apiPathSegments(path string) []string {
 	}
 
 	return segments
+}
+
+func modulePermissionResourceFromPath(path string) (string, string) {
+	path = strings.Trim(strings.TrimSpace(path), "/")
+	if path == "" {
+		return "", ""
+	}
+
+	parts := strings.Split(path, "/")
+	cleaned := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" || strings.EqualFold(part, "api") {
+			continue
+		}
+		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
+			continue
+		}
+		cleaned = append(cleaned, normalizeModulePermissionPathSegment(part))
+	}
+	if len(cleaned) < 3 {
+		return "", ""
+	}
+	if !strings.HasPrefix(cleaned[1], "v") || len(cleaned[1]) <= 1 || !isDigits(cleaned[1][1:]) {
+		return "", ""
+	}
+	return cleaned[0], cleaned[2]
+}
+
+func normalizeModulePermissionPathSegment(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	var builder strings.Builder
+	lastDash := false
+	for _, r := range value {
+		switch {
+		case unicode.IsLetter(r), unicode.IsDigit(r):
+			builder.WriteRune(unicode.ToLower(r))
+			lastDash = false
+		case r == '-':
+			if !lastDash && builder.Len() > 0 {
+				builder.WriteRune('-')
+				lastDash = true
+			}
+		default:
+			if !lastDash && builder.Len() > 0 {
+				builder.WriteRune('-')
+				lastDash = true
+			}
+		}
+	}
+	return strings.Trim(builder.String(), "-")
+}
+
+func isModulePermissionResource(segment string) bool {
+	segment = strings.TrimSpace(segment)
+	if segment == "" {
+		return false
+	}
+	return strings.Contains(segment, "-") || strings.HasSuffix(segment, "s")
+}
+
+func singularResourceName(value string) string {
+	value = strings.TrimSpace(value)
+	switch {
+	case strings.HasSuffix(value, "ies") && len(value) > 3:
+		return strings.TrimSuffix(value, "ies") + "y"
+	case strings.HasSuffix(value, "ses") && len(value) > 3:
+		return strings.TrimSuffix(value, "es")
+	case strings.HasSuffix(value, "s") && len(value) > 1:
+		return strings.TrimSuffix(value, "s")
+	default:
+		return value
+	}
 }
 
 func shouldKeepAPISecondaryResource(segment string) bool {
@@ -781,6 +886,19 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 			}
 			explicitAgg[module][actualCode].apiIDs = appendUniqueUint32(explicitAgg[module][actualCode].apiIDs, api.GetId())
 		}
+		moduleCode := apiModulePermissionCode(api.GetMethod(), api.GetPath())
+		if moduleCode != "" && moduleCode != actualCode {
+			for _, module := range authorityToFeature[moduleCode] {
+				matchedModules[module] = struct{}{}
+				if explicitAgg[module] == nil {
+					explicitAgg[module] = map[string]*featureExplicitAggregate{}
+				}
+				if explicitAgg[module][moduleCode] == nil {
+					explicitAgg[module][moduleCode] = &featureExplicitAggregate{}
+				}
+				explicitAgg[module][moduleCode].apiIDs = appendUniqueUint32(explicitAgg[module][moduleCode].apiIDs, api.GetId())
+			}
+		}
 		exportCode := apiExportPermissionCode(api.GetMethod(), api.GetPath())
 		if exportCode != "" {
 			for _, module := range authorityToFeature[exportCode] {
@@ -792,6 +910,19 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 					explicitAgg[module][exportCode] = &featureExplicitAggregate{}
 				}
 				explicitAgg[module][exportCode].apiIDs = appendUniqueUint32(explicitAgg[module][exportCode].apiIDs, api.GetId())
+			}
+		}
+		moduleExportCode := apiModuleExportPermissionCode(api.GetMethod(), api.GetPath())
+		if moduleExportCode != "" && moduleExportCode != exportCode {
+			for _, module := range authorityToFeature[moduleExportCode] {
+				matchedModules[module] = struct{}{}
+				if explicitAgg[module] == nil {
+					explicitAgg[module] = map[string]*featureExplicitAggregate{}
+				}
+				if explicitAgg[module][moduleExportCode] == nil {
+					explicitAgg[module][moduleExportCode] = &featureExplicitAggregate{}
+				}
+				explicitAgg[module][moduleExportCode].apiIDs = appendUniqueUint32(explicitAgg[module][moduleExportCode].apiIDs, api.GetId())
 			}
 		}
 		actualNamespace := permissionCodeNamespace(actualCode)
@@ -917,6 +1048,9 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 	}
 
 	for _, feature := range descriptors {
+		if len(feature.explicitCodes) > 0 {
+			continue
+		}
 		for action, aggregate := range apiAgg[feature.groupModule] {
 			code := firstCodeForAction(apiAgg[feature.groupModule], action)
 			if code == "" {
