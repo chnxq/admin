@@ -806,6 +806,9 @@ func isExplicitExportAPI(method, path string) bool {
 func collectFeaturePermissionGroups(menus []*resourcev1.Menu) []desiredPermissionGroup {
 	descriptors := buildFeatureMenuDescriptors(menus)
 	groups := make([]desiredPermissionGroup, 0, len(descriptors))
+	// Index feature descriptors by module key, canonical resource, and explicit
+	// authority code so later stages can resolve APIs and menus back to the
+	// feature group that should own each permission.
 	for _, item := range descriptors {
 		groups = append(groups, desiredPermissionGroup{
 			module:       item.groupModule,
@@ -830,6 +833,8 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 	authorityToFeature := map[string][]string{}
 	featureHasExplicitAuthorities := map[string]bool{}
 	featureNamespaces := map[string]map[string]struct{}{}
+	// Build lookup tables once so menu-derived feature groups can be matched
+	// against API-derived permission codes in a single pass below.
 	for _, menu := range menus {
 		if menu == nil || menu.GetId() == 0 {
 			continue
@@ -845,6 +850,8 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 		if canonical != "" {
 			featureByCanonicalResource[canonical] = append(featureByCanonicalResource[canonical], item)
 		}
+		// Explicit authority codes on feature menus are treated as the source of
+		// truth when present, so later API matching tries to bind to these codes first.
 		for _, code := range item.explicitCodes {
 			authorityToFeature[code] = appendUniqueString(authorityToFeature[code], item.groupModule)
 			namespace := permissionCodeNamespace(code)
@@ -861,8 +868,20 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 		}
 	}
 
+	// apiAgg stores action-level aggregates by feature module, for example:
+	//   feature module -> action(view/create/edit/delete/export/...) -> matched API IDs + derived codes.
+	// Data is added here after an enabled API is matched to a feature group by
+	// explicit code, module-style code, namespace fallback, or canonical resource fallback.
 	apiAgg := map[string]map[string]*featureActionAggregate{}
+	// explicitAgg stores direct bindings for explicit authority codes declared on
+	// feature menus, for example:
+	//   feature module -> explicit authority code -> matched API IDs.
+	// Data is added here only when an enabled API can be matched to an explicit
+	// authority code, including module-prefixed or export variants.
 	explicitAgg := map[string]map[string]*featureExplicitAggregate{}
+	// Walk every enabled API and try to assign it to one or more feature groups.
+	// The matching order prefers explicit authority codes, then module-style
+	// derived codes, then namespace/resource fallbacks for legacy host data.
 	for _, api := range apis {
 		if api == nil || api.GetStatus() != resourcev1.Api_ON {
 			continue
@@ -872,7 +891,12 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 			continue
 		}
 
+		// matchedModules is the per-API working set of feature modules that this
+		// API belongs to after all matching rules are applied. Only modules collected
+		// here will receive action-level aggregates in apiAgg below.
 		matchedModules := map[string]struct{}{}
+		// First bind APIs directly to explicit feature authority codes. This is the
+		// preferred path for generated modules that already declare stable menu codes.
 		for _, module := range authorityToFeature[actualCode] {
 			matchedModules[module] = struct{}{}
 			if explicitAgg[module] == nil {
@@ -924,6 +948,8 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 		}
 		actualNamespace := permissionCodeNamespace(actualCode)
 		exportNamespace := permissionCodeNamespace(exportCode)
+		// Namespace matching is a fallback bridge for module-prefixed codes such as
+		// xdev:device:view vs legacy host-style codes derived from API paths.
 		for _, descriptor := range descriptors {
 			namespaces := featureNamespaces[descriptor.groupModule]
 			if len(namespaces) == 0 {
@@ -941,6 +967,8 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 		}
 
 		resourceKey := canonicalResourceName(primaryAPIResource(api.GetPath()))
+		// If a feature has no explicit authority codes, fall back to resource-level
+		// matching so traditional host menus can still gather CRUD permissions.
 		for _, descriptor := range featureByCanonicalResource[resourceKey] {
 			if featureHasExplicitAuthorities[descriptor.groupModule] {
 				continue
@@ -965,8 +993,14 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 	}
 
 	desired := map[string]*desiredPermission{}
+	// Seed desired permissions from feature menus themselves. Features with
+	// explicit authority codes define their permission set here; features without
+	// explicit codes at least get a view permission derived from aggregated APIs
+	// or menu metadata.
 	for _, feature := range descriptors {
 		if len(feature.explicitCodes) > 0 {
+			// Explicit feature authorities fully define the permission set for this
+			// feature menu, including menu binding for the view-like entry permission.
 			for _, explicitCode := range feature.explicitCodes {
 				current := ensureDesiredPermission(desired, explicitCode, explicitFeaturePermissionDisplayName(feature.groupName, explicitCode), feature.groupModule)
 				if current == nil {
@@ -991,6 +1025,9 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 		}
 	}
 
+	// Convert button menus into operation permissions under their owning feature.
+	// These usually correspond to create/edit/delete/export style actions and
+	// inherit API bindings already aggregated for the same feature action.
 	for _, menu := range menus {
 		if menu == nil || menu.GetStatus() != resourcev1.Menu_ON || menu.GetType() != resourcev1.Menu_BUTTON {
 			continue
@@ -999,6 +1036,8 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 		if feature == nil {
 			continue
 		}
+		// Button menus still generate operation permissions, but prefer an explicit
+		// authority code when one is configured on the button itself.
 		action := buttonAction(firstNonEmpty(displayMenuTitle(menu), menu.GetName()))
 		code := firstNonEmpty(firstString(menuAuthorityCodes(menu)), firstCodeForAction(apiAgg[feature.groupModule], action), menuPermissionCode(resolvedMenuPath(menu, menuByID), displayMenuTitle(menu), menu.GetType()))
 		if code == "" {
@@ -1015,6 +1054,9 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 		}
 	}
 
+	// Preserve explicit authority codes declared on link or embedded menus as
+	// standalone permissions, because these menu types do not fit the normal
+	// CRUD feature/button model cleanly.
 	for _, menu := range menus {
 		if menu == nil || menu.GetStatus() != resourcev1.Menu_ON {
 			continue
@@ -1032,6 +1074,8 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 			groupModule = feature.groupModule
 		}
 		displayName := firstNonEmpty(displayMenuTitle(menu), menu.GetName())
+		// Link and embedded menus are treated as standalone explicit permission
+		// carriers because they do not map cleanly onto the CRUD feature model.
 		for _, code := range codes {
 			current := ensureDesiredPermission(desired, code, explicitFeaturePermissionDisplayName(displayName, code), groupModule)
 			if current == nil {
@@ -1044,6 +1088,8 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 		}
 	}
 
+	// For legacy features without explicit authority codes, backfill any
+	// remaining action permissions from the API aggregates collected earlier.
 	for _, feature := range descriptors {
 		if len(feature.explicitCodes) > 0 {
 			continue
