@@ -11,14 +11,16 @@ import (
 )
 
 var ConfigPath string
+var ForceStartupSync bool
 
 func runServer() error {
 	app, cleanup, err := bootstrap.Initialize(context.Background(), bootstrap.Options{
-		Name:       Name,
-		Version:    Version,
-		BuildTime:  BuildTime,
-		GitCommit:  GitCommit,
-		ConfigPath: ConfigPath,
+		Name:             Name,
+		Version:          Version,
+		BuildTime:        BuildTime,
+		GitCommit:        GitCommit,
+		ConfigPath:       ConfigPath,
+		ForceStartupSync: ForceStartupSync,
 	})
 	if err != nil {
 		return err

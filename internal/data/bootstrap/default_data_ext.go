@@ -48,6 +48,12 @@ const (
 	permissionGroupModuleExport  = "permission:view:service:export"
 )
 
+var forceStartupSync bool
+
+func SetForceStartupSync(enabled bool) {
+	forceStartupSync = enabled
+}
+
 type defaultDataSeed struct {
 	appCtx         *app.AppCtx
 	entClient      *entCrud.EntClient[*ent.Client]
@@ -90,6 +96,17 @@ type seedUserSpec struct {
 	password      string
 }
 
+type startupDomainDataState struct {
+	tenantCount     int
+	orgUnitCount    int
+	positionCount   int
+	roleCount       int
+	userCount       int
+	membershipCount int
+	taskGroupCount  int
+	taskCount       int
+}
+
 func ensureDefaultData(appCtx *app.AppCtx, entClient *entCrud.EntClient[*ent.Client]) error {
 	if appCtx == nil || entClient == nil || entClient.Client() == nil {
 		return nil
@@ -114,22 +131,32 @@ func ensureDefaultData(appCtx *app.AppCtx, entClient *entCrud.EntClient[*ent.Cli
 func (s *defaultDataSeed) run() error {
 	ctx := crudviewer.WithContext(s.appCtx.AppContext(), seedViewerContext{})
 
+	state, err := s.inspectStartupDomainDataState(ctx)
+	if err != nil {
+		s.log.Errorf(err.Error())
+		return err
+	}
+	if !state.IsEmpty() && !forceStartupSync {
+		if s.log != nil {
+			s.log.Warnf(
+				"Skip startup auto sync/seed: existing domain data detected (%s). Automatic startup synchronization is disabled to protect runtime data. Use manual sync endpoints/services when needed.",
+				state.Summary(),
+			)
+		}
+		return nil
+	}
+	if !state.IsEmpty() && forceStartupSync && s.log != nil {
+		s.log.Warnf(
+			"Force startup auto sync/seed enabled: existing domain data detected (%s). Startup will proceed with these items because -force_startup_sync was provided.",
+			state.Summary(),
+		)
+	}
+
 	if err := s.syncResources(ctx); err != nil {
 		return err
 	}
 	if err := s.ensureTenantRegistrationDefaultsForExistingTenants(ctx); err != nil {
 		return err
-	}
-
-	shouldSeed, err := s.shouldSeedDefaultData(ctx)
-	if err != nil {
-		return err
-	}
-	if !shouldSeed {
-		if s.log != nil {
-			s.log.Infof("Skip default data seed: existing seed domain data detected")
-		}
-		return nil
 	}
 
 	if err := s.ensureTaskSeeds(ctx); err != nil {
@@ -261,6 +288,69 @@ func (s *defaultDataSeed) run() error {
 	return nil
 }
 
+func (s *defaultDataSeed) inspectStartupDomainDataState(ctx context.Context) (*startupDomainDataState, error) {
+	state := &startupDomainDataState{}
+
+	var err error
+	if state.tenantCount, err = s.entClient.Client().Tenant.Query().Count(ctx); err != nil {
+		return nil, fmt.Errorf("count tenant for startup seed detection: %w", err)
+	}
+	if state.orgUnitCount, err = s.entClient.Client().OrgUnit.Query().Count(ctx); err != nil {
+		return nil, fmt.Errorf("count org_unit for startup seed detection: %w", err)
+	}
+	if state.positionCount, err = s.entClient.Client().Position.Query().Count(ctx); err != nil {
+		return nil, fmt.Errorf("count position for startup seed detection: %w", err)
+	}
+	if state.roleCount, err = s.entClient.Client().Role.Query().Count(ctx); err != nil {
+		return nil, fmt.Errorf("count role for startup seed detection: %w", err)
+	}
+	if state.userCount, err = s.entClient.Client().User.Query().Count(ctx); err != nil {
+		return nil, fmt.Errorf("count user for startup seed detection: %w", err)
+	}
+	if state.membershipCount, err = s.entClient.Client().Membership.Query().Count(ctx); err != nil {
+		return nil, fmt.Errorf("count membership for startup seed detection: %w", err)
+	}
+	if state.taskGroupCount, err = s.entClient.Client().TaskGroup.Query().Count(ctx); err != nil {
+		return nil, fmt.Errorf("count task_group for startup seed detection: %w", err)
+	}
+	if state.taskCount, err = s.entClient.Client().Task.Query().Count(ctx); err != nil {
+		return nil, fmt.Errorf("count task for startup seed detection: %w", err)
+	}
+
+	return state, nil
+}
+
+func (s *startupDomainDataState) IsEmpty() bool {
+	if s == nil {
+		return true
+	}
+	return s.tenantCount == 0 &&
+		s.orgUnitCount == 0 &&
+		s.positionCount == 0 &&
+		s.roleCount == 0 &&
+		s.userCount == 0 &&
+		s.membershipCount == 0 &&
+		s.taskGroupCount == 0 &&
+		s.taskCount == 0
+}
+
+func (s *startupDomainDataState) Summary() string {
+	if s == nil {
+		return "empty"
+	}
+	return fmt.Sprintf(
+		"tenant=%d, org_unit=%d, position=%d, role=%d, user=%d, membership=%d, task_group=%d, task=%d",
+		s.tenantCount,
+		s.orgUnitCount,
+		s.positionCount,
+		s.roleCount,
+		s.userCount,
+		s.membershipCount,
+		s.taskGroupCount,
+		s.taskCount,
+	)
+}
+
 // ensureTenantRegistrationDefaultsForExistingTenants backfills the registration
 // defaults for tenants that already exist before this feature was introduced.
 func (s *defaultDataSeed) ensureTenantRegistrationDefaultsForExistingTenants(ctx context.Context) error {
@@ -277,76 +367,6 @@ func (s *defaultDataSeed) ensureTenantRegistrationDefaultsForExistingTenants(ctx
 		}
 	}
 	return nil
-}
-
-func (s *defaultDataSeed) shouldSeedDefaultData(ctx context.Context) (bool, error) {
-	type countCheck struct {
-		name  string
-		count func(context.Context) (int, error)
-	}
-
-	checks := []countCheck{
-		{
-			name: "tenant",
-			count: func(ctx context.Context) (int, error) {
-				return s.entClient.Client().Tenant.Query().Count(ctx)
-			},
-		},
-		{
-			name: "org_unit",
-			count: func(ctx context.Context) (int, error) {
-				return s.entClient.Client().OrgUnit.Query().Count(ctx)
-			},
-		},
-		{
-			name: "position",
-			count: func(ctx context.Context) (int, error) {
-				return s.entClient.Client().Position.Query().Count(ctx)
-			},
-		},
-		{
-			name: "role",
-			count: func(ctx context.Context) (int, error) {
-				return s.entClient.Client().Role.Query().Count(ctx)
-			},
-		},
-		{
-			name: "user",
-			count: func(ctx context.Context) (int, error) {
-				return s.entClient.Client().User.Query().Count(ctx)
-			},
-		},
-		{
-			name: "membership",
-			count: func(ctx context.Context) (int, error) {
-				return s.entClient.Client().Membership.Query().Count(ctx)
-			},
-		},
-		{
-			name: "task_group",
-			count: func(ctx context.Context) (int, error) {
-				return s.entClient.Client().TaskGroup.Query().Count(ctx)
-			},
-		},
-		{
-			name: "task",
-			count: func(ctx context.Context) (int, error) {
-				return s.entClient.Client().Task.Query().Count(ctx)
-			},
-		},
-	}
-
-	for _, check := range checks {
-		total, err := check.count(ctx)
-		if err != nil {
-			return false, fmt.Errorf("count %s for default seed detection: %w", check.name, err)
-		}
-		if total > 0 {
-			return false, nil
-		}
-	}
-
-	return true, nil
 }
 
 func (s *defaultDataSeed) syncResources(ctx context.Context) error {
@@ -1312,13 +1332,6 @@ func userGenderPtr(value user.Gender) *user.Gender {
 
 func userStatusPtr(value user.Status) *user.Status {
 	return &value
-}
-
-func normalizeString(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return strings.TrimSpace(*value)
 }
 
 func (seedViewerContext) UserID() uint64        { return 0 }

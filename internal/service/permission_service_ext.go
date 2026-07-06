@@ -102,9 +102,6 @@ func (s *PermissionService) syncPermissions(ctx context.Context) error {
 	if err := s.reconcilePermissions(ctx, permissions); err != nil {
 		return err
 	}
-	if err := s.reconcileDefaultRolePermissions(ctx); err != nil {
-		return err
-	}
 	return nil
 }
 

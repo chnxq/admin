@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
 	identityv1 "admin/api/gen/identity/v1"
 	"admin/internal/data/ent"
 	"admin/internal/data/ent/orgunit"
@@ -23,7 +22,9 @@ import (
 	"admin/internal/data/ent/userorgunit"
 	"admin/internal/data/ent/userposition"
 	"admin/internal/data/ent/userrole"
+	paginationv1 "github.com/chnxq/x-crud/api/gen/pagination/v1"
 	crudviewer "github.com/chnxq/x-crud/viewer"
+	"google.golang.org/protobuf/proto"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -291,21 +292,11 @@ func protoClonePagingRequest(req *paginationv1.PagingRequest) *paginationv1.Pagi
 	if req == nil {
 		return nil
 	}
-	cloned := *req
-	if filterExpr := req.GetFilterExpr(); filterExpr != nil {
-		filterExprCopy := *filterExpr
-		if len(filterExpr.Conditions) > 0 {
-			filterExprCopy.Conditions = append([]*paginationv1.FilterCondition(nil), filterExpr.Conditions...)
-		}
-		if len(filterExpr.Groups) > 0 {
-			filterExprCopy.Groups = append([]*paginationv1.FilterExpr(nil), filterExpr.Groups...)
-		}
-		cloned.FilteringType = &paginationv1.PagingRequest_FilterExpr{FilterExpr: &filterExprCopy}
+	cloned, ok := proto.Clone(req).(*paginationv1.PagingRequest)
+	if !ok {
+		return nil
 	}
-	if len(req.Sorting) > 0 {
-		cloned.Sorting = append([]*paginationv1.Sorting(nil), req.Sorting...)
-	}
-	return &cloned
+	return cloned
 }
 
 func userAppendUniqueUint32(items []uint32, value uint32) []uint32 {

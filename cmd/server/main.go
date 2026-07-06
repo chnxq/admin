@@ -21,10 +21,11 @@ func main() {
 	serverCmd := flag.NewFlagSet("server", flag.ExitOnError)
 	serverCmd.StringVar(&ConfigPath, "config_path", "./configs", "config directory or file")
 	serverCmd.StringVar(&ConfigPath, "c", "./configs", "config directory or file")
+	serverCmd.BoolVar(&ForceStartupSync, "fs", false, "force startup resource sync and default data seed even when domain data already exists")
 
 	if len(os.Args) < 2 {
 		fmt.Printf("Welcome to %s %s\n", Name, Version)
-		fmt.Printf("Usage: %s server [-config_path ./configs]\n", CommandName)
+		fmt.Printf("Usage: %s server [-config_path ./configs] [-fs]\n", CommandName)
 		return
 	}
 
