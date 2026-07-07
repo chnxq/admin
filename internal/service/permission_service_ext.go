@@ -999,15 +999,44 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 	// or menu metadata.
 	for _, feature := range descriptors {
 		if len(feature.explicitCodes) > 0 {
+			primaryExplicitCode := firstString(feature.explicitCodes)
+			primaryExplicitIsView := codeAction(primaryExplicitCode) == "view"
+			primaryCodeBase := permissionCodeBase(primaryExplicitCode)
 			// Explicit feature authorities fully define the permission set for this
 			// feature menu, including menu binding for the view-like entry permission.
 			for _, explicitCode := range feature.explicitCodes {
+				// When the first explicit authority is a view code, it becomes the
+				// single menu-entry permission for the composite feature. Explicit
+				// codes under other bases are used only for API matching and do not
+				// generate standalone permission points.
+				if primaryExplicitIsView && permissionCodeBase(explicitCode) != primaryCodeBase {
+					continue
+				}
 				current := ensureDesiredPermission(desired, explicitCode, explicitFeaturePermissionDisplayName(feature.groupName, explicitCode), feature.groupModule)
 				if current == nil {
 					continue
 				}
-				if strings.HasSuffix(strings.TrimSpace(explicitCode), ":view") {
+				if explicitCode == primaryExplicitCode && primaryExplicitIsView {
 					current.menuIDs = appendUniqueUint32(current.menuIDs, feature.menuID)
+					if aggregate := explicitAgg[feature.groupModule][explicitCode]; aggregate != nil {
+						current.apiIDs = mergeUniqueUint32(current.apiIDs, aggregate.apiIDs)
+					}
+					// Composite pages may declare additional explicit authority prefixes
+					// for related sub-resources. When the first explicit code is the
+					// single menu-entry permission, absorb API bindings collected for
+					// all non-primary bases into that menu permission as well.
+					for _, relatedCode := range feature.explicitCodes {
+						if relatedCode == primaryExplicitCode {
+							continue
+						}
+						if permissionCodeBase(relatedCode) == primaryCodeBase {
+							continue
+						}
+						if aggregate := explicitAgg[feature.groupModule][relatedCode]; aggregate != nil {
+							current.apiIDs = mergeUniqueUint32(current.apiIDs, aggregate.apiIDs)
+						}
+					}
+					continue
 				}
 				if aggregate := explicitAgg[feature.groupModule][explicitCode]; aggregate != nil {
 					current.apiIDs = mergeUniqueUint32(current.apiIDs, aggregate.apiIDs)
@@ -1358,6 +1387,18 @@ func codeAction(code string) string {
 	default:
 		return "act"
 	}
+}
+
+func permissionCodeBase(code string) string {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return ""
+	}
+	parts := strings.Split(code, ":")
+	if len(parts) <= 1 {
+		return code
+	}
+	return strings.Join(parts[:len(parts)-1], ":")
 }
 
 func resolveMenuTitleKey(value string) string {
