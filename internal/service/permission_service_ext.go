@@ -558,6 +558,10 @@ func apiActionFromPath(path string) string {
 		return "stop"
 	case strings.HasSuffix(lowerPath, ":run-once"):
 		return "run-once"
+	case strings.HasSuffix(lowerPath, ":sync"), strings.HasSuffix(lowerPath, "/sync"):
+		return "create"
+	case strings.HasSuffix(lowerPath, ":perms"), strings.HasSuffix(lowerPath, "/perms"):
+		return "sync-perms"
 	case strings.HasSuffix(lowerPath, "/send"):
 		return "send"
 	case strings.HasSuffix(lowerPath, "/revoke"):
@@ -600,7 +604,7 @@ func apiPathSegments(path string) []string {
 		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
 			continue
 		}
-		normalized := normalizePermissionResourceSegment(part)
+		normalized := normalizeAPIPathSegment(part)
 		if normalized == "" {
 			continue
 		}
@@ -608,6 +612,21 @@ func apiPathSegments(path string) []string {
 	}
 
 	return segments
+}
+
+func normalizeAPIPathSegment(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	if value == "" {
+		return ""
+	}
+	if index := strings.LastIndex(value, ":"); index > 0 && index < len(value)-1 {
+		resource := normalizePermissionResourceSegment(value[:index])
+		action := normalizePermissionResourceSegment(value[index+1:])
+		if resource != "" && action != "" {
+			return resource + ":" + action
+		}
+	}
+	return normalizePermissionResourceSegment(value)
 }
 
 func modulePermissionResourceFromPath(path string) (string, string) {
@@ -918,54 +937,18 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 		matchedModules := map[string]struct{}{}
 		// First bind APIs directly to explicit feature authority codes. This is the
 		// preferred path for generated modules that already declare stable menu codes.
-		for _, module := range authorityToFeature[actualCode] {
-			matchedModules[module] = struct{}{}
-			if explicitAgg[module] == nil {
-				explicitAgg[module] = map[string]*featureExplicitAggregate{}
-			}
-			if explicitAgg[module][actualCode] == nil {
-				explicitAgg[module][actualCode] = &featureExplicitAggregate{}
-			}
-			explicitAgg[module][actualCode].apiIDs = appendUniqueUint32(explicitAgg[module][actualCode].apiIDs, api.GetId())
-		}
+		bindExplicitFeatureAPI(explicitAgg, matchedModules, authorityToFeature[actualCode], actualCode, api.GetId())
 		moduleCode := apiModulePermissionCode(api.GetMethod(), api.GetPath())
 		if moduleCode != "" && moduleCode != actualCode {
-			for _, module := range authorityToFeature[moduleCode] {
-				matchedModules[module] = struct{}{}
-				if explicitAgg[module] == nil {
-					explicitAgg[module] = map[string]*featureExplicitAggregate{}
-				}
-				if explicitAgg[module][moduleCode] == nil {
-					explicitAgg[module][moduleCode] = &featureExplicitAggregate{}
-				}
-				explicitAgg[module][moduleCode].apiIDs = appendUniqueUint32(explicitAgg[module][moduleCode].apiIDs, api.GetId())
-			}
+			bindExplicitFeatureAPI(explicitAgg, matchedModules, authorityToFeature[moduleCode], moduleCode, api.GetId())
 		}
 		exportCode := apiExportPermissionCode(api.GetMethod(), api.GetPath())
 		if exportCode != "" {
-			for _, module := range authorityToFeature[exportCode] {
-				matchedModules[module] = struct{}{}
-				if explicitAgg[module] == nil {
-					explicitAgg[module] = map[string]*featureExplicitAggregate{}
-				}
-				if explicitAgg[module][exportCode] == nil {
-					explicitAgg[module][exportCode] = &featureExplicitAggregate{}
-				}
-				explicitAgg[module][exportCode].apiIDs = appendUniqueUint32(explicitAgg[module][exportCode].apiIDs, api.GetId())
-			}
+			bindExplicitFeatureAPI(explicitAgg, matchedModules, authorityToFeature[exportCode], exportCode, api.GetId())
 		}
 		moduleExportCode := apiModuleExportPermissionCode(api.GetMethod(), api.GetPath())
 		if moduleExportCode != "" && moduleExportCode != exportCode {
-			for _, module := range authorityToFeature[moduleExportCode] {
-				matchedModules[module] = struct{}{}
-				if explicitAgg[module] == nil {
-					explicitAgg[module] = map[string]*featureExplicitAggregate{}
-				}
-				if explicitAgg[module][moduleExportCode] == nil {
-					explicitAgg[module][moduleExportCode] = &featureExplicitAggregate{}
-				}
-				explicitAgg[module][moduleExportCode].apiIDs = appendUniqueUint32(explicitAgg[module][moduleExportCode].apiIDs, api.GetId())
-			}
+			bindExplicitFeatureAPI(explicitAgg, matchedModules, authorityToFeature[moduleExportCode], moduleExportCode, api.GetId())
 		}
 		actualNamespace := permissionCodeNamespace(actualCode)
 		exportNamespace := permissionCodeNamespace(exportCode)
@@ -1228,7 +1211,7 @@ func featureGroupModuleFromPath(path string) string {
 	segments := strings.Split(path, "/")
 	cleaned := make([]string, 0, len(segments))
 	for _, segment := range segments {
-		segment = normalizeSegment(segment)
+		segment = normalizeFeatureModuleSegment(segment)
 		if segment == "" {
 			continue
 		}
@@ -1249,11 +1232,11 @@ func featureBaseResourceFromPath(path string) string {
 	if len(segments) == 0 {
 		return ""
 	}
-	return normalizeSegment(segments[len(segments)-1])
+	return normalizePermissionResourceSegment(segments[len(segments)-1])
 }
 
 func canonicalResourceName(value string) string {
-	value = normalizeSegment(value)
+	value = normalizePermissionResourceSegment(value)
 	switch {
 	case strings.HasSuffix(value, "ies") && len(value) > 3:
 		return strings.TrimSuffix(value, "ies") + "y"
@@ -1323,6 +1306,25 @@ func ensureDesiredPermission(desired map[string]*desiredPermission, code, name, 
 	}
 	desired[code] = current
 	return current
+}
+
+func bindExplicitFeatureAPI(
+	explicitAgg map[string]map[string]*featureExplicitAggregate,
+	matchedModules map[string]struct{},
+	modules []string,
+	code string,
+	apiID uint32,
+) {
+	for _, module := range modules {
+		matchedModules[module] = struct{}{}
+		if explicitAgg[module] == nil {
+			explicitAgg[module] = map[string]*featureExplicitAggregate{}
+		}
+		if explicitAgg[module][code] == nil {
+			explicitAgg[module][code] = &featureExplicitAggregate{}
+		}
+		explicitAgg[module][code].apiIDs = appendUniqueUint32(explicitAgg[module][code].apiIDs, apiID)
+	}
 }
 
 func firstCodeForAction(aggregates map[string]*featureActionAggregate, action string) string {
@@ -1548,7 +1550,7 @@ func mapValuesMenus(itemsByID map[uint32]*resourcev1.Menu) []*resourcev1.Menu {
 	return items
 }
 
-func normalizeSegment(value string) string {
+func normalizeFeatureModuleSegment(value string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return ""

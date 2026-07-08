@@ -63,6 +63,9 @@ func TestAPIPermissionCode_UsesNormalizedPermissionSyntax(t *testing.T) {
 		{method: "POST", path: "/admin/v1/tasks/{id}:start", want: "tasks:start"},
 		{method: "POST", path: "/admin/v1/tasks/{id}:stop", want: "tasks:stop"},
 		{method: "POST", path: "/admin/v1/tasks/{id}:run-once", want: "tasks:run-once"},
+		{method: "POST", path: "/admin/v1/menus:sync", want: "menus:sync:create"},
+		{method: "POST", path: "/admin/v1/apis:sync", want: "apis:sync:create"},
+		{method: "POST", path: "/admin/v1/permissions/sync:perms", want: "permissions:sync-perms"},
 		{method: "POST", path: "/admin/v1/task-groups/{id}:start", want: "task-groups:start"},
 		{method: "POST", path: "/admin/v1/task-groups/{id}:stop", want: "task-groups:stop"},
 		{method: "POST", path: "/admin/v1/task-groups/{id}:run-once", want: "task-groups:run-once"},
@@ -108,6 +111,8 @@ func TestAPIResourceFromPath_UsesExplicitSecondaryResourceRules(t *testing.T) {
 	}{
 		{path: "/admin/v1/internal-message/messages", want: "internal-message/messages"},
 		{path: "/admin/v1/internal-message/send", want: "internal-message"},
+		{path: "/admin/v1/menus:sync", want: "menus:sync"},
+		{path: "/admin/v1/apis:sync", want: "apis:sync"},
 		{path: "/admin/v1/dict/categories", want: "dict/categories"},
 		{path: "/admin/v1/dict/labels", want: "dict/labels"},
 		{path: "/admin/v1/task-groups/{id}:run-once", want: "task-groups"},
