@@ -454,8 +454,8 @@ func menuPermissionCode(path, title string, typ resourcev1.Menu_Type) string {
 	}
 	cleaned := make([]string, 0, len(segments))
 	for _, segment := range segments {
-		segment = normalizeSegment(segment)
-		if segment == "" || strings.HasPrefix(segment, ":") {
+		segment = normalizePermissionResourceSegment(segment)
+		if segment == "" {
 			continue
 		}
 		cleaned = append(cleaned, segment)
@@ -477,7 +477,8 @@ func apiPermissionCode(method, path string) string {
 	if resource == "" {
 		return ""
 	}
-	return resource + ":" + apiActionFromMethod(method, path)
+	action := apiActionFromMethod(method, path)
+	return resource + ":" + action
 }
 
 func apiModulePermissionCode(method, path string) string {
@@ -515,14 +516,14 @@ func apiResourceFromPath(path string) string {
 		return ""
 	}
 
-	resource := []string{segments[0]}
-	if len(segments) > 1 && shouldKeepAPISecondaryResource(segments[1]) {
-		resource = append(resource, segments[1])
-	}
-	return strings.Join(resource, ":")
+	resourceSegments := apiResourceSegments(segments)
+	return strings.Join(resourceSegments, "/")
 }
 
 func apiActionFromMethod(method, path string) string {
+	if action := apiActionFromPath(path); action != "" {
+		return action
+	}
 	segments := apiPathSegments(path)
 	if len(segments) > 0 && segments[len(segments)-1] == "password" {
 		return "edit"
@@ -541,6 +542,28 @@ func apiActionFromMethod(method, path string) string {
 		return "delete"
 	default:
 		return strings.ToLower(strings.TrimSpace(method))
+	}
+}
+
+func apiActionFromPath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ""
+	}
+	lowerPath := strings.ToLower(path)
+	switch {
+	case strings.HasSuffix(lowerPath, ":start"):
+		return "start"
+	case strings.HasSuffix(lowerPath, ":stop"):
+		return "stop"
+	case strings.HasSuffix(lowerPath, ":run-once"):
+		return "run-once"
+	case strings.HasSuffix(lowerPath, "/send"):
+		return "send"
+	case strings.HasSuffix(lowerPath, "/revoke"):
+		return "revoke"
+	default:
+		return ""
 	}
 }
 
@@ -566,10 +589,18 @@ func apiPathSegments(path string) []string {
 			versionTrimmed = true
 			continue
 		}
+		if strings.HasPrefix(part, "{") {
+			if closing := strings.Index(part, "}"); closing >= 0 {
+				suffix := strings.TrimSpace(part[closing+1:])
+				if suffix == "" || strings.HasPrefix(suffix, ":") {
+					continue
+				}
+			}
+		}
 		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
 			continue
 		}
-		normalized := normalizeSegment(part)
+		normalized := normalizePermissionResourceSegment(part)
 		if normalized == "" {
 			continue
 		}
@@ -655,16 +686,6 @@ func singularResourceName(value string) string {
 	}
 }
 
-func shouldKeepAPISecondaryResource(segment string) bool {
-	if segment == "" {
-		return false
-	}
-	if segment == "password" || segment == "sync" {
-		return true
-	}
-	return strings.Contains(segment, ":")
-}
-
 func menuTypeAction(title string, typ resourcev1.Menu_Type) string {
 	switch typ {
 	case resourcev1.Menu_CATALOG:
@@ -730,7 +751,7 @@ func moduleFromAPIPath(path string) string {
 	if module == "" {
 		return uncategorizedPermissionGroup
 	}
-	return strings.Split(module, ":")[0]
+	return strings.Split(module, "/")[0]
 }
 
 func serviceGroupIdentityFromAPI(api *resourcev1.Api) (string, string) {
@@ -745,7 +766,7 @@ func serviceGroupIdentityFromAPI(api *resourcev1.Api) (string, string) {
 	if module == "" {
 		module = moduleFromAPIPath(api.GetPath())
 	}
-	module = normalizeSegment(module)
+	module = normalizePermissionGroupModule(module)
 	if module == "" || module == uncategorizedPermissionGroup {
 		return permissionGroupModuleMisc, "未分类"
 	}
@@ -768,7 +789,7 @@ func servicePermissionCode(module, code string) string {
 		return ""
 	}
 	module = strings.TrimPrefix(module, permissionGroupModuleService+":")
-	module = normalizeSegment(module)
+	module = normalizePermissionGroupModule(module)
 	if module == "" {
 		return ""
 	}
@@ -1009,7 +1030,7 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 				// single menu-entry permission for the composite feature. Explicit
 				// codes under other bases are used only for API matching and do not
 				// generate standalone permission points.
-				if primaryExplicitIsView && permissionCodeBase(explicitCode) != primaryCodeBase {
+				if primaryExplicitIsView && shouldCollapseExplicitPermission(primaryCodeBase, explicitCode, feature.explicitCodes) {
 					continue
 				}
 				current := ensureDesiredPermission(desired, explicitCode, explicitFeaturePermissionDisplayName(feature.groupName, explicitCode), feature.groupModule)
@@ -1029,7 +1050,7 @@ func collectFeaturePermissions(menus []*resourcev1.Menu, apis []*resourcev1.Api)
 						if relatedCode == primaryExplicitCode {
 							continue
 						}
-						if permissionCodeBase(relatedCode) == primaryCodeBase {
+						if !shouldMergeSecondaryExplicitPermission(primaryCodeBase, relatedCode, feature.explicitCodes) {
 							continue
 						}
 						if aggregate := explicitAgg[feature.groupModule][relatedCode]; aggregate != nil {
@@ -1250,7 +1271,7 @@ func primaryAPIResource(path string) string {
 	if resource == "" {
 		return ""
 	}
-	return strings.Split(resource, ":")[0]
+	return strings.Split(resource, "/")[0]
 }
 
 func featurePermissionActionFromAPI(api *resourcev1.Api) string {
@@ -1357,13 +1378,13 @@ func explicitFeaturePermissionDisplayName(featureName, code string) string {
 		return "删除权限点"
 	case "permissions:export":
 		return "导出权限点"
-	case "permissions:sync:perms:create":
+	case "permissions:sync-perms":
 		return "同步权限点"
-	case "permission:groups:create":
+	case "permission-groups:create":
 		return "新增权限组"
-	case "permission:groups:edit":
+	case "permission-groups:edit":
 		return "更新权限组"
-	case "permission:groups:delete":
+	case "permission-groups:delete":
 		return "删除权限组"
 	default:
 		action := codeAction(code)
@@ -1379,26 +1400,21 @@ func codeAction(code string) string {
 	if code == "" {
 		return "act"
 	}
-	parts := strings.Split(code, ":")
-	last := strings.TrimSpace(parts[len(parts)-1])
-	switch last {
-	case "view", "create", "edit", "delete", "export", "import":
-		return last
-	default:
-		return "act"
+	if resource, action := splitPermissionCode(code); resource != "" && action != "" {
+		switch action {
+		case "view", "create", "edit", "delete", "export", "import", "start", "stop", "run-once", "send", "revoke", "sync-perms":
+			return action
+		}
 	}
+	return "act"
 }
 
 func permissionCodeBase(code string) string {
-	code = strings.TrimSpace(code)
-	if code == "" {
+	resource, _ := splitPermissionCode(code)
+	if resource == "" {
 		return ""
 	}
-	parts := strings.Split(code, ":")
-	if len(parts) <= 1 {
-		return code
-	}
-	return strings.Join(parts[:len(parts)-1], ":")
+	return resource
 }
 
 func resolveMenuTitleKey(value string) string {
@@ -1506,12 +1522,12 @@ func appendUniqueString(values []string, value string) []string {
 }
 
 func permissionCodeNamespace(code string) string {
-	code = strings.TrimSpace(code)
-	if code == "" {
+	resource, _ := splitPermissionCode(code)
+	if resource == "" {
 		return ""
 	}
-	part := code
-	if index := strings.Index(part, ":"); index >= 0 {
+	part := resource
+	if index := strings.Index(part, "/"); index >= 0 {
 		part = part[:index]
 	}
 	return strings.TrimSpace(part)
@@ -1554,6 +1570,128 @@ func normalizeSegment(value string) string {
 	return strings.Trim(builder.String(), ":")
 }
 
+func normalizePermissionResourceSegment(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	if value == "" {
+		return ""
+	}
+	var builder strings.Builder
+	lastDash := false
+	for _, r := range value {
+		switch {
+		case unicode.IsLetter(r), unicode.IsDigit(r):
+			builder.WriteRune(r)
+			lastDash = false
+		case r == '-':
+			if !lastDash && builder.Len() > 0 {
+				builder.WriteRune('-')
+				lastDash = true
+			}
+		default:
+			if !lastDash && builder.Len() > 0 {
+				builder.WriteRune('-')
+				lastDash = true
+			}
+		}
+	}
+	return strings.Trim(builder.String(), "-")
+}
+
+func normalizePermissionGroupModule(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	parts := strings.FieldsFunc(value, func(r rune) bool {
+		return !(unicode.IsLetter(r) || unicode.IsDigit(r))
+	})
+	if len(parts) == 0 {
+		return ""
+	}
+	var builder strings.Builder
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		builder.WriteString(strings.ToLower(part))
+	}
+	return builder.String()
+}
+
+func apiResourceSegments(segments []string) []string {
+	if len(segments) == 0 {
+		return nil
+	}
+	resource := []string{segments[0]}
+	if len(segments) > 1 && shouldKeepAPISecondaryResourceForPath(segments[0], segments[1]) {
+		resource = append(resource, segments[1])
+	}
+	return resource
+}
+
+func shouldKeepAPISecondaryResourceForPath(primary, secondary string) bool {
+	primary = strings.TrimSpace(primary)
+	secondary = strings.TrimSpace(secondary)
+	if primary == "" || secondary == "" {
+		return false
+	}
+	switch primary {
+	case "dict":
+		switch secondary {
+		case "categories", "labels", "langs", "label-i18n":
+			return true
+		default:
+			return false
+		}
+	case "internal-message":
+		return secondary == "messages" || secondary == "categories" || secondary == "inbox"
+	default:
+		return false
+	}
+}
+
+func splitPermissionCode(code string) (string, string) {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return "", ""
+	}
+	index := strings.LastIndex(code, ":")
+	if index <= 0 || index >= len(code)-1 {
+		return code, ""
+	}
+	return strings.TrimSpace(code[:index]), strings.TrimSpace(code[index+1:])
+}
+
+func hasExplicitViewForBase(base string, explicitCodes []string) bool {
+	base = strings.TrimSpace(base)
+	if base == "" {
+		return false
+	}
+	for _, code := range explicitCodes {
+		resource, action := splitPermissionCode(code)
+		if resource == base && action == "view" {
+			return true
+		}
+	}
+	return false
+}
+
+func shouldCollapseExplicitPermission(primaryBase, explicitCode string, explicitCodes []string) bool {
+	explicitBase := permissionCodeBase(explicitCode)
+	if explicitBase == "" || explicitBase == primaryBase {
+		return false
+	}
+	return hasExplicitViewForBase(explicitBase, explicitCodes)
+}
+
+func shouldMergeSecondaryExplicitPermission(primaryBase, relatedCode string, explicitCodes []string) bool {
+	relatedBase := permissionCodeBase(relatedCode)
+	if relatedBase == "" || relatedBase == primaryBase {
+		return false
+	}
+	return hasExplicitViewForBase(relatedBase, explicitCodes)
+}
+
 func appendUniqueUint32(values []uint32, value uint32) []uint32 {
 	if value == 0 {
 		return values
@@ -1585,7 +1723,7 @@ func apiExportPermissionCode(method, path string) string {
 		return ""
 	}
 
-	normalizedLast := normalizeSegment(last)
+	normalizedLast := normalizePermissionResourceSegment(last)
 	switch normalizedLast {
 	case "", "exists", "list", "password", "sync":
 		return ""
