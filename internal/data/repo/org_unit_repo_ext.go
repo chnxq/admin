@@ -16,14 +16,15 @@ import (
 )
 
 func orgUnitTenantMatches(parentTenantID, targetTenantID *uint32) bool {
-	switch {
-	case parentTenantID == nil && targetTenantID == nil:
-		return true
-	case parentTenantID == nil || targetTenantID == nil:
-		return false
-	default:
-		return *parentTenantID == *targetTenantID
+	parentPlatform := parentTenantID == nil || *parentTenantID == platformTenantID
+	targetPlatform := targetTenantID == nil || *targetTenantID == platformTenantID
+	if parentPlatform || targetPlatform {
+		return parentPlatform && targetPlatform
 	}
+	if parentTenantID == nil || targetTenantID == nil {
+		return false
+	}
+	return *parentTenantID == *targetTenantID
 }
 
 func (r *orgUnitRepo) validateOrgUnitParentTenant(ctx context.Context, parentID *uint32, targetTenantID *uint32) error {
