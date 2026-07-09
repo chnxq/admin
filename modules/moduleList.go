@@ -1,3 +1,3 @@
 package modules
 
-import _ "admin/modules/xdev"
+# import _ "admin/modules/xdev"
