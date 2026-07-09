@@ -88,10 +88,16 @@ type testHeader struct {
 	header http.Header
 }
 
-func (h testHeader) Get(key string) string      { return h.header.Get(key) }
-func (h testHeader) Set(key, value string)      { h.header.Set(key, value) }
-func (h testHeader) Add(key, value string)      { h.header.Add(key, value) }
-func (h testHeader) Keys() []string             { keys := make([]string, 0, len(h.header)); for k := range h.header { keys = append(keys, k) }; return keys }
+func (h testHeader) Get(key string) string { return h.header.Get(key) }
+func (h testHeader) Set(key, value string) { h.header.Set(key, value) }
+func (h testHeader) Add(key, value string) { h.header.Add(key, value) }
+func (h testHeader) Keys() []string {
+	keys := make([]string, 0, len(h.header))
+	for k := range h.header {
+		keys = append(keys, k)
+	}
+	return keys
+}
 func (h testHeader) Values(key string) []string { return h.header.Values(key) }
 
 type testHTTPTransport struct {

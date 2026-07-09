@@ -61,15 +61,18 @@ func HTTPServerOptions(appCtx *app.AppCtx, data GeneratedData) ([]httptransport.
 		}
 	}
 	middlewares := commonServerMiddlewares(appCtx, cfgMiddleware)
-	if authViewer := authViewerMiddleware(data); authViewer != nil {
-		middlewares = append(middlewares, authViewer)
-	}
-	middlewares = append(middlewares, HTTPMiddlewares(appCtx)...)
 	if cfg != nil && cfg.GetEnableDbLogging() {
 		if provider, ok := any(data).(serverutils.DatabaseLoggingData); ok {
 			middlewares = append(middlewares, serverutils.DatabaseLoggingMiddleware(provider))
 		}
 	}
+	if authViewer := authViewerMiddleware(data); authViewer != nil {
+		middlewares = append(middlewares, authViewer)
+	}
+	if authzViewer := authzViewerMiddleware(data); authzViewer != nil {
+		middlewares = append(middlewares, authzViewer)
+	}
+	middlewares = append(middlewares, HTTPMiddlewares(appCtx)...)
 	if len(middlewares) > 0 {
 		opts = append(opts, httptransport.Middleware(middlewares...))
 	}

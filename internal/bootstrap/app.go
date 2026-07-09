@@ -17,15 +17,17 @@ import (
 )
 
 type Options struct {
-	Name       string
-	Version    string
-	BuildTime  string
-	GitCommit  string
-	ConfigPath string
+	Name             string
+	Version          string
+	BuildTime        string
+	GitCommit        string
+	ConfigPath       string
+	ForceStartupSync bool
 }
 
 func Initialize(ctx context.Context, opts Options) (*app.App, func(), error) {
 	opts = normalizeOptions(opts)
+	databootstrap.SetForceStartupSync(opts.ForceStartupSync)
 
 	serverConfig, err := loadServerConfig(opts.ConfigPath)
 	if err != nil {

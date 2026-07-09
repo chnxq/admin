@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	authenticationv1 "admin/api/gen/authentication/v1"
 	identityv1 "admin/api/gen/identity/v1"
@@ -17,6 +18,7 @@ import (
 	"github.com/chnxq/xkitmod/log"
 	"github.com/chnxq/xkitpkg/app"
 	"github.com/chnxq/xkitpkg/middleware"
+	authz "github.com/chnxq/xkitpkg/middleware/authz"
 )
 
 const platformTenantID uint64 = 0
@@ -24,6 +26,10 @@ const platformTenantID uint64 = 0
 type viewerDataSource interface {
 	UserRepoProvider() repo.UserRepo
 	RoleRepoProvider() repo.RoleRepo
+	PermissionRepoProvider() repo.PermissionRepo
+}
+
+type permissionAuthzDataSource interface {
 	PermissionRepoProvider() repo.PermissionRepo
 }
 
@@ -122,11 +128,48 @@ func authViewerMiddleware(data GeneratedData) middleware.Middleware {
 	}
 }
 
+func authzViewerMiddleware(data GeneratedData) middleware.Middleware {
+	source, ok := data.(permissionAuthzDataSource)
+	if !ok {
+		return nil
+	}
+	reader, _ := source.PermissionRepoProvider().(repo.PermissionAuthorizationReader)
+	if reader == nil {
+		return nil
+	}
+
+	return authz.Server(authz.AuthorizerFunc(func(ctx context.Context, req *authz.Request) (bool, error) {
+		viewer, ok := crudviewer.FromContext(ctx)
+		if !ok || viewer == nil || viewer.UserID() == 0 {
+			return false, nil
+		}
+		permissions := viewer.Permissions()
+		if len(permissions) == 0 {
+			return false, nil
+		}
+
+		path := strings.TrimSpace(req.PathTemplate)
+		if path == "" {
+			path = strings.TrimSpace(req.Path)
+		}
+		allowed, err := reader.HasAPIAccess(ctx, permissions, path, req.Method)
+		if err != nil {
+			return false, err
+		}
+		return allowed, nil
+	}), authz.WithSkip(shouldSkipAuthorization), authz.WithForbidden(authenticationv1.ErrorForbidden("permission denied")))
+}
+
 func ensureDefaultViewerContext(ctx context.Context) context.Context {
 	if viewer, ok := crudviewer.FromContext(ctx); ok && viewer != nil {
 		return ctx
 	}
 	return crudviewer.WithContext(ctx, defaultViewerContext{})
+}
+
+func shouldSkipAuthorization(ctx context.Context, req *authz.Request) bool {
+	_ = req
+	return !shouldEnforceRequestAuthorization(ctx)
 }
 
 func loadAuthConfigFromGeneratedData(data GeneratedData) (*authConfig, error) {

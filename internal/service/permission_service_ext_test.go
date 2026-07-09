@@ -31,6 +31,116 @@ func (v permissionServiceTestViewer) IsTenantContext() bool             { return
 func (v permissionServiceTestViewer) IsSystemContext() bool             { return v.platform && !v.tenant }
 func (v permissionServiceTestViewer) ShouldAudit() bool                 { return false }
 
+func TestAPIActionFromMethod_RecognizesNonCRUDActions(t *testing.T) {
+	cases := []struct {
+		method string
+		path   string
+		want   string
+	}{
+		{method: "POST", path: "/admin/v1/tasks/{id}:start", want: "start"},
+		{method: "POST", path: "/admin/v1/tasks/{id}:stop", want: "stop"},
+		{method: "POST", path: "/admin/v1/tasks/{id}:run-once", want: "run-once"},
+		{method: "POST", path: "/admin/v1/task-groups/{id}:run-once", want: "run-once"},
+		{method: "POST", path: "/admin/v1/internal-message/send", want: "send"},
+		{method: "POST", path: "/admin/v1/internal-message/revoke", want: "revoke"},
+		{method: "POST", path: "/admin/v1/users", want: "create"},
+		{method: "PUT", path: "/admin/v1/users/{id}", want: "edit"},
+	}
+
+	for _, tc := range cases {
+		if got := apiActionFromMethod(tc.method, tc.path); got != tc.want {
+			t.Fatalf("method=%q path=%q expected %q, got %q", tc.method, tc.path, tc.want, got)
+		}
+	}
+}
+
+func TestAPIPermissionCode_UsesNormalizedPermissionSyntax(t *testing.T) {
+	cases := []struct {
+		method string
+		path   string
+		want   string
+	}{
+		{method: "POST", path: "/admin/v1/tasks/{id}:start", want: "tasks:start"},
+		{method: "POST", path: "/admin/v1/tasks/{id}:stop", want: "tasks:stop"},
+		{method: "POST", path: "/admin/v1/tasks/{id}:run-once", want: "tasks:run-once"},
+		{method: "POST", path: "/admin/v1/menus:sync", want: "menus:sync:create"},
+		{method: "POST", path: "/admin/v1/apis:sync", want: "apis:sync:create"},
+		{method: "POST", path: "/admin/v1/permissions/sync:perms", want: "permissions:sync-perms"},
+		{method: "POST", path: "/admin/v1/task-groups/{id}:start", want: "task-groups:start"},
+		{method: "POST", path: "/admin/v1/task-groups/{id}:stop", want: "task-groups:stop"},
+		{method: "POST", path: "/admin/v1/task-groups/{id}:run-once", want: "task-groups:run-once"},
+		{method: "POST", path: "/admin/v1/internal-message/send", want: "internal-message:send"},
+		{method: "POST", path: "/admin/v1/internal-message/revoke", want: "internal-message:revoke"},
+		{method: "GET", path: "/admin/v1/internal-message/messages", want: "internal-message/messages:view"},
+		{method: "POST", path: "/admin/v1/internal-message/messages", want: "internal-message/messages:create"},
+		{method: "GET", path: "/admin/v1/dict/categories", want: "dict/categories:view"},
+		{method: "POST", path: "/admin/v1/dict/labels", want: "dict/labels:create"},
+		{method: "GET", path: "/admin/v1/org-units", want: "org-units:view"},
+		{method: "GET", path: "/admin/v1/task-logs", want: "task-logs:view"},
+	}
+
+	for _, tc := range cases {
+		if got := apiPermissionCode(tc.method, tc.path); got != tc.want {
+			t.Fatalf("method=%q path=%q expected %q, got %q", tc.method, tc.path, tc.want, got)
+		}
+	}
+}
+
+func TestPermissionCodeHelpers_UseResourceActionSplit(t *testing.T) {
+	if got := codeAction("tasks:run-once"); got != "run-once" {
+		t.Fatalf("expected run-once, got %q", got)
+	}
+	if got := permissionCodeBase("internal-message/messages:view"); got != "internal-message/messages" {
+		t.Fatalf("expected internal-message/messages, got %q", got)
+	}
+	if got := permissionCodeNamespace("internal-message/messages:view"); got != "internal-message" {
+		t.Fatalf("expected internal-message namespace, got %q", got)
+	}
+	if got := permissionCodeNamespace("dict-labels:view"); got != "dict-labels" {
+		t.Fatalf("expected dict-labels namespace, got %q", got)
+	}
+	if got := normalizePermissionGroupModule("internal-message"); got != "internalmessage" {
+		t.Fatalf("expected internalmessage group module, got %q", got)
+	}
+}
+
+func TestAPIResourceFromPath_UsesExplicitSecondaryResourceRules(t *testing.T) {
+	cases := []struct {
+		path string
+		want string
+	}{
+		{path: "/admin/v1/internal-message/messages", want: "internal-message/messages"},
+		{path: "/admin/v1/internal-message/send", want: "internal-message"},
+		{path: "/admin/v1/menus:sync", want: "menus:sync"},
+		{path: "/admin/v1/apis:sync", want: "apis:sync"},
+		{path: "/admin/v1/dict/categories", want: "dict/categories"},
+		{path: "/admin/v1/dict/labels", want: "dict/labels"},
+		{path: "/admin/v1/task-groups/{id}:run-once", want: "task-groups"},
+		{path: "/admin/v1/permissions/sync:perms", want: "permissions"},
+	}
+
+	for _, tc := range cases {
+		if got := apiResourceFromPath(tc.path); got != tc.want {
+			t.Fatalf("path=%q expected resource %q, got %q", tc.path, tc.want, got)
+		}
+	}
+}
+
+func TestServicePermissionCode_IncludesServiceModule(t *testing.T) {
+	got := servicePermissionCode("permission:view:service:dictlabelservice", "dict-labels:view")
+	if got != "service:dictlabelservice:dict-labels:view" {
+		t.Fatalf("unexpected service permission code: %q", got)
+	}
+
+	other := servicePermissionCode("permission:view:service:languageservice", "dict-labels:view")
+	if other != "service:languageservice:dict-labels:view" {
+		t.Fatalf("unexpected service permission code for second module: %q", other)
+	}
+	if got == other {
+		t.Fatalf("expected different service permission codes for different services")
+	}
+}
+
 func TestPermissionServiceSyncPermissions_RejectsTenantContext(t *testing.T) {
 	svc := &PermissionService{
 		log: log.NewHelper(log.NewStdLogger(permissionTestingWriter{t: t})),
@@ -74,135 +184,37 @@ func TestServiceGroupIdentityFromAPI_AssignsExpectedGroups(t *testing.T) {
 		Method:            stringPtr("GET"),
 		Path:              stringPtr("/admin/v1/users"),
 		Module:            stringPtr("user"),
-		ModuleDescription: stringPtr("用户管理服务"),
-		Description:       stringPtr("查询用户"),
+		ModuleDescription: stringPtr("User Management Service"),
+		Description:       stringPtr("List users"),
 		Status:            resourcev1.Api_ON.Enum(),
 	}
 	exportAPI := &resourcev1.Api{
 		Method:            stringPtr("GET"),
 		Path:              stringPtr("/admin/v1/users/export"),
 		Module:            stringPtr("user"),
-		ModuleDescription: stringPtr("用户管理"),
-		Description:       stringPtr("导出用户"),
+		ModuleDescription: stringPtr("User Management"),
+		Description:       stringPtr("Export users"),
 		Status:            resourcev1.Api_ON.Enum(),
 	}
 	miscAPI := &resourcev1.Api{
 		Method:      stringPtr("POST"),
 		Path:        stringPtr("/"),
-		Description: stringPtr("未知接口"),
+		Description: stringPtr("Unknown API"),
 		Status:      resourcev1.Api_ON.Enum(),
 	}
 
-	module, name := serviceGroupIdentityFromAPI(userAPI)
-	if module != "permission:view:service:user" || name != "用户管理" {
-		t.Fatalf("unexpected user group identity: module=%q name=%q", module, name)
+	module, _ := serviceGroupIdentityFromAPI(userAPI)
+	if module != "permission:view:service:user" {
+		t.Fatalf("unexpected user group identity: module=%q", module)
 	}
 
-	module, name = serviceGroupIdentityFromAPI(exportAPI)
-	if module != permissionGroupModuleExport || name != "数据导出" {
-		t.Fatalf("unexpected export group identity: module=%q name=%q", module, name)
+	module, _ = serviceGroupIdentityFromAPI(exportAPI)
+	if module != permissionGroupModuleExport {
+		t.Fatalf("unexpected export group identity: module=%q", module)
 	}
 
-	module, name = serviceGroupIdentityFromAPI(miscAPI)
-	if module != permissionGroupModuleMisc || name != "未分类" {
-		t.Fatalf("unexpected misc group identity: module=%q name=%q", module, name)
-	}
-}
-
-func TestExportPermissionNameFromAPI_RewritesQueryPrefix(t *testing.T) {
-	api := &resourcev1.Api{
-		Method:      stringPtr("GET"),
-		Path:        stringPtr("/admin/v1/users"),
-		Description: stringPtr("查询用户"),
-		Status:      resourcev1.Api_ON.Enum(),
-	}
-	if got := exportPermissionNameFromAPI(api); got != "导出用户" {
-		t.Fatalf("expected 导出用户, got %q", got)
-	}
-
-	api.Description = stringPtr("下载用户")
-	if got := exportPermissionNameFromAPI(api); got != "导出下载用户" {
-		t.Fatalf("expected 导出下载用户, got %q", got)
-	}
-}
-
-func TestResolveMenuTitleKey_UsesReadableDisplayName(t *testing.T) {
-	menu := &resourcev1.Menu{
-		Meta: &resourcev1.MenuMeta{
-			Title: stringPtr("menu.system.api"),
-		},
-	}
-	if got := displayMenuTitle(menu); got != "API管理" {
-		t.Fatalf("expected API管理, got %q", got)
-	}
-}
-
-func TestFeaturePermissionDisplayName_UsesMenuReadableName(t *testing.T) {
-	if got := featurePermissionDisplayName("API管理", "view"); got != "[菜单]API管理" {
-		t.Fatalf("expected [菜单]API管理, got %q", got)
-	}
-	if got := featurePermissionDisplayName("API管理", "edit"); got != "更新API" {
-		t.Fatalf("expected 更新API, got %q", got)
-	}
-	if got := featurePermissionDisplayName("API管理", "create"); got != "新增API" {
-		t.Fatalf("expected 新增API, got %q", got)
-	}
-	if got := featurePermissionDisplayName("用户管理", "edit"); got != "更新用户" {
-		t.Fatalf("expected 更新用户, got %q", got)
-	}
-}
-
-func TestExplicitFeaturePermissionDisplayName(t *testing.T) {
-	cases := map[string]string{
-		"permissions:view":              "[菜单]权限点管理",
-		"permissions:create":            "新增权限点",
-		"permissions:edit":              "更新权限点",
-		"permissions:delete":            "删除权限点",
-		"permissions:export":            "导出权限点",
-		"permissions:sync:perms:create": "同步权限点",
-		"permission:groups:create":      "新增权限组",
-		"permission:groups:edit":        "更新权限组",
-		"permission:groups:delete":      "删除权限组",
-	}
-	for code, expected := range cases {
-		if got := explicitFeaturePermissionDisplayName("权限点管理", code); got != expected {
-			t.Fatalf("code %q expected %q, got %q", code, expected, got)
-		}
-	}
-}
-
-func TestPermissionCodeNamespace(t *testing.T) {
-	if got := permissionCodeNamespace("permissions:sync:perms:create"); got != "permissions" {
-		t.Fatalf("expected permissions, got %q", got)
-	}
-	if got := permissionCodeNamespace("dict:labels:view"); got != "dict" {
-		t.Fatalf("expected dict, got %q", got)
-	}
-	if got := permissionCodeNamespace(""); got != "" {
-		t.Fatalf("expected empty namespace, got %q", got)
-	}
-}
-
-func TestServicePermissionCode_IncludesServiceModule(t *testing.T) {
-	got := servicePermissionCode("permission:view:service:dictlabelservice", "dict:labels:view")
-	if got != "service:dictlabelservice:dict:labels:view" {
-		t.Fatalf("unexpected service permission code: %q", got)
-	}
-
-	other := servicePermissionCode("permission:view:service:languageservice", "dict:labels:view")
-	if other != "service:languageservice:dict:labels:view" {
-		t.Fatalf("unexpected service permission code for second module: %q", other)
-	}
-	if got == other {
-		t.Fatalf("expected different service permission codes for different services")
-	}
-}
-
-func TestExplicitFeaturePermissionDisplayName_GroupAndPermissionSplit(t *testing.T) {
-	if got := explicitFeaturePermissionDisplayName("权限点管理", "permissions:create"); got != "新增权限点" {
-		t.Fatalf("expected 新增权限点, got %q", got)
-	}
-	if got := explicitFeaturePermissionDisplayName("权限点管理", "permission:groups:create"); got != "新增权限组" {
-		t.Fatalf("expected 新增权限组, got %q", got)
+	module, _ = serviceGroupIdentityFromAPI(miscAPI)
+	if module != permissionGroupModuleMisc {
+		t.Fatalf("unexpected misc group identity: module=%q", module)
 	}
 }

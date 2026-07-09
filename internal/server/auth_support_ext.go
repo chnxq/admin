@@ -45,6 +45,25 @@ var publicHTTPPaths = map[string]struct{}{
 	"/docs":                                             {},
 }
 
+var authenticatedSelfServiceHTTPPaths = map[string]struct{}{
+	"/admin/v1/perm-codes":         {},
+	"/admin/v1/routes":             {},
+	"/admin/v1/initial-context":    {},
+	"/admin/v1/dashboard/analytics": {},
+	"/admin/v1/me":                 {},
+	"/admin/v1/me/avatar":          {},
+	"/admin/v1/me/contact":         {},
+	"/admin/v1/me/contact/verify":  {},
+	"/admin/v1/me/password":        {},
+	"/admin/v1/me/tenant-options":  {},
+}
+
+type serverRequestInfo struct {
+	transportKind transport.Kind
+	path          string
+	http          bool
+}
+
 type authConfig struct {
 	signingMethod jwtv5.SigningMethod
 	secretKey     []byte
@@ -298,33 +317,73 @@ func isUserAllowedToLogin(userEntity *ent.User) error {
 	}
 }
 
-func isProtectedServerRequest(ctx context.Context) bool {
+func serverRequestInfoFromContext(ctx context.Context) (serverRequestInfo, bool) {
 	tr, ok := transport.FromServerContext(ctx)
 	if !ok || tr == nil {
-		return false
+		return serverRequestInfo{}, false
 	}
+	info := serverRequestInfo{transportKind: tr.Kind()}
 	if tr.Kind() == transport.KindGRPC {
-		return true
+		return info, true
 	}
 	httpTr, ok := tr.(httptransport.Transporter)
 	if !ok || httpTr.Request() == nil {
-		return false
+		return serverRequestInfo{}, false
 	}
+	info.http = true
 	pathTemplate := strings.TrimSpace(httpTr.PathTemplate())
 	path := pathTemplate
 	if path == "" {
 		path = strings.TrimSpace(httpTr.Request().URL.Path)
 	}
+	info.path = path
+	return info, path != ""
+}
+
+func isProtectedServerRequest(ctx context.Context) bool {
+	info, ok := serverRequestInfoFromContext(ctx)
+	if !ok {
+		return false
+	}
+	if info.transportKind == transport.KindGRPC {
+		return true
+	}
+	if isPublicHTTPPath(info.path) {
+		return false
+	}
+	return isProtectedHTTPPath(info.path)
+}
+
+func shouldEnforceRequestAuthorization(ctx context.Context) bool {
+	info, ok := serverRequestInfoFromContext(ctx)
+	if !ok {
+		return false
+	}
+	if info.transportKind == transport.KindGRPC {
+		return true
+	}
+	if _, ok := authenticatedSelfServiceHTTPPaths[info.path]; ok {
+		return false
+	}
+	return isProtectedHTTPPath(info.path)
+}
+
+func isPublicHTTPPath(path string) bool {
 	if path == "" {
 		return false
 	}
 	if path == "/docs" || strings.HasPrefix(path, "/docs/") || strings.HasPrefix(path, "/debug/pprof") {
+		return true
+	}
+	_, ok := publicHTTPPaths[path]
+	return ok
+}
+
+func isProtectedHTTPPath(path string) bool {
+	if path == "" || isPublicHTTPPath(path) {
 		return false
 	}
-	if _, ok := publicHTTPPaths[path]; ok {
-		return false
-	}
-	return strings.HasPrefix(path, "/admin/v1")
+	return strings.Count(strings.Trim(path, "/"), "/") >= 1
 }
 
 func errorsIsAny(err error, targets ...error) bool {

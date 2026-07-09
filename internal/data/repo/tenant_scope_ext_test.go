@@ -109,6 +109,71 @@ func TestEnsureTenantAccessible_RejectsTenantAccessToGlobalResource(t *testing.T
 	}
 }
 
+func TestViewerWriteTenantID_DefaultsToPlatformTenant(t *testing.T) {
+	got := viewerWriteTenantID(context.Background())
+	if got == nil || *got != 0 {
+		t.Fatalf("expected platform tenant id 0, got %+v", got)
+	}
+}
+
+func TestViewerWriteTenantID_ReturnsPlatformTenantForPlatformContext(t *testing.T) {
+	ctx := crudviewer.WithContext(context.Background(), tenantScopeTestViewer{
+		platform: true,
+		tenant:   false,
+		tenantID: 0,
+	})
+	got := viewerWriteTenantID(ctx)
+	if got == nil || *got != 0 {
+		t.Fatalf("expected platform tenant id 0, got %+v", got)
+	}
+}
+
+func TestEnsureTenantMutable_AllowsSameTenant(t *testing.T) {
+	ctx := crudviewer.WithContext(context.Background(), tenantScopeTestViewer{
+		tenant:   true,
+		tenantID: 101,
+	})
+	resourceTenantID := uint32(101)
+	if err := ensureTenantMutable(ctx, &resourceTenantID); err != nil {
+		t.Fatalf("expected same tenant mutation to pass, got %v", err)
+	}
+}
+
+func TestEnsureTenantMutable_RejectsCrossTenant(t *testing.T) {
+	ctx := crudviewer.WithContext(context.Background(), tenantScopeTestViewer{
+		tenant:   true,
+		tenantID: 101,
+	})
+	resourceTenantID := uint32(202)
+	if err := ensureTenantMutable(ctx, &resourceTenantID); !identityv1.IsForbidden(err) {
+		t.Fatalf("expected forbidden error, got %v", err)
+	}
+}
+
+func TestEnsureTenantMutable_RejectsPlatformMutationOfTenantResource(t *testing.T) {
+	ctx := crudviewer.WithContext(context.Background(), tenantScopeTestViewer{
+		platform: true,
+		tenant:   false,
+		tenantID: 0,
+	})
+	resourceTenantID := uint32(101)
+	if err := ensureTenantMutable(ctx, &resourceTenantID); !identityv1.IsForbidden(err) {
+		t.Fatalf("expected forbidden error, got %v", err)
+	}
+}
+
+func TestEnsureTenantMutable_AllowsPlatformMutationOfPlatformResource(t *testing.T) {
+	ctx := crudviewer.WithContext(context.Background(), tenantScopeTestViewer{
+		platform: true,
+		tenant:   false,
+		tenantID: 0,
+	})
+	resourceTenantID := uint32(0)
+	if err := ensureTenantMutable(ctx, &resourceTenantID); err != nil {
+		t.Fatalf("expected platform mutation to pass, got %v", err)
+	}
+}
+
 func TestEnsureHybridTenantAccessible_AllowsGlobalResourceForTenantViewer(t *testing.T) {
 	ctx := crudviewer.WithContext(context.Background(), tenantScopeTestViewer{
 		tenant:   true,

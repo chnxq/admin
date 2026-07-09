@@ -2,35 +2,35 @@ module admin
 
 replace github.com/armon/go-metrics => github.com/hashicorp/go-metrics v0.4.1
 
-go 1.26.0
+go 1.26.4
 
 require (
 	entgo.io/ent v0.14.6
-	github.com/chnxq/x-crud/api v0.0.0-20260411151944-a61448f9f7bc
-	github.com/chnxq/x-crud/entgo v0.0.0-20260411151944-a61448f9f7bc
-	github.com/chnxq/x-crud/viewer v0.0.0-20260411151944-a61448f9f7bc
+	github.com/chnxq/x-crud/api v0.0.0-20260626175521-5b374601006e
+	github.com/chnxq/x-crud/entgo v0.0.0-20260626175521-5b374601006e
+	github.com/chnxq/x-crud/viewer v0.0.0-20260626175521-5b374601006e
 	github.com/chnxq/x-swagger v0.0.0-20260529105209-02745c8a5170
 	github.com/chnxq/x-utils/copierutil v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/x-utils/geoip v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/x-utils/mapper v0.0.0-20260612100514-4160a415201a
 	github.com/chnxq/xkitmod v0.0.0-20260613061637-23d531e87870
 	github.com/chnxq/xkitmod/log v0.0.0-20260613061637-23d531e87870
-	github.com/chnxq/xkitpkg/app v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/cache v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/conf v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/config v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/config/consul v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/config/etcd v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/logger v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/logger/fluentd v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/logger/zap v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/middleware v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/registry v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/registry/consul v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/registry/etcd v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/server_utils v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/tracer v0.0.0-20260614100214-da276b9ddf99
-	github.com/chnxq/xkitpkg/transport v0.0.0-20260614100214-da276b9ddf99
+	github.com/chnxq/xkitpkg/app v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/cache v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/conf v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/config v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/config/consul v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/config/etcd v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/logger v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/logger/fluentd v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/logger/zap v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/middleware v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/registry v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/registry/consul v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/registry/etcd v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/server_utils v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/tracer v0.0.0-20260706080606-62b1a503cbc3
+	github.com/chnxq/xkitpkg/transport v0.0.0-20260706080606-62b1a503cbc3
 	github.com/envoyproxy/protoc-gen-validate v1.3.3
 	github.com/getkin/kin-openapi v0.140.0
 	github.com/go-sql-driver/mysql v1.10.0
@@ -40,18 +40,18 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/mattn/go-sqlite3 v1.14.47
 	github.com/menta2k/protoc-gen-redact/v3 v3.0.0-20260213125431-7688a38967d4
-	github.com/minio/minio-go/v7 v7.2.0
+	github.com/minio/minio-go/v7 v7.2.1
 	github.com/mojocn/base64Captcha v1.3.8
 	github.com/robfig/cron/v3 v3.0.1
 	golang.org/x/crypto v0.53.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20260618152121-87f3d3e198d3
-	google.golang.org/grpc v1.81.1
+	google.golang.org/genproto/googleapis/api v0.0.0-20260630182238-925bb5da69e7
+	google.golang.org/grpc v1.82.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	ariga.io/atlas v1.2.2 // indirect
+	ariga.io/atlas v1.2.3 // indirect
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 // indirect
 	buf.build/go/protovalidate v1.2.0 // indirect
 	cel.dev/expr v0.25.2 // indirect
@@ -66,14 +66,14 @@ require (
 	github.com/bwmarrin/snowflake v0.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/chnxq/x-crud/audit v0.0.0-20260411151944-a61448f9f7bc // indirect
-	github.com/chnxq/x-crud/pagination v0.0.0-20260411151944-a61448f9f7bc // indirect
+	github.com/chnxq/x-crud/audit v0.0.0-20260626175521-5b374601006e // indirect
+	github.com/chnxq/x-crud/pagination v0.0.0-20260626175521-5b374601006e // indirect
 	github.com/chnxq/x-utils v0.0.0-20260612100514-4160a415201a // indirect
 	github.com/chnxq/x-utils/id v0.0.0-20260612100514-4160a415201a // indirect
 	github.com/chnxq/xkitmod/algs v0.0.0-20260613061637-23d531e87870 // indirect
 	github.com/chnxq/xkitmod/config v0.0.0-20260613061637-23d531e87870 // indirect
 	github.com/chnxq/xkitmod/selector v0.0.0-20260613061637-23d531e87870 // indirect
-	github.com/chnxq/xkitpkg v0.0.0-20260614100214-da276b9ddf99 // indirect
+	github.com/chnxq/xkitpkg v0.0.0-20260706080606-62b1a503cbc3 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -85,15 +85,14 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/inflect v0.21.6 // indirect
-	github.com/go-openapi/jsonpointer v0.23.1 // indirect
-	github.com/go-openapi/swag/jsonname v0.26.1 // indirect
+	github.com/go-openapi/jsonpointer v0.24.0 // indirect
 	github.com/go-playground/form/v4 v4.3.0 // indirect
 	github.com/go-test/deep v1.1.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/cel-go v0.28.1 // indirect
+	github.com/google/cel-go v0.29.1 // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -104,7 +103,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
-	github.com/hashicorp/go-metrics v0.5.4 // indirect
+	github.com/hashicorp/go-metrics v0.6.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
@@ -112,31 +111,31 @@ require (
 	github.com/hashicorp/serf v0.10.2 // indirect
 	github.com/hibiken/asynq v0.26.0 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
-	github.com/klauspost/compress v1.18.6 // indirect
-	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/klauspost/compress v1.19.0 // indirect
+	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/lithammer/shortuuid/v4 v4.2.0 // indirect
-	github.com/lufia/plan9stats v0.0.0-20260330125221-c963978e514e // indirect
+	github.com/lufia/plan9stats v0.0.0-20260627054121-477a66015f15 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
-	github.com/oasdiff/yaml v0.1.0 // indirect
-	github.com/oasdiff/yaml3 v0.0.13 // indirect
+	github.com/oasdiff/yaml v0.1.1 // indirect
+	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/oschwald/geoip2-golang v1.13.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.13.1 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/redis/go-redis/extra/rediscmd/v9 v9.20.1 // indirect
-	github.com/redis/go-redis/extra/redisotel/v9 v9.20.1 // indirect
-	github.com/redis/go-redis/v9 v9.20.1 // indirect
+	github.com/redis/go-redis/extra/rediscmd/v9 v9.21.0 // indirect
+	github.com/redis/go-redis/extra/redisotel/v9 v9.21.0 // indirect
+	github.com/redis/go-redis/v9 v9.21.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
-	github.com/shoenig/go-m1cpu v0.2.1 // indirect
+	github.com/shoenig/go-m1cpu v0.2.2 // indirect
 	github.com/sony/sonyflake v1.3.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/swaggest/swgui v1.8.8 // indirect
@@ -149,9 +148,9 @@ require (
 	github.com/zclconf/go-cty-yaml v1.2.0 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.einride.tech/aip v0.86.3 // indirect
-	go.etcd.io/etcd/api/v3 v3.6.12 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.6.12 // indirect
-	go.etcd.io/etcd/client/v3 v3.6.12 // indirect
+	go.etcd.io/etcd/api/v3 v3.6.13 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.6.13 // indirect
+	go.etcd.io/etcd/client/v3 v3.6.13 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.7.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/bridges/otelzap v0.19.0 // indirect
@@ -179,8 +178,8 @@ require (
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	golang.org/x/tools v0.46.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260618152121-87f3d3e198d3 // indirect
+	golang.org/x/tools v0.47.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260630182238-925bb5da69e7 // indirect
 	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
 	gopkg.in/ini.v1 v1.67.3 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect

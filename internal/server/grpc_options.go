@@ -54,6 +54,9 @@ func GRPCServerOptions(appCtx *app.AppCtx, data GeneratedData) ([]grpctransport.
 	if authViewer := authViewerMiddleware(data); authViewer != nil {
 		middlewares = append(middlewares, authViewer)
 	}
+	if authzViewer := authzViewerMiddleware(data); authzViewer != nil {
+		middlewares = append(middlewares, authzViewer)
+	}
 	middlewares = append(middlewares, GRPCMiddlewares(appCtx)...)
 	if len(middlewares) > 0 {
 		opts = append(opts, grpctransport.Middleware(middlewares...))
