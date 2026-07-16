@@ -97,6 +97,100 @@ func TestCollectFeaturePermissions_UsesFirstExplicitViewAsSingleMenuEntry(t *tes
 	}
 }
 
+func TestCollectFeaturePermissions_CompositeCenterKeepsPrimaryActions(t *testing.T) {
+	menus := []*resourcev1.Menu{
+		{
+			Id:     uint32Ptr(31),
+			Name:   stringPtr("XdevParameterCenter"),
+			Path:   stringPtr("/xdev/parameter-center"),
+			Type:   resourcev1.Menu_MENU.Enum(),
+			Status: resourcev1.Menu_ON.Enum(),
+			Meta: &resourcev1.MenuMeta{
+				Title: stringPtr("Parameter Center"),
+				Authority: []string{
+					"xdev:device-parameter-group:view",
+					"xdev:device-parameter-group:create",
+					"xdev:device-parameter-group:edit",
+					"xdev:device-parameter-group:delete",
+					"xdev:device-parameter-group:export",
+					"xdev:device-parameter-item:view",
+					"xdev:device-parameter-item:create",
+					"xdev:device-parameter-item:edit",
+					"xdev:device-parameter-item:delete",
+				},
+			},
+		},
+		{
+			Id:     uint32Ptr(32),
+			Name:   stringPtr("XdevDeviceParameterGroup"),
+			Path:   stringPtr("/xdev/device-parameter-group"),
+			Type:   resourcev1.Menu_MENU.Enum(),
+			Status: resourcev1.Menu_ON.Enum(),
+			Meta: &resourcev1.MenuMeta{
+				Title: stringPtr("Device Parameter Group"),
+				Authority: []string{
+					"xdev:device-parameter-group:view",
+					"xdev:device-parameter-group:create",
+					"xdev:device-parameter-group:edit",
+					"xdev:device-parameter-group:delete",
+					"xdev:device-parameter-group:export",
+				},
+			},
+		},
+	}
+
+	apis := []*resourcev1.Api{
+		{Id: uint32Ptr(1), Method: stringPtr("GET"), Path: stringPtr("/xdev/v1/device-parameter-groups"), Status: resourcev1.Api_ON.Enum()},
+		{Id: uint32Ptr(2), Method: stringPtr("POST"), Path: stringPtr("/xdev/v1/device-parameter-groups"), Status: resourcev1.Api_ON.Enum()},
+		{Id: uint32Ptr(3), Method: stringPtr("PUT"), Path: stringPtr("/xdev/v1/device-parameter-groups/{id}"), Status: resourcev1.Api_ON.Enum()},
+		{Id: uint32Ptr(4), Method: stringPtr("DELETE"), Path: stringPtr("/xdev/v1/device-parameter-groups/{id}"), Status: resourcev1.Api_ON.Enum()},
+		{Id: uint32Ptr(5), Method: stringPtr("GET"), Path: stringPtr("/xdev/v1/device-parameter-items"), Status: resourcev1.Api_ON.Enum()},
+		{Id: uint32Ptr(6), Method: stringPtr("POST"), Path: stringPtr("/xdev/v1/device-parameter-items"), Status: resourcev1.Api_ON.Enum()},
+	}
+
+	items := collectFeaturePermissions(menus, apis)
+	byCode := make(map[string]desiredPermission, len(items))
+	for _, item := range items {
+		byCode[item.code] = item
+	}
+
+	for _, code := range []string{
+		"xdev:device-parameter-group:view",
+		"xdev:device-parameter-group:create",
+		"xdev:device-parameter-group:edit",
+		"xdev:device-parameter-group:delete",
+		"xdev:device-parameter-group:export",
+	} {
+		if _, ok := byCode[code]; !ok {
+			t.Fatalf("expected primary permission %q", code)
+		}
+	}
+	for _, code := range []string{
+		"xdev:device-parameter-item:view",
+		"xdev:device-parameter-item:create",
+		"xdev:device-parameter-item:edit",
+		"xdev:device-parameter-item:delete",
+	} {
+		if _, ok := byCode[code]; ok {
+			t.Fatalf("secondary permission should be collapsed: %q", code)
+		}
+	}
+
+	primary := byCode["xdev:device-parameter-group:view"]
+	if primary.name != "[菜单]Parameter Center" {
+		t.Fatalf("expected composite menu to own the shared permission name, got %q", primary.name)
+	}
+	if len(primary.menuIDs) != 2 || primary.menuIDs[0] != 31 || primary.menuIDs[1] != 32 {
+		t.Fatalf("expected both parameter menus to share the permission, got %#v", primary.menuIDs)
+	}
+	if len(primary.apiIDs) != 3 || primary.apiIDs[0] != 1 || primary.apiIDs[1] != 5 || primary.apiIDs[2] != 6 {
+		t.Fatalf("expected primary view to absorb secondary APIs, got %#v", primary.apiIDs)
+	}
+	if create := byCode["xdev:device-parameter-group:create"]; len(create.apiIDs) != 1 || create.apiIDs[0] != 2 {
+		t.Fatalf("expected primary create API binding, got %#v", create.apiIDs)
+	}
+}
+
 func TestCollectFeaturePermissions_KeepsSecondaryActionsWithoutSecondaryViewEntry(t *testing.T) {
 	menus := []*resourcev1.Menu{
 		{

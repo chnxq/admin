@@ -1185,7 +1185,14 @@ func buildFeatureMenuDescriptors(menus []*resourcev1.Menu) []featureMenuDescript
 		})
 	}
 
-	sort.SliceStable(descriptors, func(i, j int) bool { return descriptors[i].groupModule < descriptors[j].groupModule })
+	sort.SliceStable(descriptors, func(i, j int) bool {
+		leftPrimary := firstString(descriptors[i].explicitCodes)
+		rightPrimary := firstString(descriptors[j].explicitCodes)
+		if leftPrimary != "" && leftPrimary == rightPrimary && len(descriptors[i].explicitCodes) != len(descriptors[j].explicitCodes) {
+			return len(descriptors[i].explicitCodes) > len(descriptors[j].explicitCodes)
+		}
+		return descriptors[i].groupModule < descriptors[j].groupModule
+	})
 	return descriptors
 }
 
